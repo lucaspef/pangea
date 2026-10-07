@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Game server: lobby, canais, salas, partida, loja, My Room. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Pangya.Data\Pangya.Data.csproj" />
+    <ProjectReference Include="..\Pangya.Protocol.KR645\Pangya.Protocol.KR645.csproj" />
+  </ItemGroup>
+</Project>

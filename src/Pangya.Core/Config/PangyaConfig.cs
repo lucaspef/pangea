@@ -10,11 +10,12 @@ namespace Pangya.Core.Config;
 /// </summary>
 public sealed class PangyaConfig
 {
-    /// <summary>Servidores que este processo roda (se a linha de comando não disser): web, login.</summary>
-    public string[] Run { get; set; } = ["web", "login"];
+    /// <summary>Servidores que este processo roda (se a linha de comando não disser): web, login, game.</summary>
+    public string[] Run { get; set; } = ["web", "login", "game"];
     public NetworkConfig Network { get; set; } = new();
     public WebConfig Web { get; set; } = new();
     public LoginConfig Login { get; set; } = new();
+    public GameConfig Game { get; set; } = new();
     public DatabaseConfig Database { get; set; } = new();
     public LimitsConfig Limits { get; set; } = new();
     public LoggingConfig Logging { get; set; } = new();
@@ -78,6 +79,23 @@ public sealed class LoginConfig
     public int[] Ports { get; set; } = [10101];
     /// <summary>Identificador mandado no hello.</summary>
     public uint ServerUid { get; set; } = 10101;
+}
+
+/// <summary>Um game server (lobby, canais, salas...). Vários processos podem rodar, cada um com seu Id e porta.</summary>
+public sealed class GameConfig
+{
+    /// <summary>Id na lista de servidores (único entre os game servers).</summary>
+    public int Id { get; set; } = 20201;
+    public string Name { get; set; } = "PangYa";
+    public int Port { get; set; } = 20201;
+    public int MaxUsers { get; set; } = 1000;
+    public ChannelConfig[] Channels { get; set; } = [new()];
+}
+
+public sealed class ChannelConfig
+{
+    public string Name { get; set; } = "Canal 1";
+    public int MaxUsers { get; set; } = 100;
 }
 
 /// <summary>O que um jogador novo recebe (typeids do pangya.iff).</summary>

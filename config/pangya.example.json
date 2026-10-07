@@ -1,8 +1,9 @@
 // Modelo da configuração. Copie para config/pangya.json (tools/setup-dev.sh faz isso e gera a senha do banco).
 {
   // Portas de desenvolvimento (não colidem com o emulador Python em 80/10101/20201).
-  // Num servidor de verdade: Web 80, Login 10101.
-  "Run": ["web", "login"],
+  // Num servidor de verdade: Web 80, Login 10101, Game 20201.
+  "Run": ["web", "login", "game"],
+  "Game": { "Id": 30201, "Name": "PangYa C#", "Port": 30201, "MaxUsers": 1000, "Channels": [ { "Name": "Canal 1", "MaxUsers": 100 } ] },
   "Web": { "Port": 30080, "AutoRegister": false },
   "Login": { "Ports": [30101], "ServerUid": 10101 },
   "Network": {

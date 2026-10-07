@@ -14,6 +14,7 @@
     <ProjectReference Include="..\..\src\Pangya.Data\Pangya.Data.csproj" />
     <ProjectReference Include="..\..\src\Pangya.Web\Pangya.Web.csproj" />
     <ProjectReference Include="..\..\src\Pangya.Login\Pangya.Login.csproj" />
+    <ProjectReference Include="..\..\src\Pangya.Game\Pangya.Game.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

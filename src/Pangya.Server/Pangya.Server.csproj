@@ -7,5 +7,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Pangya.Web\Pangya.Web.csproj" />
     <ProjectReference Include="..\Pangya.Login\Pangya.Login.csproj" />
+    <ProjectReference Include="..\Pangya.Game\Pangya.Game.csproj" />
   </ItemGroup>
 </Project>

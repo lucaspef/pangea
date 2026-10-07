@@ -2,6 +2,7 @@
 {
   "Web": { "Port": 0, "AutoRegister": false },
   "Login": { "Ports": [0], "ServerUid": 10101 },
+  "Game": { "Id": 30201, "Name": "Teste", "Port": 0, "MaxUsers": 100, "Channels": [ { "Name": "Canal 1", "MaxUsers": 2 } ] },
   "Network": {
     "BindIp": "127.0.0.1",
     "PublicIp": "127.0.0.1"

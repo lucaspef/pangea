@@ -2,10 +2,12 @@
 //   Pangya.Server [--config arquivo.json] [web] [login] ...       (sem nomes: usa "Run" da configuração)
 //   Pangya.Server [--config ...] server-add <id> <tipo> <nome> <endereço> <porta> [máx]   servidor fixo na lista
 //   Pangya.Server [--config ...] server-remove <id>
+//   Pangya.Server [--config ...] account-create <login> <senha> <nickname>              conta pronta para jogar
 using Pangya.Core.Hosting;
 using Pangya.Core.Logging;
 using Pangya.Data;
 using Pangya.Domain.Servers;
+using Pangya.Game;
 using Pangya.Login;
 using Pangya.Web;
 
@@ -37,11 +39,25 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
         return;
     }
 
+    if (rest.FirstOrDefault() == "account-create" && rest.Count == 4)
+    {
+        // conta pronta (com nickname e personagem padrão), sem as regras de senha do cadastro: testes e administração
+        var acc = await s.Accounts.CreateAsync(rest[1], Pangya.Domain.Accounts.PasswordHasher.Hash(rest[2]))
+                  ?? throw new InvalidOperationException($"login {rest[1]} já existe");
+        await s.Accounts.SetNicknameAsync(acc.Id, rest[3]);
+        var players = new Pangya.Domain.Players.PlayerService(s.Players,
+            Pangya.Protocol.KR645.Kr645GameData.Load(cfg.Data.IffPath), cfg.NewPlayer);
+        await players.CreateAsync(acc.Id, 0x04000000, 0, 0);
+        Log.Info($"conta criada: {rest[1]} uid={acc.Id} nick={rest[3]}");
+        return;
+    }
+
     var names = rest.Count > 0 ? rest.ToArray() : cfg.Run;
     await Task.WhenAll(names.Select(n => n switch
     {
         "web" => WebServer.RunAsync(s, ct),
         "login" => LoginServer.RunAsync(s, ct),
-        _ => throw new ArgumentException($"servidor desconhecido: {n} (use web, login)"),
+        "game" => new GameServer(s).RunAsync(ct),
+        _ => throw new ArgumentException($"servidor desconhecido: {n} (use web, login, game)"),
     }));
 });
