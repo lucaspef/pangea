@@ -21,6 +21,7 @@ public sealed class PangyaConfig
     public LoggingConfig Logging { get; set; } = new();
     public DataConfig Data { get; set; } = new();
     public NewPlayerConfig NewPlayer { get; set; } = new();
+    public LotteryConfig Lottery { get; set; } = new();
 
     static readonly JsonSerializerOptions Json = new()
     {
@@ -165,4 +166,49 @@ public sealed class LimitsConfig
         if (MaxConnectionsPerIp < 1 || MaxPacketsPerSecond < 1 || MaxPacketSize < 16 || MaxLoginAttemptsPerMinute < 1 || IdleTimeoutSeconds < 5)
             throw new InvalidDataException("Limits: valores inválidos");
     }
+}
+
+/// <summary>
+/// Papel Shop (봉다리) e raspadinha: o cliente não tem tabela de prêmios, então tudo vem daqui
+/// (docs/protocolo/SPEC-papel-raspadinha.md §1.5 e §2.6). Pools padrão = silhuetas do cliente KR.
+/// </summary>
+public sealed class LotteryConfig
+{
+    /// <summary>Preço de uma jogada do Papel Shop sem cupom.</summary>
+    public long PapelPrice { get; set; } = 900;
+    /// <summary>Peso de sair 1, 2, 3, 4 e 5 bolas.</summary>
+    public int[] PapelBallWeights { get; set; } = [35, 30, 20, 10, 5];
+    /// <summary>Chance (em 1000) de cada bola ser de cookie e rara.</summary>
+    public int PapelCookiePerMille { get; set; } = 140;
+    public int PapelRarePerMille { get; set; } = 10;
+    /// <summary>Peso de a raspadinha dar 0, 1 e 2 itens.</summary>
+    public int[] ScratchCountWeights { get; set; } = [30, 69, 1];
+    public int ScratchCookiePerMille { get; set; } = 180;
+    public int ScratchRarePerMille { get; set; } = 20;
+
+    public PrizeConfig[] Normal { get; set; } =
+    [
+        new(0x18000008, 11), new(0x18000007, 11), new(0x18000001, 11), new(0x18000000, 13), new(0x18000004, 12),
+        new(0x18000005, 11), new(0x1A000028, 12, 1, 1), new(0x1A00003D, 9, 1, 1), new(0x1A000041, 10, 1, 1),
+    ];
+    public PrizeConfig[] Cookie { get; set; } =
+    [
+        new(0x1800000E, 7), new(0x1800000B, 7), new(0x1800000A, 7), new(0x18000009, 7), new(0x18000006, 6),
+        new(0x1A00004F, 7), new(0x1A000002, 5), new(0x1A000011, 5), new(0x14000005, 5), new(0x14000003, 5),
+        new(0x14000002, 5), new(0x14000001, 5), new(0x14000020, 4), new(0x18000010, 5), new(0x18000011, 5),
+        new(0x18000012, 5), new(0x1A000040, 4), new(0x18000028, 3), new(0x18000027, 3),
+    ];
+    /// <summary>Raros (peças, club sets...): vazio = a chance de raro vira item de cookie.</summary>
+    public PrizeConfig[] Rare { get; set; } = [];
+}
+
+/// <summary>Um prêmio possível: typeid, peso e quantidade (sorteada entre Min e Max; itens não empilháveis = 1).</summary>
+public sealed class PrizeConfig
+{
+    public PrizeConfig() { }
+    public PrizeConfig(int typeId, int weight, int min = 1, int max = 3) { TypeId = typeId; Weight = weight; Min = min; Max = max; }
+    public int TypeId { get; set; }
+    public int Weight { get; set; } = 1;
+    public int Min { get; set; } = 1;
+    public int Max { get; set; } = 3;
 }

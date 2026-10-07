@@ -8,7 +8,8 @@ using Pangya.Domain.Players;
 namespace Pangya.Protocol.KR645.Game;
 
 /// <summary>Serviços do game server (um por processo).</summary>
-public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players, IGameData data)
+public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players, IGameData data,
+    Core.Config.LotteryConfig? lottery = null)
 {
     public GameWorld World { get; } = world;
     public SessionService Sessions { get; } = sessions;
@@ -17,6 +18,8 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
     public Domain.Shop.ShopService Shop { get; } = new(players.Store, data);
     public Domain.Shop.CardService Cards { get; } = new(players.Store, data);
     public PlayerActions Actions { get; } = new(players.Store, data);
+    Domain.Shop.LotteryService? lotteryService;
+    public Domain.Shop.LotteryService Lottery => lotteryService ??= new(Shop, Data, lottery ?? new());
 }
 
 /// <summary>
@@ -70,7 +73,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
-        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p)) return;
+        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;
@@ -116,7 +119,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         var w = new PacketWriter(SPlayerInfo, 0xD00).U8(0).Str(Kr645.ClientVersion).Str("")
             .Struct(PlayerStructs.UserInfo(player!))
             .Struct(PlayerStructs.SystemTime(DateTime.Now))       // hora do servidor (loja, validade de itens)
-            .U8(0).U8(0).U16(0).U16(0).U16(0)                     // flag, ?, bongdari x3
+            .U8(0).U8(0).U16(0xFFFF).U16(0xFFFF).U16(0)           // flag, ?, papel: jogadas (-1 = sem limite), bônus (-1), faltam
             .U32(0).U32(0).U32(0).U32(0)                          // flagBlock, controlServerService, ?, serverProperty
             .Zeros(0x119);                                        // GUILD_USER_INFO: sem guilda (guildId != 0 dispara RSS)
         conn.Send(w);

@@ -19,6 +19,7 @@ public readonly record struct Granted(int TypeId, int Id, int Count, int Hours =
 /// </summary>
 public sealed class ShopService(IPlayerStore store, IGameData data)
 {
+    internal IPlayerStore Store => store;
     public const int MaxLines = 20;
     const int MaxQuantity = 9999;
     static readonly int[] PeriodDays = [1, 7, 15, 30, 365];
@@ -57,7 +58,7 @@ public sealed class ShopService(IPlayerStore store, IGameData data)
         if (pang > p.Pang) return (ShopCode.NoPang, []);
         if (cookie > p.Cookie) return (ShopCode.NoCookie, []);
 
-        var draft = new Draft(p, store);
+        var draft = new ShopDraft(p, store);
         var granted = new List<Granted>();
         foreach (var r in requests)
         {
@@ -73,11 +74,22 @@ public sealed class ShopService(IPlayerStore store, IGameData data)
         return (ShopCode.Ok, granted);
     }
 
+    /// <summary>Entrega sem cobrar (administração/GM): mesmas regras de entrega da compra.</summary>
+    public async Task<(ShopCode Code, List<Granted> Granted)> GiveAsync(Player p, int typeId, int quantity, int days = 0)
+    {
+        if (!data.Exists(typeId)) return (ShopCode.BadCode, []);
+        var draft = new ShopDraft(p, store);
+        var granted = new List<Granted>();
+        var code = await GrantAsync(draft, typeId, Math.Clamp(quantity, 1, MaxQuantity), days, granted, 0);
+        if (code == ShopCode.Ok) await draft.CommitAsync();
+        return (code, code == ShopCode.Ok ? granted : []);
+    }
+
     /// <summary>Horas inteiras que ainda restam de um prazo (0 se já venceu).</summary>
     static int RemainingHours(DateTime? until, DateTime now) =>
         until is { } u && u > now ? (int)Math.Ceiling((u - now).TotalHours - 1e-6) : 0;
 
-    async Task<ShopCode> GrantAsync(Draft d, int tid, int qty, int days, List<Granted> granted, int depth)
+    internal async Task<ShopCode> GrantAsync(ShopDraft d, int tid, int qty, int days, List<Granted> granted, int depth)
     {
         var now = DateTime.UtcNow;
         switch (Item.GroupOf(tid))
@@ -185,68 +197,73 @@ public sealed class ShopService(IPlayerStore store, IGameData data)
             }
         }
     }
+}
 
-    /// <summary>
-    /// Rascunho de mudanças sobre o jogador: os itens alterados são cópias até o commit, então um erro no meio
-    /// da compra não deixa o jogador pela metade.
-    /// </summary>
-    sealed class Draft(Player p, IPlayerStore store)
+/// <summary>
+/// Rascunho de mudanças sobre o jogador: os itens alterados são cópias até o commit, então um erro no meio
+/// da compra não deixa o jogador pela metade.
+/// </summary>
+internal sealed class ShopDraft(Player p, IPlayerStore store)
+{
+    readonly Dictionary<int, Item> edited = [];
+    readonly HashSet<int> added = [];
+    public PlayerChanges Changes { get; } = new();
+    public Equipment Equip { get; } = Copy(p.Equip);
+
+    static Equipment Copy(Equipment e) => new()
     {
-        readonly Dictionary<int, Item> edited = [];
-        readonly HashSet<int> added = [];
-        public PlayerChanges Changes { get; } = new();
-        public Equipment Equip { get; } = Copy(p.Equip);
+        CharacterId = e.CharacterId, CaddieId = e.CaddieId, ClubSetId = e.ClubSetId, BallTypeId = e.BallTypeId,
+        MascotId = e.MascotId, ItemSlots = (int[])e.ItemSlots.Clone(), SkinTypeIds = (int[])e.SkinTypeIds.Clone(),
+    };
 
-        static Equipment Copy(Equipment e) => new()
+    Item Current(Item it) => edited.GetValueOrDefault(it.Id) ?? it;
+
+    public Item? FindType(int tid)
+    {
+        foreach (var it in edited.Values)
+            if (it.TypeId == tid && it.Location == ItemLocation.Inventory) return it;
+        var found = p.FindType(tid);
+        return found == null ? null : Current(found);
+    }
+
+    public List<Item> OfGroup(ItemGroup g)
+    {
+        var list = p.OfGroup(g);
+        for (int i = 0; i < list.Count; i++) list[i] = Current(list[i]);
+        foreach (var id in added)
+            if (edited[id].Group == g) list.Add(edited[id]);
+        return list;
+    }
+
+    public Item Edit(Item it)
+    {
+        if (edited.TryGetValue(it.Id, out var e)) return e;
+        var c = it.Clone();
+        edited[it.Id] = c;
+        return c;
+    }
+
+    public async Task<Item> AddAsync(int tid, int quantity)
+    {
+        var ids = await store.NewIdsAsync(1);
+        var it = new Item { Id = ids[0], TypeId = tid, Quantity = quantity };
+        edited[it.Id] = it;
+        added.Add(it.Id);
+        return it;
+    }
+
+    public async Task CommitAsync()
+    {
+        foreach (var (id, it) in edited)
         {
-            CharacterId = e.CharacterId, CaddieId = e.CaddieId, ClubSetId = e.ClubSetId, BallTypeId = e.BallTypeId,
-            MascotId = e.MascotId, ItemSlots = (int[])e.ItemSlots.Clone(), SkinTypeIds = (int[])e.SkinTypeIds.Clone(),
-        };
-
-        Item Current(Item it) => edited.GetValueOrDefault(it.Id) ?? it;
-
-        public Item? FindType(int tid)
-        {
-            foreach (var it in edited.Values)
-                if (it.TypeId == tid && it.Location == ItemLocation.Inventory) return it;
-            var found = p.FindType(tid);
-            return found == null ? null : Current(found);
+            if (added.Contains(id)) Changes.Added.Add(it);
+            else if (it.Quantity <= 0 && it.IsConsumable) Changes.Removed.Add(id);    // pilha gasta (cupom, cartão)
+            else Changes.Updated.Add(it);
         }
-
-        public List<Item> OfGroup(ItemGroup g)
-        {
-            var list = p.OfGroup(g);
-            for (int i = 0; i < list.Count; i++) list[i] = Current(list[i]);
-            foreach (var id in added)
-                if (edited[id].Group == g) list.Add(edited[id]);
-            return list;
-        }
-
-        public Item Edit(Item it)
-        {
-            if (edited.TryGetValue(it.Id, out var e)) return e;
-            var c = it.Clone();
-            edited[it.Id] = c;
-            return c;
-        }
-
-        public async Task<Item> AddAsync(int tid, int quantity)
-        {
-            var ids = await store.NewIdsAsync(1);
-            var it = new Item { Id = ids[0], TypeId = tid, Quantity = quantity };
-            edited[it.Id] = it;
-            added.Add(it.Id);
-            return it;
-        }
-
-        public async Task CommitAsync()
-        {
-            foreach (var (id, it) in edited)
-                (added.Contains(id) ? Changes.Added : Changes.Updated).Add(it);
-            Changes.Equip = Equip;
-            await store.ApplyAsync(p.AccountId, Changes);
-            foreach (var it in edited.Values) p.Items[it.Id] = it;      // só depois de gravado
-            p.Equip = Equip;
-        }
+        Changes.Equip = Equip;
+        await store.ApplyAsync(p.AccountId, Changes);
+        foreach (var it in edited.Values) p.Items[it.Id] = it;      // só depois de gravado
+        foreach (var id in Changes.Removed) p.Items.Remove(id);
+        p.Equip = Equip;
     }
 }

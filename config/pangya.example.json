@@ -20,6 +20,11 @@
   "Data": {
     "IffPath": "data/pangya.iff"
   },
+  "Lottery": {
+    "PapelPrice": 900,
+    "PapelBallWeights": [35, 30, 20, 10, 5],
+    "ScratchCountWeights": [30, 69, 1]
+  },
   "Limits": {
     "MaxConnectionsPerIp": 10,
     "MaxPacketsPerSecond": 100,

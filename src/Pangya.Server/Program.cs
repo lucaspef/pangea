@@ -4,6 +4,7 @@
 //   Pangya.Server [--config ...] server-remove <id>
 //   Pangya.Server [--config ...] account-create <login> <senha> <nickname>              conta pronta para jogar
 //   Pangya.Server [--config ...] player-set <login> [pang=N] [cookie=N] [level=N] [identity=N]   ajusta um jogador (desconectado)
+//   Pangya.Server [--config ...] item-give <login> <typeid> [qtd] [dias]   entrega um item sem cobrar (desconectado)
 using Pangya.Core.Hosting;
 using Pangya.Core.Logging;
 using Pangya.Data;
@@ -78,6 +79,20 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
         await s.Players.ApplyAsync(acc.Id, ch);
         if (identity is { } id) await s.Accounts.SetIdentityFlagsAsync(acc.Id, id);
         Log.Info($"{rest[1]}: pang={ch.Pang ?? p.Pang} cookie={ch.Cookie ?? p.Cookie} nível={ch.Level ?? p.Level} identidade=0x{identity ?? acc.IdentityFlags:X}");
+        return;
+    }
+
+    if (command == "item-give" && rest.Count is 3 or 4 or 5)
+    {
+        // administração: entrega um item (typeid do IFF, aceita 0x...) sem cobrar; jogador desconectado, como no player-set
+        var acc = await s.Accounts.FindByLoginAsync(rest[1]) ?? throw new InvalidOperationException($"login {rest[1]} não existe");
+        var data = Pangya.Protocol.KR645.Kr645GameData.Load(cfg.Data.IffPath);
+        var players = new Pangya.Domain.Players.PlayerService(s.Players, data, cfg.NewPlayer);
+        var p = await players.LoadAsync(acc.Id) ?? throw new InvalidOperationException($"{rest[1]} ainda não criou o personagem");
+        static int Num(string v) => v.StartsWith("0x") ? int.Parse(v[2..], System.Globalization.NumberStyles.HexNumber) : int.Parse(v);
+        var (code, granted) = await new Pangya.Domain.Shop.ShopService(s.Players, data)
+            .GiveAsync(p, Num(rest[2]), rest.Count > 3 ? Num(rest[3]) : 1, rest.Count > 4 ? Num(rest[4]) : 0);
+        Log.Info($"{rest[1]}: item-give {rest[2]} -> {code} " + string.Join(", ", granted));
         return;
     }
 

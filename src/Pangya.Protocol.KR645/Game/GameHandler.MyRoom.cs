@@ -16,13 +16,13 @@ public sealed partial class GameHandler
         CFurnitureUse = 0xD9, CLockerState = 0xD5, CLockerOpen = 0xCE, CLockerPang = 0xD7, CLockerPage = 0xCF, CLockerPut = 0xD0,
         CLockerTake = 0xD1, CLockerBank = 0xD6, CLockerSetPw = 0xD2, CLockerChangePw = 0xD3, CLockerLock = 0xD4,
         CGiftPage = 0x92, CMailList = 0xBC, CMailRead = 0xBD, CMailDelete = 0xBE, CMailTake = 0xBF, CMailSend = 0xBB,
-        CUpgrade = 0x4B, CUserInfo = 0x2F, CBongdari = 0x95, CMascotMessage = 0x73, CCaddieWarning = 0x6B,
+        CUpgrade = 0x4B, CUserInfo = 0x2F, CMascotMessage = 0x73, CCaddieWarning = 0x6B,
         CCardOpen = 0xC2, CCardUse = 0xB5, CCardAttach = 0xC0, CCardRemove = 0xE2, CQuickEquip = 0x0B, CQuickEquipRoom = 0x0C;
     // ids S->C
     const ushort SMyRoomAuthority = 0x123, SMyRoomAvatar = 0x16E, SFurnitureList = 0x125, SFurnitureSaved = 0x124,
         SLockerState = 0x175, SLockerOpened = 0x171, SLockerPang = 0x177, SLockerPage = 0x172, SLockerPut = 0x173, SLockerTake = 0x174,
         SLockerBank = 0x176, SPang = 0xC6, SUpgrade = 0xA3, SMascotMessage = 0xE0, SCardOpened = 0x14C, SCardResult = 0x158,
-        SCardRemoved = 0x18D, SQuickEquip = 0x49, SUserInfoDone = 0x87, SBongdari = 0x109;
+        SCardRemoved = 0x18D, SQuickEquip = 0x49, SUserInfoDone = 0x87;
 
     async ValueTask<bool> HandleMyRoomAsync(PacketReader p)
     {
@@ -54,7 +54,6 @@ public sealed partial class GameHandler
             case CMailSend: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x13F).U8(1)); return true;
             case CUpgrade: await UpgradeAsync(p.U8(), p.U8(), p.U32()); p.Skip(p.Remaining); return true;
             case CUserInfo: await UserInfoAsync(p.U32(), p.Remaining > 0 ? p.U8() : (byte)5); return true;
-            case CBongdari: conn.Send(new PacketWriter(SBongdari).U32(0).U32(0).U32(0)); return true;
             case CMascotMessage: await MascotMessageAsync(p.U32(), p.Str(64)); return true;
             case CCaddieWarning: await ctx.Actions.CaddieWarningAsync(Player, (int)p.U32(), p.U8() != 0); return true;
             case CCardOpen: await CardOpenAsync((int)p.U32(), (int)p.U32()); return true;
