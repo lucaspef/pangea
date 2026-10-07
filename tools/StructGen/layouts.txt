@@ -1,0 +1,2963 @@
+
+*** Dumping AST Record Layout
+         0 | struct __NSConstantString_tag
+         0 |   const int * isa
+         4 |   int flags
+         8 |   const char * str
+        12 |   long length
+           | [sizeof=16, align=4,
+           |  nvsize=16, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct WSendPacket (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct _SYSTEMTIME
+         0 |   unsigned short wYear
+         2 |   unsigned short wMonth
+         4 |   unsigned short wDayOfWeek
+         6 |   unsigned short wDay
+         8 |   unsigned short wHour
+        10 |   unsigned short wMinute
+        12 |   unsigned short wSecond
+        14 |   unsigned short wMilliseconds
+           | [sizeof=16, align=2,
+           |  nvsize=16, nvalign=2]
+
+*** Dumping AST Record Layout
+         0 | struct sRoomDetail
+         0 |   unsigned char holes
+         1 |   unsigned long gameTime
+         5 |   unsigned char map
+         6 |   unsigned char gameType
+         7 |   unsigned char holeOrder
+         8 |   unsigned long matchTypeId
+           | [sizeof=12, align=1,
+           |  nvsize=12, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sPangYaUserInfo
+         0 |   char[22] sID
+        22 |   char[22] sNick
+        44 |   char[21] sGuild
+        65 |   char[12] szEmblemName
+        77 |   unsigned long school
+        81 |   unsigned long dwIdentity
+        85 |   unsigned long dwGalleryGuid
+        89 |   unsigned long dwGuid
+        93 |   unsigned long[3] dwRank
+       105 |   unsigned long dwGuildId
+       109 |   unsigned long dwEmblemVer
+   113:0-0 |   unsigned char DoTutorial
+   113:1-1 |   unsigned char gender
+   113:2-2 |   unsigned char manner
+   113:3-3 |   unsigned char angelicWings
+   113:4-4 |   unsigned char angelicWingsEffect
+   113:5-5 |   unsigned char devilWings
+   113:6-7 |   unsigned char RookieFEvent
+   114:0-0 |   unsigned char NewYearEvent
+   114:1-7 |   unsigned char Reserved
+       115 |   short iBongdariShopUsableTimes
+       117 |   short iBongdariShopBonusTimes
+       119 |   short iBongdariShopRemainedBonus
+       121 |   unsigned long dwPointPointEvent
+       125 |   unsigned long dwFlagBlock
+       129 |   int iTimeBlock
+       133 |   int nChannelingFlag
+       137 |   char[128] sDisplayID
+       265 |   unsigned long dwUID
+           | [sizeof=269, align=1,
+           |  nvsize=269, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sPangYaUserStatistics
+         0 |   unsigned long dwDrive
+         4 |   unsigned long dwPutt
+         8 |   unsigned long dwVisitTime
+        12 |   unsigned long dwShotTime
+        16 |   float fLongest
+        20 |   unsigned long dwPangya
+        24 |   unsigned long dwTimeOut
+        28 |   unsigned long dwOB
+        32 |   unsigned long dwDistance
+        36 |   unsigned long dwHole
+        40 |   unsigned long dwMatchHole
+        44 |   unsigned short wHoleInOne
+        46 |   unsigned short wBunker
+        48 |   unsigned long dwFairway
+        52 |   unsigned short wAlbatross
+        54 |   unsigned long dwHoleIn
+        58 |   unsigned long dwPuttIn
+        62 |   float fLongestPuttIn
+        66 |   float fLongestChipIn
+        70 |   unsigned long dwExp
+        74 |   unsigned char Level
+        75 |   long long i64Pang
+        83 |   int iTotalScore
+        87 |   char[6] cBestScore
+        93 |   long long[6] i64MaxPang
+       141 |   unsigned long dwGameCount
+       145 |   unsigned long dwDisconnectCount
+       149 |   unsigned long dwTeamWin
+       153 |   unsigned long dwTeamGames
+       157 |   unsigned long dwLadderPoint
+       161 |   unsigned long dwLadderWin
+       165 |   unsigned long dwLadderLose
+       169 |   unsigned long dwLadderDraw
+       173 |   unsigned long dwLadderHoles
+       177 |   unsigned int nMannerCombo
+       181 |   unsigned int nMaxMannerCombo
+       185 |   unsigned long dwNoMannerGameCount
+       189 |   long long i64TotalSkinsPang
+       197 |   unsigned long dwSkinsWin
+       201 |   unsigned long dwSkinsLose
+       205 |   unsigned long dwSkinsGames
+       209 |   int iStrikePoint
+       213 |   unsigned short iAllInCount
+       215 |   unsigned long eventValue
+       219 |   unsigned long eventFlag
+       223 |   unsigned long dwSeasonCount
+       227 |   long long i64SumPang
+           | [sizeof=235, align=1,
+           |  nvsize=235, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sTrophyStatistics
+         0 |   unsigned short[13][3] Trophy
+           | [sizeof=78, align=1,
+           |  nvsize=78, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sUserEquip
+         0 |   unsigned long guidCaddie
+         4 |   unsigned long guidChar
+         8 |   unsigned long guidClubSet
+        12 |   unsigned long tidBall
+        16 |   unsigned long[10] tidItemSlot
+        56 |   unsigned long[6] guidSkin
+        80 |   unsigned long[6] tidSkin
+       104 |   unsigned long guidMascot
+           | [sizeof=108, align=1,
+           |  nvsize=108, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sMapStatistics
+         0 |   unsigned char bMap
+         1 |   unsigned long dwDrive
+         5 |   unsigned long dwPutt
+         9 |   unsigned long dwHole
+        13 |   unsigned long dwFairway
+        17 |   unsigned long dwHoleIn
+        21 |   unsigned long dwPuttIn
+        25 |   int iTotalScore
+        29 |   char cBestScore
+        30 |   long long i64MaxPang
+        38 |   unsigned long tidChar
+        42 |   unsigned char eventScore
+           | [sizeof=43, align=1,
+           |  nvsize=43, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sMyInfo
+         0 |   unsigned short roomIndex
+         2 |   struct sPangYaUserInfo info
+         2 |     char[22] sID
+        24 |     char[22] sNick
+        46 |     char[21] sGuild
+        67 |     char[12] szEmblemName
+        79 |     unsigned long school
+        83 |     unsigned long dwIdentity
+        87 |     unsigned long dwGalleryGuid
+        91 |     unsigned long dwGuid
+        95 |     unsigned long[3] dwRank
+       107 |     unsigned long dwGuildId
+       111 |     unsigned long dwEmblemVer
+   115:0-0 |     unsigned char DoTutorial
+   115:1-1 |     unsigned char gender
+   115:2-2 |     unsigned char manner
+   115:3-3 |     unsigned char angelicWings
+   115:4-4 |     unsigned char angelicWingsEffect
+   115:5-5 |     unsigned char devilWings
+   115:6-7 |     unsigned char RookieFEvent
+   116:0-0 |     unsigned char NewYearEvent
+   116:1-7 |     unsigned char Reserved
+       117 |     short iBongdariShopUsableTimes
+       119 |     short iBongdariShopBonusTimes
+       121 |     short iBongdariShopRemainedBonus
+       123 |     unsigned long dwPointPointEvent
+       127 |     unsigned long dwFlagBlock
+       131 |     int iTimeBlock
+       135 |     int nChannelingFlag
+       139 |     char[128] sDisplayID
+       267 |     unsigned long dwUID
+       271 |   struct sPangYaUserStatistics stat
+       271 |     unsigned long dwDrive
+       275 |     unsigned long dwPutt
+       279 |     unsigned long dwVisitTime
+       283 |     unsigned long dwShotTime
+       287 |     float fLongest
+       291 |     unsigned long dwPangya
+       295 |     unsigned long dwTimeOut
+       299 |     unsigned long dwOB
+       303 |     unsigned long dwDistance
+       307 |     unsigned long dwHole
+       311 |     unsigned long dwMatchHole
+       315 |     unsigned short wHoleInOne
+       317 |     unsigned short wBunker
+       319 |     unsigned long dwFairway
+       323 |     unsigned short wAlbatross
+       325 |     unsigned long dwHoleIn
+       329 |     unsigned long dwPuttIn
+       333 |     float fLongestPuttIn
+       337 |     float fLongestChipIn
+       341 |     unsigned long dwExp
+       345 |     unsigned char Level
+       346 |     long long i64Pang
+       354 |     int iTotalScore
+       358 |     char[6] cBestScore
+       364 |     long long[6] i64MaxPang
+       412 |     unsigned long dwGameCount
+       416 |     unsigned long dwDisconnectCount
+       420 |     unsigned long dwTeamWin
+       424 |     unsigned long dwTeamGames
+       428 |     unsigned long dwLadderPoint
+       432 |     unsigned long dwLadderWin
+       436 |     unsigned long dwLadderLose
+       440 |     unsigned long dwLadderDraw
+       444 |     unsigned long dwLadderHoles
+       448 |     unsigned int nMannerCombo
+       452 |     unsigned int nMaxMannerCombo
+       456 |     unsigned long dwNoMannerGameCount
+       460 |     long long i64TotalSkinsPang
+       468 |     unsigned long dwSkinsWin
+       472 |     unsigned long dwSkinsLose
+       476 |     unsigned long dwSkinsGames
+       480 |     int iStrikePoint
+       484 |     unsigned short iAllInCount
+       486 |     unsigned long eventValue
+       490 |     unsigned long eventFlag
+       494 |     unsigned long dwSeasonCount
+       498 |     long long i64SumPang
+       506 |   struct sTrophyStatistics trophy
+       506 |     unsigned short[13][3] Trophy
+       584 |   struct sUserEquip userEquip
+       584 |     unsigned long guidCaddie
+       588 |     unsigned long guidChar
+       592 |     unsigned long guidClubSet
+       596 |     unsigned long tidBall
+       600 |     unsigned long[10] tidItemSlot
+       640 |     unsigned long[6] guidSkin
+       664 |     unsigned long[6] tidSkin
+       688 |     unsigned long guidMascot
+       692 |   sMapStatistics[20] mapStat
+      1552 |   sMapStatistics[20] classicMapStat
+           | [sizeof=2412, align=1,
+           |  nvsize=2412, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sCharacterInfo
+         0 |   unsigned long tid
+         4 |   unsigned long guid
+         8 |   unsigned long[24] tidParts
+       104 |   unsigned char hairClr
+   105:0-3 |   unsigned char shirtsClr
+   105:4-7 |   unsigned char gift_flag
+       106 |   char[5] PCL
+       111 |   char Purchase
+       112 |   unsigned long[5] tidAuxParts
+       132 |   char[24][9] UccIndexList
+       348 |   unsigned long[24] ItemIdList
+           | [sizeof=444, align=1,
+           |  nvsize=444, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sCaddieInfo
+         0 |   unsigned long guid
+         4 |   unsigned long tid
+         8 |   unsigned long tidPart
+        12 |   unsigned char Level
+        13 |   unsigned long Exp
+    17:0-0 |   unsigned char gift_flag
+    17:1-1 |   unsigned char Rent_flag
+        18 |   unsigned short Remain_Date
+        20 |   unsigned short Remain_Partdate
+        22 |   char Purchase
+        23 |   unsigned char byCheckCaddieWarning
+        24 |   _Bool PCBangCaddie
+           | [sizeof=25, align=1,
+           |  nvsize=25, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sClubInfo
+         0 |   unsigned long guid
+         4 |   unsigned long tid
+         8 |   short[5] PCL
+           | [sizeof=18, align=1,
+           |  nvsize=18, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sMascotInfo
+         0 |   unsigned long guid
+         4 |   unsigned long tid
+         8 |   unsigned char Level
+         9 |   unsigned long Exp
+        13 |   char[30] szMsg
+        43 |   unsigned short Remain_Date
+        45 |   char Purchase
+        46 |   struct _SYSTEMTIME endDate
+        46 |     unsigned short wYear
+        48 |     unsigned short wMonth
+        50 |     unsigned short wDayOfWeek
+        52 |     unsigned short wDay
+        54 |     unsigned short wHour
+        56 |     unsigned short wMinute
+        58 |     unsigned short wSecond
+        60 |     unsigned short wMilliseconds
+        62 |   _Bool PCBangMascot
+           | [sizeof=63, align=1,
+           |  nvsize=63, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sUserInfo
+         0 |   struct sMyInfo (base)
+         0 |     unsigned short roomIndex
+         2 |     struct sPangYaUserInfo info
+         2 |       char[22] sID
+        24 |       char[22] sNick
+        46 |       char[21] sGuild
+        67 |       char[12] szEmblemName
+        79 |       unsigned long school
+        83 |       unsigned long dwIdentity
+        87 |       unsigned long dwGalleryGuid
+        91 |       unsigned long dwGuid
+        95 |       unsigned long[3] dwRank
+       107 |       unsigned long dwGuildId
+       111 |       unsigned long dwEmblemVer
+   115:0-0 |       unsigned char DoTutorial
+   115:1-1 |       unsigned char gender
+   115:2-2 |       unsigned char manner
+   115:3-3 |       unsigned char angelicWings
+   115:4-4 |       unsigned char angelicWingsEffect
+   115:5-5 |       unsigned char devilWings
+   115:6-7 |       unsigned char RookieFEvent
+   116:0-0 |       unsigned char NewYearEvent
+   116:1-7 |       unsigned char Reserved
+       117 |       short iBongdariShopUsableTimes
+       119 |       short iBongdariShopBonusTimes
+       121 |       short iBongdariShopRemainedBonus
+       123 |       unsigned long dwPointPointEvent
+       127 |       unsigned long dwFlagBlock
+       131 |       int iTimeBlock
+       135 |       int nChannelingFlag
+       139 |       char[128] sDisplayID
+       267 |       unsigned long dwUID
+       271 |     struct sPangYaUserStatistics stat
+       271 |       unsigned long dwDrive
+       275 |       unsigned long dwPutt
+       279 |       unsigned long dwVisitTime
+       283 |       unsigned long dwShotTime
+       287 |       float fLongest
+       291 |       unsigned long dwPangya
+       295 |       unsigned long dwTimeOut
+       299 |       unsigned long dwOB
+       303 |       unsigned long dwDistance
+       307 |       unsigned long dwHole
+       311 |       unsigned long dwMatchHole
+       315 |       unsigned short wHoleInOne
+       317 |       unsigned short wBunker
+       319 |       unsigned long dwFairway
+       323 |       unsigned short wAlbatross
+       325 |       unsigned long dwHoleIn
+       329 |       unsigned long dwPuttIn
+       333 |       float fLongestPuttIn
+       337 |       float fLongestChipIn
+       341 |       unsigned long dwExp
+       345 |       unsigned char Level
+       346 |       long long i64Pang
+       354 |       int iTotalScore
+       358 |       char[6] cBestScore
+       364 |       long long[6] i64MaxPang
+       412 |       unsigned long dwGameCount
+       416 |       unsigned long dwDisconnectCount
+       420 |       unsigned long dwTeamWin
+       424 |       unsigned long dwTeamGames
+       428 |       unsigned long dwLadderPoint
+       432 |       unsigned long dwLadderWin
+       436 |       unsigned long dwLadderLose
+       440 |       unsigned long dwLadderDraw
+       444 |       unsigned long dwLadderHoles
+       448 |       unsigned int nMannerCombo
+       452 |       unsigned int nMaxMannerCombo
+       456 |       unsigned long dwNoMannerGameCount
+       460 |       long long i64TotalSkinsPang
+       468 |       unsigned long dwSkinsWin
+       472 |       unsigned long dwSkinsLose
+       476 |       unsigned long dwSkinsGames
+       480 |       int iStrikePoint
+       484 |       unsigned short iAllInCount
+       486 |       unsigned long eventValue
+       490 |       unsigned long eventFlag
+       494 |       unsigned long dwSeasonCount
+       498 |       long long i64SumPang
+       506 |     struct sTrophyStatistics trophy
+       506 |       unsigned short[13][3] Trophy
+       584 |     struct sUserEquip userEquip
+       584 |       unsigned long guidCaddie
+       588 |       unsigned long guidChar
+       592 |       unsigned long guidClubSet
+       596 |       unsigned long tidBall
+       600 |       unsigned long[10] tidItemSlot
+       640 |       unsigned long[6] guidSkin
+       664 |       unsigned long[6] tidSkin
+       688 |       unsigned long guidMascot
+       692 |     sMapStatistics[20] mapStat
+      1552 |     sMapStatistics[20] classicMapStat
+      2412 |   struct sCharacterInfo charInfo
+      2412 |     unsigned long tid
+      2416 |     unsigned long guid
+      2420 |     unsigned long[24] tidParts
+      2516 |     unsigned char hairClr
+  2517:0-3 |     unsigned char shirtsClr
+  2517:4-7 |     unsigned char gift_flag
+      2518 |     char[5] PCL
+      2523 |     char Purchase
+      2524 |     unsigned long[5] tidAuxParts
+      2544 |     char[24][9] UccIndexList
+      2760 |     unsigned long[24] ItemIdList
+      2856 |   struct sCaddieInfo caddieInfo
+      2856 |     unsigned long guid
+      2860 |     unsigned long tid
+      2864 |     unsigned long tidPart
+      2868 |     unsigned char Level
+      2869 |     unsigned long Exp
+  2873:0-0 |     unsigned char gift_flag
+  2873:1-1 |     unsigned char Rent_flag
+      2874 |     unsigned short Remain_Date
+      2876 |     unsigned short Remain_Partdate
+      2878 |     char Purchase
+      2879 |     unsigned char byCheckCaddieWarning
+      2880 |     _Bool PCBangCaddie
+      2881 |   struct sClubInfo clubInfo
+      2881 |     unsigned long guid
+      2885 |     unsigned long tid
+      2889 |     short[5] PCL
+      2899 |   struct sMascotInfo mascotInfo
+      2899 |     unsigned long guid
+      2903 |     unsigned long tid
+      2907 |     unsigned char Level
+      2908 |     unsigned long Exp
+      2912 |     char[30] szMsg
+      2942 |     unsigned short Remain_Date
+      2944 |     char Purchase
+      2945 |     struct _SYSTEMTIME endDate
+      2945 |       unsigned short wYear
+      2947 |       unsigned short wMonth
+      2949 |       unsigned short wDayOfWeek
+      2951 |       unsigned short wDay
+      2953 |       unsigned short wHour
+      2955 |       unsigned short wMinute
+      2957 |       unsigned short wSecond
+      2959 |       unsigned short wMilliseconds
+      2961 |     _Bool PCBangMascot
+           | [sizeof=2962, align=1,
+           |  nvsize=2962, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sSpecialTrophy
+         0 |   unsigned long guid
+         4 |   unsigned long tid
+         8 |   unsigned long count
+           | [sizeof=12, align=1,
+           |  nvsize=12, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sGuildTrophy
+         0 |   unsigned long TypeID
+           | [sizeof=4, align=1,
+           |  nvsize=4, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sSeasonRecord
+         0 |   struct sPangYaUserStatistics userStat
+         0 |     unsigned long dwDrive
+         4 |     unsigned long dwPutt
+         8 |     unsigned long dwVisitTime
+        12 |     unsigned long dwShotTime
+        16 |     float fLongest
+        20 |     unsigned long dwPangya
+        24 |     unsigned long dwTimeOut
+        28 |     unsigned long dwOB
+        32 |     unsigned long dwDistance
+        36 |     unsigned long dwHole
+        40 |     unsigned long dwMatchHole
+        44 |     unsigned short wHoleInOne
+        46 |     unsigned short wBunker
+        48 |     unsigned long dwFairway
+        52 |     unsigned short wAlbatross
+        54 |     unsigned long dwHoleIn
+        58 |     unsigned long dwPuttIn
+        62 |     float fLongestPuttIn
+        66 |     float fLongestChipIn
+        70 |     unsigned long dwExp
+        74 |     unsigned char Level
+        75 |     long long i64Pang
+        83 |     int iTotalScore
+        87 |     char[6] cBestScore
+        93 |     long long[6] i64MaxPang
+       141 |     unsigned long dwGameCount
+       145 |     unsigned long dwDisconnectCount
+       149 |     unsigned long dwTeamWin
+       153 |     unsigned long dwTeamGames
+       157 |     unsigned long dwLadderPoint
+       161 |     unsigned long dwLadderWin
+       165 |     unsigned long dwLadderLose
+       169 |     unsigned long dwLadderDraw
+       173 |     unsigned long dwLadderHoles
+       177 |     unsigned int nMannerCombo
+       181 |     unsigned int nMaxMannerCombo
+       185 |     unsigned long dwNoMannerGameCount
+       189 |     long long i64TotalSkinsPang
+       197 |     unsigned long dwSkinsWin
+       201 |     unsigned long dwSkinsLose
+       205 |     unsigned long dwSkinsGames
+       209 |     int iStrikePoint
+       213 |     unsigned short iAllInCount
+       215 |     unsigned long eventValue
+       219 |     unsigned long eventFlag
+       223 |     unsigned long dwSeasonCount
+       227 |     long long i64SumPang
+       235 |   sMapStatistics[20] mapStat
+      1095 |   sMapStatistics[20] classicMapStat
+      1955 |   struct sTrophyStatistics trophyStat
+      1955 |     unsigned short[13][3] Trophy
+      2033 |   int numTrophies
+      2037 |   sSpecialTrophy * trophies
+      2041 |   int numGuildTrophies
+      2045 |   sGuildTrophy * guildTrophies
+           | [sizeof=2049, align=1,
+           |  nvsize=2049, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sUserPosition
+         0 |   unsigned short iRoomIdx
+         2 |   int iRoomType
+         6 |   int iServerGUID
+        10 |   unsigned char iChannelUid
+        11 |   char[64] csChannelName
+           | [sizeof=75, align=1,
+           |  nvsize=75, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sUserInfoTime
+         0 |   unsigned long dwUpdate
+         4 |   struct sUserInfo info
+         4 |     struct sMyInfo (base)
+         4 |       unsigned short roomIndex
+         6 |       struct sPangYaUserInfo info
+         6 |         char[22] sID
+        28 |         char[22] sNick
+        50 |         char[21] sGuild
+        71 |         char[12] szEmblemName
+        83 |         unsigned long school
+        87 |         unsigned long dwIdentity
+        91 |         unsigned long dwGalleryGuid
+        95 |         unsigned long dwGuid
+        99 |         unsigned long[3] dwRank
+       111 |         unsigned long dwGuildId
+       115 |         unsigned long dwEmblemVer
+   119:0-0 |         unsigned char DoTutorial
+   119:1-1 |         unsigned char gender
+   119:2-2 |         unsigned char manner
+   119:3-3 |         unsigned char angelicWings
+   119:4-4 |         unsigned char angelicWingsEffect
+   119:5-5 |         unsigned char devilWings
+   119:6-7 |         unsigned char RookieFEvent
+   120:0-0 |         unsigned char NewYearEvent
+   120:1-7 |         unsigned char Reserved
+       121 |         short iBongdariShopUsableTimes
+       123 |         short iBongdariShopBonusTimes
+       125 |         short iBongdariShopRemainedBonus
+       127 |         unsigned long dwPointPointEvent
+       131 |         unsigned long dwFlagBlock
+       135 |         int iTimeBlock
+       139 |         int nChannelingFlag
+       143 |         char[128] sDisplayID
+       271 |         unsigned long dwUID
+       275 |       struct sPangYaUserStatistics stat
+       275 |         unsigned long dwDrive
+       279 |         unsigned long dwPutt
+       283 |         unsigned long dwVisitTime
+       287 |         unsigned long dwShotTime
+       291 |         float fLongest
+       295 |         unsigned long dwPangya
+       299 |         unsigned long dwTimeOut
+       303 |         unsigned long dwOB
+       307 |         unsigned long dwDistance
+       311 |         unsigned long dwHole
+       315 |         unsigned long dwMatchHole
+       319 |         unsigned short wHoleInOne
+       321 |         unsigned short wBunker
+       323 |         unsigned long dwFairway
+       327 |         unsigned short wAlbatross
+       329 |         unsigned long dwHoleIn
+       333 |         unsigned long dwPuttIn
+       337 |         float fLongestPuttIn
+       341 |         float fLongestChipIn
+       345 |         unsigned long dwExp
+       349 |         unsigned char Level
+       350 |         long long i64Pang
+       358 |         int iTotalScore
+       362 |         char[6] cBestScore
+       368 |         long long[6] i64MaxPang
+       416 |         unsigned long dwGameCount
+       420 |         unsigned long dwDisconnectCount
+       424 |         unsigned long dwTeamWin
+       428 |         unsigned long dwTeamGames
+       432 |         unsigned long dwLadderPoint
+       436 |         unsigned long dwLadderWin
+       440 |         unsigned long dwLadderLose
+       444 |         unsigned long dwLadderDraw
+       448 |         unsigned long dwLadderHoles
+       452 |         unsigned int nMannerCombo
+       456 |         unsigned int nMaxMannerCombo
+       460 |         unsigned long dwNoMannerGameCount
+       464 |         long long i64TotalSkinsPang
+       472 |         unsigned long dwSkinsWin
+       476 |         unsigned long dwSkinsLose
+       480 |         unsigned long dwSkinsGames
+       484 |         int iStrikePoint
+       488 |         unsigned short iAllInCount
+       490 |         unsigned long eventValue
+       494 |         unsigned long eventFlag
+       498 |         unsigned long dwSeasonCount
+       502 |         long long i64SumPang
+       510 |       struct sTrophyStatistics trophy
+       510 |         unsigned short[13][3] Trophy
+       588 |       struct sUserEquip userEquip
+       588 |         unsigned long guidCaddie
+       592 |         unsigned long guidChar
+       596 |         unsigned long guidClubSet
+       600 |         unsigned long tidBall
+       604 |         unsigned long[10] tidItemSlot
+       644 |         unsigned long[6] guidSkin
+       668 |         unsigned long[6] tidSkin
+       692 |         unsigned long guidMascot
+       696 |       sMapStatistics[20] mapStat
+      1556 |       sMapStatistics[20] classicMapStat
+      2416 |     struct sCharacterInfo charInfo
+      2416 |       unsigned long tid
+      2420 |       unsigned long guid
+      2424 |       unsigned long[24] tidParts
+      2520 |       unsigned char hairClr
+  2521:0-3 |       unsigned char shirtsClr
+  2521:4-7 |       unsigned char gift_flag
+      2522 |       char[5] PCL
+      2527 |       char Purchase
+      2528 |       unsigned long[5] tidAuxParts
+      2548 |       char[24][9] UccIndexList
+      2764 |       unsigned long[24] ItemIdList
+      2860 |     struct sCaddieInfo caddieInfo
+      2860 |       unsigned long guid
+      2864 |       unsigned long tid
+      2868 |       unsigned long tidPart
+      2872 |       unsigned char Level
+      2873 |       unsigned long Exp
+  2877:0-0 |       unsigned char gift_flag
+  2877:1-1 |       unsigned char Rent_flag
+      2878 |       unsigned short Remain_Date
+      2880 |       unsigned short Remain_Partdate
+      2882 |       char Purchase
+      2883 |       unsigned char byCheckCaddieWarning
+      2884 |       _Bool PCBangCaddie
+      2885 |     struct sClubInfo clubInfo
+      2885 |       unsigned long guid
+      2889 |       unsigned long tid
+      2893 |       short[5] PCL
+      2903 |     struct sMascotInfo mascotInfo
+      2903 |       unsigned long guid
+      2907 |       unsigned long tid
+      2911 |       unsigned char Level
+      2912 |       unsigned long Exp
+      2916 |       char[30] szMsg
+      2946 |       unsigned short Remain_Date
+      2948 |       char Purchase
+      2949 |       struct _SYSTEMTIME endDate
+      2949 |         unsigned short wYear
+      2951 |         unsigned short wMonth
+      2953 |         unsigned short wDayOfWeek
+      2955 |         unsigned short wDay
+      2957 |         unsigned short wHour
+      2959 |         unsigned short wMinute
+      2961 |         unsigned short wSecond
+      2963 |         unsigned short wMilliseconds
+      2965 |       _Bool PCBangMascot
+      2966 |   int numTrophies
+      2970 |   sSpecialTrophy * trophies
+      2974 |   int numGuildTrophies
+      2978 |   sGuildTrophy * guildTrophies
+      2982 |   unsigned long dwGuildPang
+      2986 |   unsigned long dwGuildPoint
+      2990 |   struct sSeasonRecord oldSeason
+      2990 |     struct sPangYaUserStatistics userStat
+      2990 |       unsigned long dwDrive
+      2994 |       unsigned long dwPutt
+      2998 |       unsigned long dwVisitTime
+      3002 |       unsigned long dwShotTime
+      3006 |       float fLongest
+      3010 |       unsigned long dwPangya
+      3014 |       unsigned long dwTimeOut
+      3018 |       unsigned long dwOB
+      3022 |       unsigned long dwDistance
+      3026 |       unsigned long dwHole
+      3030 |       unsigned long dwMatchHole
+      3034 |       unsigned short wHoleInOne
+      3036 |       unsigned short wBunker
+      3038 |       unsigned long dwFairway
+      3042 |       unsigned short wAlbatross
+      3044 |       unsigned long dwHoleIn
+      3048 |       unsigned long dwPuttIn
+      3052 |       float fLongestPuttIn
+      3056 |       float fLongestChipIn
+      3060 |       unsigned long dwExp
+      3064 |       unsigned char Level
+      3065 |       long long i64Pang
+      3073 |       int iTotalScore
+      3077 |       char[6] cBestScore
+      3083 |       long long[6] i64MaxPang
+      3131 |       unsigned long dwGameCount
+      3135 |       unsigned long dwDisconnectCount
+      3139 |       unsigned long dwTeamWin
+      3143 |       unsigned long dwTeamGames
+      3147 |       unsigned long dwLadderPoint
+      3151 |       unsigned long dwLadderWin
+      3155 |       unsigned long dwLadderLose
+      3159 |       unsigned long dwLadderDraw
+      3163 |       unsigned long dwLadderHoles
+      3167 |       unsigned int nMannerCombo
+      3171 |       unsigned int nMaxMannerCombo
+      3175 |       unsigned long dwNoMannerGameCount
+      3179 |       long long i64TotalSkinsPang
+      3187 |       unsigned long dwSkinsWin
+      3191 |       unsigned long dwSkinsLose
+      3195 |       unsigned long dwSkinsGames
+      3199 |       int iStrikePoint
+      3203 |       unsigned short iAllInCount
+      3205 |       unsigned long eventValue
+      3209 |       unsigned long eventFlag
+      3213 |       unsigned long dwSeasonCount
+      3217 |       long long i64SumPang
+      3225 |     sMapStatistics[20] mapStat
+      4085 |     sMapStatistics[20] classicMapStat
+      4945 |     struct sTrophyStatistics trophyStat
+      4945 |       unsigned short[13][3] Trophy
+      5023 |     int numTrophies
+      5027 |     sSpecialTrophy * trophies
+      5031 |     int numGuildTrophies
+      5035 |     sGuildTrophy * guildTrophies
+      5039 |   struct sUserPosition userPosition
+      5039 |     unsigned short iRoomIdx
+      5041 |     int iRoomType
+      5045 |     int iServerGUID
+      5049 |     unsigned char iChannelUid
+      5050 |     char[64] csChannelName
+      5114 |   unsigned long hasSeasonData
+           | [sizeof=5118, align=1,
+           |  nvsize=5118, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sItemInfo
+         0 |   unsigned long guid
+         4 |   unsigned long tid
+         8 |   int HourRemain
+        12 |   short[5] Common
+        22 |   char Purchase
+    23:0-0 |   unsigned char gift_flag
+    23:1-1 |   unsigned char Expired
+    23:2-3 |   unsigned char ItemFlag
+    23:4-6 |   unsigned char ItemType
+        24 |   struct _SYSTEMTIME ItemDate
+        24 |     unsigned short wYear
+        26 |     unsigned short wMonth
+        28 |     unsigned short wDayOfWeek
+        30 |     unsigned short wDay
+        32 |     unsigned short wHour
+        34 |     unsigned short wMinute
+        36 |     unsigned short wSecond
+        38 |     unsigned short wMilliseconds
+    40:0-0 |   unsigned char Reserve
+    40:1-1 |   unsigned char IsValid
+        41 |   char[41] ItemName
+        82 |   char[9] UccIndex
+        91 |   unsigned char status
+        92 |   unsigned short Seq
+        94 |   char[22] CopierNick
+       116 |   unsigned long[12] attachCard
+       164 |   unsigned short CharacterSlotNum
+       166 |   unsigned short CaddieSlotNum
+           | [sizeof=168, align=1,
+           |  nvsize=168, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GUILD_HISTORY
+         0 |   int index
+         4 |   unsigned long guildUID
+         8 |   char[21] guildName
+        29 |   GUILD_STATE_IDX state
+        33 |   struct _SYSTEMTIME time
+        33 |     unsigned short wYear
+        35 |     unsigned short wMonth
+        37 |     unsigned short wDayOfWeek
+        39 |     unsigned short wDay
+        41 |     unsigned short wHour
+        43 |     unsigned short wMinute
+        45 |     unsigned short wSecond
+        47 |     unsigned short wMilliseconds
+           | [sizeof=49, align=1,
+           |  nvsize=49, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GUILD_USER_INFO
+         0 |   unsigned long guildUID
+         4 |   char[21] guildName
+        25 |   int guildPang
+        29 |   int guildPoint
+        33 |   int memberCount
+        37 |   char[12] guildMark
+        49 |   char[101] notice
+       150 |   char[101] introduce
+       251 |   GUILD_CLASS_IDX classIdx
+       255 |   unsigned long masterUID
+       259 |   char[22] masterNickname
+           | [sizeof=281, align=1,
+           |  nvsize=281, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GUILD_INFO
+         0 |   struct GUILD_USER_INFO (base)
+         0 |     unsigned long guildUID
+         4 |     char[21] guildName
+        25 |     int guildPang
+        29 |     int guildPoint
+        33 |     int memberCount
+        37 |     char[12] guildMark
+        49 |     char[101] notice
+       150 |     char[101] introduce
+       251 |     GUILD_CLASS_IDX classIdx
+       255 |     unsigned long masterUID
+       259 |     char[22] masterNickname
+       281 |   struct _SYSTEMTIME createTime
+       281 |     unsigned short wYear
+       283 |     unsigned short wMonth
+       285 |     unsigned short wDayOfWeek
+       287 |     unsigned short wDay
+       289 |     unsigned short wHour
+       291 |     unsigned short wMinute
+       293 |     unsigned short wSecond
+       295 |     unsigned short wMilliseconds
+           | [sizeof=297, align=1,
+           |  nvsize=297, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GUILD_LIST
+         0 |   unsigned long guildUID
+         4 |   char[21] guildName
+        25 |   int guildPang
+        29 |   int guildPoint
+        33 |   int memberCount
+        37 |   struct _SYSTEMTIME createTime
+        37 |     unsigned short wYear
+        39 |     unsigned short wMonth
+        41 |     unsigned short wDayOfWeek
+        43 |     unsigned short wDay
+        45 |     unsigned short wHour
+        47 |     unsigned short wMinute
+        49 |     unsigned short wSecond
+        51 |     unsigned short wMilliseconds
+        53 |   char[101] introduce
+       154 |   unsigned long unknown9a
+       158 |   unsigned long masterUID
+       162 |   char[22] masterNickname
+       184 |   char[12] guildMark
+           | [sizeof=196, align=1,
+           |  nvsize=196, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GUILD_USER_LIST
+         0 |   unsigned long guildUID
+         4 |   unsigned long userUID
+         8 |   GUILD_CLASS_IDX classIdx
+        12 |   char[25] message
+        37 |   char[21] guildName
+        58 |   char[22] nickname
+        80 |   unsigned char online
+           | [sizeof=81, align=1,
+           |  nvsize=81, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GUILD_USER_MSN_LIST
+         0 |   unsigned long userUID
+         4 |   unsigned long guildUID
+         8 |   unsigned char sex
+         9 |   char[22] userID
+        31 |   char[22] nickname
+        53 |   unsigned char unknown35
+        54 |   unsigned char online
+           | [sizeof=55, align=1,
+           |  nvsize=55, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct Delete_Object (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct Delete_SecondObject (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GlobalEnum::sMissionInfo
+         0 |   int condition
+         4 |   _Bool complete
+           | [sizeof=5, align=1,
+           |  nvsize=5, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GlobalEnum::sBingoInfo
+         0 |   unsigned long type
+         4 |   int tryCount
+         8 |   unsigned long aimedPoint
+        12 |   unsigned long completeLine
+           | [sizeof=16, align=4,
+           |  nvsize=16, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct sTreasureHunt
+         0 |   unsigned long dwUID
+         4 |   unsigned long dwTid
+         8 |   unsigned short wCount
+        10 |   unsigned char byItemType
+           | [sizeof=11, align=1,
+           |  nvsize=11, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sTreasureGift
+         0 |   unsigned long dwUID
+         4 |   unsigned long dwTid
+         8 |   unsigned long dwItemGuid
+        12 |   unsigned short wCount
+        14 |   unsigned char byItemType
+        15 |   int iHourRemain
+        19 |   unsigned short reserved
+           | [sizeof=21, align=1,
+           |  nvsize=21, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sTreasureItem
+         0 |   unsigned char byMapIndex
+         1 |   unsigned long dwGauge
+           | [sizeof=5, align=1,
+           |  nvsize=5, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct stGameClass
+         0 |   eGameStyle style
+         4 |   unsigned char gameType
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct EncryptKey
+         0 |   unsigned char[16] m_byKey
+           | [sizeof=16, align=1,
+           |  nvsize=16, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sUserInfoExt
+         0 |   struct sUserInfo (base)
+         0 |     struct sMyInfo (base)
+         0 |       unsigned short roomIndex
+         2 |       struct sPangYaUserInfo info
+         2 |         char[22] sID
+        24 |         char[22] sNick
+        46 |         char[21] sGuild
+        67 |         char[12] szEmblemName
+        79 |         unsigned long school
+        83 |         unsigned long dwIdentity
+        87 |         unsigned long dwGalleryGuid
+        91 |         unsigned long dwGuid
+        95 |         unsigned long[3] dwRank
+       107 |         unsigned long dwGuildId
+       111 |         unsigned long dwEmblemVer
+   115:0-0 |         unsigned char DoTutorial
+   115:1-1 |         unsigned char gender
+   115:2-2 |         unsigned char manner
+   115:3-3 |         unsigned char angelicWings
+   115:4-4 |         unsigned char angelicWingsEffect
+   115:5-5 |         unsigned char devilWings
+   115:6-7 |         unsigned char RookieFEvent
+   116:0-0 |         unsigned char NewYearEvent
+   116:1-7 |         unsigned char Reserved
+       117 |         short iBongdariShopUsableTimes
+       119 |         short iBongdariShopBonusTimes
+       121 |         short iBongdariShopRemainedBonus
+       123 |         unsigned long dwPointPointEvent
+       127 |         unsigned long dwFlagBlock
+       131 |         int iTimeBlock
+       135 |         int nChannelingFlag
+       139 |         char[128] sDisplayID
+       267 |         unsigned long dwUID
+       271 |       struct sPangYaUserStatistics stat
+       271 |         unsigned long dwDrive
+       275 |         unsigned long dwPutt
+       279 |         unsigned long dwVisitTime
+       283 |         unsigned long dwShotTime
+       287 |         float fLongest
+       291 |         unsigned long dwPangya
+       295 |         unsigned long dwTimeOut
+       299 |         unsigned long dwOB
+       303 |         unsigned long dwDistance
+       307 |         unsigned long dwHole
+       311 |         unsigned long dwMatchHole
+       315 |         unsigned short wHoleInOne
+       317 |         unsigned short wBunker
+       319 |         unsigned long dwFairway
+       323 |         unsigned short wAlbatross
+       325 |         unsigned long dwHoleIn
+       329 |         unsigned long dwPuttIn
+       333 |         float fLongestPuttIn
+       337 |         float fLongestChipIn
+       341 |         unsigned long dwExp
+       345 |         unsigned char Level
+       346 |         long long i64Pang
+       354 |         int iTotalScore
+       358 |         char[6] cBestScore
+       364 |         long long[6] i64MaxPang
+       412 |         unsigned long dwGameCount
+       416 |         unsigned long dwDisconnectCount
+       420 |         unsigned long dwTeamWin
+       424 |         unsigned long dwTeamGames
+       428 |         unsigned long dwLadderPoint
+       432 |         unsigned long dwLadderWin
+       436 |         unsigned long dwLadderLose
+       440 |         unsigned long dwLadderDraw
+       444 |         unsigned long dwLadderHoles
+       448 |         unsigned int nMannerCombo
+       452 |         unsigned int nMaxMannerCombo
+       456 |         unsigned long dwNoMannerGameCount
+       460 |         long long i64TotalSkinsPang
+       468 |         unsigned long dwSkinsWin
+       472 |         unsigned long dwSkinsLose
+       476 |         unsigned long dwSkinsGames
+       480 |         int iStrikePoint
+       484 |         unsigned short iAllInCount
+       486 |         unsigned long eventValue
+       490 |         unsigned long eventFlag
+       494 |         unsigned long dwSeasonCount
+       498 |         long long i64SumPang
+       506 |       struct sTrophyStatistics trophy
+       506 |         unsigned short[13][3] Trophy
+       584 |       struct sUserEquip userEquip
+       584 |         unsigned long guidCaddie
+       588 |         unsigned long guidChar
+       592 |         unsigned long guidClubSet
+       596 |         unsigned long tidBall
+       600 |         unsigned long[10] tidItemSlot
+       640 |         unsigned long[6] guidSkin
+       664 |         unsigned long[6] tidSkin
+       688 |         unsigned long guidMascot
+       692 |       sMapStatistics[20] mapStat
+      1552 |       sMapStatistics[20] classicMapStat
+      2412 |     struct sCharacterInfo charInfo
+      2412 |       unsigned long tid
+      2416 |       unsigned long guid
+      2420 |       unsigned long[24] tidParts
+      2516 |       unsigned char hairClr
+  2517:0-3 |       unsigned char shirtsClr
+  2517:4-7 |       unsigned char gift_flag
+      2518 |       char[5] PCL
+      2523 |       char Purchase
+      2524 |       unsigned long[5] tidAuxParts
+      2544 |       char[24][9] UccIndexList
+      2760 |       unsigned long[24] ItemIdList
+      2856 |     struct sCaddieInfo caddieInfo
+      2856 |       unsigned long guid
+      2860 |       unsigned long tid
+      2864 |       unsigned long tidPart
+      2868 |       unsigned char Level
+      2869 |       unsigned long Exp
+  2873:0-0 |       unsigned char gift_flag
+  2873:1-1 |       unsigned char Rent_flag
+      2874 |       unsigned short Remain_Date
+      2876 |       unsigned short Remain_Partdate
+      2878 |       char Purchase
+      2879 |       unsigned char byCheckCaddieWarning
+      2880 |       _Bool PCBangCaddie
+      2881 |     struct sClubInfo clubInfo
+      2881 |       unsigned long guid
+      2885 |       unsigned long tid
+      2889 |       short[5] PCL
+      2899 |     struct sMascotInfo mascotInfo
+      2899 |       unsigned long guid
+      2903 |       unsigned long tid
+      2907 |       unsigned char Level
+      2908 |       unsigned long Exp
+      2912 |       char[30] szMsg
+      2942 |       unsigned short Remain_Date
+      2944 |       char Purchase
+      2945 |       struct _SYSTEMTIME endDate
+      2945 |         unsigned short wYear
+      2947 |         unsigned short wMonth
+      2949 |         unsigned short wDayOfWeek
+      2951 |         unsigned short wDay
+      2953 |         unsigned short wHour
+      2955 |         unsigned short wMinute
+      2957 |         unsigned short wSecond
+      2959 |         unsigned short wMilliseconds
+      2961 |       _Bool PCBangMascot
+      2962 |   unsigned char[1024] ext
+           | [sizeof=3986, align=1,
+           |  nvsize=3986, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sUserMatchHistory
+         0 |   int nGender
+         4 |   char[22] szNickName
+        26 |   char[22] szLoginID
+        48 |   unsigned long dwUID
+           | [sizeof=52, align=1,
+           |  nvsize=52, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sLevelUpDone
+         0 |   unsigned char bDone
+         1 |   unsigned char bLevel
+         2 |   unsigned char bItemType
+           | [sizeof=3, align=1,
+           |  nvsize=3, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sBriefUserInfo
+         0 |   unsigned long dwUid
+         4 |   unsigned long dwGuid
+         8 |   unsigned short roomIndex
+        10 |   char[22] sNick
+        32 |   unsigned char level
+        33 |   unsigned long dwIdentity
+        37 |   unsigned long dwTitle
+        41 |   unsigned long dwLadderPoint
+    45:0-0 |   unsigned char bSleep
+    45:1-3 |   unsigned char gender
+    45:4-4 |   unsigned char manner
+    45:5-5 |   unsigned char angelicWings
+    45:6-7 |   unsigned char Reserve
+        46 |   unsigned long m_GuildId
+        50 |   char[12] szEmblemName
+        62 |   unsigned short state
+        64 |   int nChannelingFlag
+        68 |   unsigned char[128] reserved
+           | [sizeof=196, align=1,
+           |  nvsize=196, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sGuildRoomInfo
+         0 |   unsigned long[2] nGuildID
+         8 |   char[2][21] szName
+        50 |   char[2][12] szEmblemName
+           | [sizeof=74, align=1,
+           |  nvsize=74, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sRoomInfo
+         0 |   char[32] title
+        32 |   char[16] password
+        48 |   _Bool bPublic
+        49 |   _Bool bAvailable
+        50 |   _Bool bIntrusion
+        51 |   unsigned char nUserLimit
+        52 |   unsigned char nUserNum
+        53 |   struct EncryptKey RoomKey
+        53 |     unsigned char[16] m_byKey
+        69 |   unsigned char nGalleryNum
+        70 |   unsigned char nGalleryLimit
+        71 |   unsigned char nHole
+        72 |   unsigned char gameType
+        73 |   unsigned short roomGuid
+        75 |   unsigned char holeType
+        76 |   unsigned char mapType
+        77 |   unsigned long shotTimeLimit
+        81 |   unsigned long gameTimeLimit
+        85 |   unsigned long tidMatch
+        89 |   _Bool bSleep
+        90 |   _Bool bAdminMaster
+        91 |   struct sGuildRoomInfo GuildInfo
+        91 |     unsigned long[2] nGuildID
+        99 |     char[2][21] szName
+       141 |     char[2][12] szEmblemName
+       165 |   unsigned long pangMultiply
+       169 |   unsigned long expMultiply
+       173 |   int masterUID
+       177 |   unsigned char realGameType
+           | [sizeof=178, align=1,
+           |  nvsize=178, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sSlotInfo
+         0 |   unsigned long dwGuid
+         4 |   char[22] sNick
+        26 |   char[21] sGuild
+        47 |   unsigned char connectionRank
+        48 |   unsigned long dwIdentity
+        52 |   unsigned long dwTitle
+        56 |   unsigned long tidChar
+        60 |   unsigned long[6] tidSkin
+    84:0-1 |   unsigned char bTeam
+    84:2-2 |   unsigned char bSleep
+    84:3-4 |   unsigned char bMaster
+    84:5-7 |   unsigned char gender
+    85:0-0 |   unsigned char manner
+    85:1-1 |   unsigned char bReady
+    85:2-7 |   unsigned char stateReserved
+        86 |   unsigned char level
+    87:0-0 |   unsigned char angelicWings
+    87:1-1 |   unsigned char angelicWingsEffect
+    87:2-7 |   unsigned char Reserved
+        88 |   unsigned char ladderGrade
+        89 |   unsigned long GuildId
+        93 |   char[12] szEmblemName
+       105 |   unsigned long dwUserUID
+       109 |   unsigned long state
+       113 |   unsigned short subRoomIndex
+       115 |   unsigned long action
+       119 |   float[3] location
+       131 |   unsigned long iStateTrade
+       135 |   char[64] strTradeTitle
+       199 |   unsigned long tidMascot
+       203 |   unsigned char[2] pangma
+       205 |   unsigned long nChannelingFlag
+       209 |   char[128] sDisplayID
+   337:0-0 |   unsigned char IsInvite
+   337:1-7 |   unsigned char guestReserved
+           | [sizeof=338, align=1,
+           |  nvsize=338, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sChannelInfo
+         0 |   char[64] Name
+        64 |   unsigned short Max_Num
+        66 |   unsigned short Current_Num
+        68 |   unsigned char Uid
+        69 |   unsigned long Type
+        73 |   int Property
+           | [sizeof=77, align=1,
+           |  nvsize=77, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sGameServerInfo
+         0 |   char[40] name
+        40 |   unsigned long id
+        44 |   int maxUser
+        48 |   int curUser
+        52 |   char[18] addr
+        70 |   int port
+        74 |   unsigned long property
+        78 |   int angelicWingsNum
+        82 |   unsigned long eventFlags
+        86 |   unsigned long eventValue
+        90 |   unsigned short iconIndex
+           | [sizeof=92, align=1,
+           |  nvsize=92, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sFriend
+         0 |   char[22] NickName
+        22 |   char[11] szAlias
+        33 |   unsigned long Uid
+        37 |   unsigned long Guid
+        41 |   unsigned long Server
+        45 |   unsigned long dwGuildId
+        49 |   char[12] szEmblemName
+        61 |   struct sUserPosition userPosition
+        61 |     unsigned short iRoomIdx
+        63 |     int iRoomType
+        67 |     int iServerGUID
+        71 |     unsigned char iChannelUid
+        72 |     char[64] csChannelName
+       136 |   unsigned char State
+       137 |   unsigned char Channel
+       138 |   unsigned char GameLevel
+   139:0-0 |   unsigned char Gender
+   139:1-1 |   unsigned char IsLogOn
+   139:2-2 |   unsigned char IsAccept
+   139:3-3 |   unsigned char IsAgree
+   139:4-4 |   unsigned char IsBlock
+   139:5-5 |   unsigned char IsPlay
+   139:6-6 |   unsigned char IsDive
+   139:7-7 |   unsigned char IsBusy
+   140:0-0 |   unsigned char PangyaFriend
+   140:1-1 |   unsigned char GuildFriend
+   140:2-2 |   unsigned char IsBlocked
+   140:3-7 |   unsigned char Reserved
+           | [sizeof=141, align=1,
+           |  nvsize=141, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sNoteInfo
+         0 |   unsigned long uid
+         4 |   unsigned short reserved
+         6 |   char[22] sNick
+        28 |   char[64] sNote
+        92 |   char[16] sTime
+       108 |   _Bool bReply
+           | [sizeof=109, align=1,
+           |  nvsize=109, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sMailIncludeItem
+         0 |   unsigned long dwIDX
+         4 |   unsigned long dwTID
+         8 |   unsigned char btItemType
+         9 |   int iCount
+        13 |   int iTimeCount
+        17 |   short[5] soCom
+        27 |   unsigned short CharacterSlotNum
+        29 |   unsigned short CaddieSlotNum
+        31 |   unsigned long dwSetTID
+        35 |   int iSetItemCount
+        39 |   char[9] csUCCIndex
+        48 |   unsigned long reserved30
+        52 |   unsigned char reserved34
+           | [sizeof=53, align=1,
+           |  nvsize=53, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sMailInfoBrief
+         0 |   unsigned long id
+         4 |   char[22] sender
+        26 |   char[110] reserved
+       136 |   _Bool bRead
+       137 |   int itemCount
+       141 |   struct sMailIncludeItem item
+       141 |     unsigned long dwIDX
+       145 |     unsigned long dwTID
+       149 |     unsigned char btItemType
+       150 |     int iCount
+       154 |     int iTimeCount
+       158 |     short[5] soCom
+       168 |     unsigned short CharacterSlotNum
+       170 |     unsigned short CaddieSlotNum
+       172 |     unsigned long dwSetTID
+       176 |     int iSetItemCount
+       180 |     char[9] csUCCIndex
+       189 |     unsigned long reserved30
+       193 |     unsigned char reserved34
+           | [sizeof=194, align=1,
+           |  nvsize=194, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sGiftInfo
+         0 |   unsigned long guid
+         4 |   unsigned long tid
+         8 |   unsigned short Arg0
+        10 |   char[128] sFromID
+       138 |   char[80] sMsg
+       218 |   char[32] sDate
+       250 |   unsigned char ItemType
+           | [sizeof=251, align=1,
+           |  nvsize=251, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::list<struct sMailIncludeItem>
+         0 |   void * a
+         4 |   void * b
+         8 |   unsigned int n
+           | [sizeof=12, align=4,
+           |  nvsize=12, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct sMailInfo
+         0 |   unsigned long dwIndex
+         4 |   char[22] szFromNick
+        26 |   char[32] szDate
+        58 |   char[800] szContent
+       858 |   _Bool bHaveItem
+       859 |   struct std::list<struct sMailIncludeItem> m_lMailItemList
+       859 |     void * a
+       863 |     void * b
+       867 |     unsigned int n
+       871 |   _Bool bRead
+           | [sizeof=872, align=1,
+           |  nvsize=872, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class CMapTypeAdapter (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sPouchPrize
+         0 |   unsigned long dwTid
+         4 |   unsigned long dwGuid
+         8 |   int iCount
+        12 |   unsigned long dwFlag1
+        16 |   unsigned long dwFlag2
+           | [sizeof=20, align=4,
+           |  nvsize=20, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct sApproachResultData
+         0 |   _Bool bExit
+         1 |   unsigned long dwGUID
+         5 |   unsigned long dwRealUID
+         9 |   unsigned char byRank
+        10 |   unsigned long dwPrizeCount
+        14 |   unsigned long dwRemainDistance
+        18 |   unsigned long dwRemainTime
+        22 |   unsigned char byRankPrize
+        23 |   unsigned char byLuckPrize
+           | [sizeof=24, align=1,
+           |  nvsize=24, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct CUTIN_ANI_STYPEINFO
+         0 |   eCUTINANI_DRAWPOS PosType
+         4 |   eCUTINANISTLYE CharType
+         8 |   eCUTINANISTLYE BgType
+        12 |   eCUTINANISTLYE PatternType
+        16 |   eCUTINANISTLYE TextType
+        20 |   eCUTINANISTLYE OutType
+        24 |   char[40] szCharTex
+        64 |   char[40] szBgTex
+       104 |   char[40] szPattern
+       144 |   char[40] szText
+           | [sizeof=184, align=4,
+           |  nvsize=184, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct FieldItem::AcquiredItemInfo
+         0 |   GIMMICK_ITEM_TYPE type
+         4 |   unsigned long index
+         8 |   unsigned long count
+        12 |   eDisposeTextureType textureType
+           | [sizeof=16, align=4,
+           |  nvsize=16, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct GimmickDispositionInformation
+         0 |   GIMMICK_ITEM_TYPE type
+         4 |   unsigned long index
+         8 |   eFlag flag
+        12 |   unsigned long unknownC
+        16 |   unsigned char hole
+           | [sizeof=20, align=4,
+           |  nvsize=20, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct sSCardAvilityPeriodInfo
+         0 |   unsigned long uid
+         4 |   unsigned long tid
+         8 |   unsigned long partsTid
+        12 |   unsigned long partsUid
+        16 |   int Avility
+        20 |   unsigned int AvilityValue
+        24 |   int slotNum
+        28 |   struct _SYSTEMTIME useStartTime
+        28 |     unsigned short wYear
+        30 |     unsigned short wMonth
+        32 |     unsigned short wDayOfWeek
+        34 |     unsigned short wDay
+        36 |     unsigned short wHour
+        38 |     unsigned short wMinute
+        40 |     unsigned short wSecond
+        42 |     unsigned short wMilliseconds
+        44 |   struct _SYSTEMTIME useEndTime
+        44 |     unsigned short wYear
+        46 |     unsigned short wMonth
+        48 |     unsigned short wDayOfWeek
+        50 |     unsigned short wDay
+        52 |     unsigned short wHour
+        54 |     unsigned short wMinute
+        56 |     unsigned short wSecond
+        58 |     unsigned short wMilliseconds
+        60 |   int cardType
+        64 |   unsigned char valid
+           | [sizeof=65, align=1,
+           |  nvsize=65, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sCards
+         0 |   unsigned long uid
+         4 |   unsigned long typeId
+         8 |   unsigned char[12] reserved08
+        20 |   int count
+        24 |   unsigned char[32] reserved18
+        56 |   unsigned char type
+        57 |   unsigned char reserved39
+           | [sizeof=58, align=1,
+           |  nvsize=58, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sQuest
+         0 |   unsigned long typeId
+         4 |   unsigned long count
+         8 |   IFF_STRUCT::sQuest * pQuest
+        12 |   unsigned char flag
+           | [sizeof=13, align=1,
+           |  nvsize=13, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sItemAttachCard
+         0 |   unsigned long typeId
+         4 |   unsigned long id
+           | [sizeof=8, align=1,
+           |  nvsize=8, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sCaddieReportData
+         0 |   unsigned long uid
+         4 |   long long pang
+        12 |   long long bonusPang
+        20 |   unsigned long roomType
+        24 |   unsigned long exp
+        28 |   unsigned long mascotTypeId
+        32 |   unsigned char premium
+        33 |   char pangItem
+        34 |   unsigned short level
+        36 |   unsigned char[2] reserved24
+        38 |   char score
+        39 |   unsigned char awardFlag
+        40 |   unsigned char eventType
+        41 |   unsigned char[22] reserved29
+        63 |   char[22] nickname
+        85 |   unsigned char[4] reserved55
+        89 |   unsigned long guildUID
+        93 |   char[12] guildMark
+       105 |   unsigned char gameType
+       106 |   unsigned char[3] reserved6a
+       109 |   unsigned char team
+       110 |   unsigned char eventFlag
+       111 |   unsigned char[16] reserved6f
+           | [sizeof=127, align=1,
+           |  nvsize=127, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sRoomUserInfo
+         0 |   unsigned long uid
+         4 |   unsigned char level
+     5:0-4 |   unsigned char hole
+     5:5-7 |   unsigned char reserved05
+         6 |   unsigned long capability
+        10 |   unsigned char[4] reserved0a
+        14 |   unsigned long ladderPoint
+           | [sizeof=18, align=1,
+           |  nvsize=18, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sGuildMatchFlagInfo
+         0 |   unsigned char[46] reserved
+           | [sizeof=46, align=1,
+           |  nvsize=46, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sMapEventInfo
+         0 |   unsigned char[40] reserved
+           | [sizeof=40, align=1,
+           |  nvsize=40, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sBurnningSpCard
+         0 |   unsigned char[20] reserved
+           | [sizeof=20, align=1,
+           |  nvsize=20, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct GuildMemberInfo_t
+         0 |   unsigned char[64] reserved
+           | [sizeof=64, align=1,
+           |  nvsize=64, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sFurniture_List
+         0 |   unsigned long id
+         4 |   unsigned long typeId
+         8 |   unsigned short reserved
+        10 |   float x
+        14 |   float y
+        18 |   float z
+        22 |   float r
+    26:0-0 |   unsigned char bArrange
+           | [sizeof=27, align=1,
+           |  nvsize=27, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sAwardItem
+         0 |   unsigned long uid
+         4 |   int pang
+           | [sizeof=8, align=1,
+           |  nvsize=8, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sRealMyRoomAuthority
+         0 |   unsigned long ownerUID
+         4 |   unsigned short unknown4
+         6 |   _Bool bPrivate
+         7 |   char[100] password
+           | [sizeof=107, align=1,
+           |  nvsize=107, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sBuyItemResult
+         0 |   unsigned long Typeid
+         4 |   unsigned long guid
+         8 |   unsigned short Time
+        10 |   unsigned char ItemType
+        11 |   unsigned short Count
+        13 |   struct _SYSTEMTIME endDate
+        13 |     unsigned short wYear
+        15 |     unsigned short wMonth
+        17 |     unsigned short wDayOfWeek
+        19 |     unsigned short wDay
+        21 |     unsigned short wHour
+        23 |     unsigned short wMinute
+        25 |     unsigned short wSecond
+        27 |     unsigned short wMilliseconds
+        29 |   char[9] UccIndex
+           | [sizeof=38, align=1,
+           |  nvsize=38, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sBuyItem
+         0 |   int Idx
+         4 |   unsigned long TypeCode
+         8 |   unsigned short DayCount
+        10 |   short sChildItemIndex
+        12 |   unsigned long ItemCount
+           | [sizeof=16, align=1,
+           |  nvsize=16, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sTradeItem
+         0 |   int iIndex
+         4 |   unsigned long dwTid
+         8 |   unsigned long dwGuid
+        12 |   int iNum
+        16 |   unsigned char byItemType
+        17 |   unsigned short wTime
+        19 |   long long i64Price
+        27 |   unsigned long dwUpgradeCost
+        31 |   short[5] arrEnchant
+        41 |   unsigned short wFlagTradeLimit
+        43 |   char[9] UccIndex
+        52 |   unsigned short Seq
+        54 |   unsigned char status
+        55 |   unsigned long[3][4] attachCardTid
+       103 |   unsigned short CharacterSlotNum
+       105 |   unsigned short CaddieSlotNum
+       107 |   char[41] ItemName
+       148 |   char[22] CopierNick
+           | [sizeof=170, align=1,
+           |  nvsize=170, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sStallSlot
+         0 |   unsigned long stallKey
+         4 |   unsigned char Idx
+         5 |   struct sTradeItem itemData
+         5 |     int iIndex
+         9 |     unsigned long dwTid
+        13 |     unsigned long dwGuid
+        17 |     int iNum
+        21 |     unsigned char byItemType
+        22 |     unsigned short wTime
+        24 |     long long i64Price
+        32 |     unsigned long dwUpgradeCost
+        36 |     short[5] arrEnchant
+        46 |     unsigned short wFlagTradeLimit
+        48 |     char[9] UccIndex
+        57 |     unsigned short Seq
+        59 |     unsigned char status
+        60 |     unsigned long[3][4] attachCardTid
+       108 |     unsigned short CharacterSlotNum
+       110 |     unsigned short CaddieSlotNum
+       112 |     char[41] ItemName
+       153 |     char[22] CopierNick
+       175 |   struct _SYSTEMTIME time
+       175 |     unsigned short wYear
+       177 |     unsigned short wMonth
+       179 |     unsigned short wDayOfWeek
+       181 |     unsigned short wDay
+       183 |     unsigned short wHour
+       185 |     unsigned short wMinute
+       187 |     unsigned short wSecond
+       189 |     unsigned short wMilliseconds
+       191 |   unsigned char IsPermanence
+       192 |   unsigned char IsValid
+           | [sizeof=193, align=1,
+           |  nvsize=193, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sStall
+         0 |   unsigned long typeID
+         4 |   unsigned long stallKey
+         8 |   unsigned char state
+         9 |   unsigned char maxSlotNum
+        10 |   unsigned char useSlotNum
+        11 |   sStallSlot[12] slotList
+      2327 |   struct _SYSTEMTIME time
+      2327 |     unsigned short wYear
+      2329 |     unsigned short wMonth
+      2331 |     unsigned short wDayOfWeek
+      2333 |     unsigned short wDay
+      2335 |     unsigned short wHour
+      2337 |     unsigned short wMinute
+      2339 |     unsigned short wSecond
+      2341 |     unsigned short wMilliseconds
+           | [sizeof=2343, align=1,
+           |  nvsize=2343, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sStoredItemInfo
+         0 |   unsigned long dwStorageID
+         4 |   struct sTradeItem itemInfo
+         4 |     int iIndex
+         8 |     unsigned long dwTid
+        12 |     unsigned long dwGuid
+        16 |     int iNum
+        20 |     unsigned char byItemType
+        21 |     unsigned short wTime
+        23 |     long long i64Price
+        31 |     unsigned long dwUpgradeCost
+        35 |     short[5] arrEnchant
+        45 |     unsigned short wFlagTradeLimit
+        47 |     char[9] UccIndex
+        56 |     unsigned short Seq
+        58 |     unsigned char status
+        59 |     unsigned long[3][4] attachCardTid
+       107 |     unsigned short CharacterSlotNum
+       109 |     unsigned short CaddieSlotNum
+       111 |     char[41] ItemName
+       152 |     char[22] CopierNick
+           | [sizeof=174, align=1,
+           |  nvsize=174, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sSaleItem
+         0 |   unsigned long ownerUID
+         4 |   char[22] nickname
+        26 |   unsigned long typeId
+        30 |   long long price
+        38 |   unsigned short count
+        40 |   unsigned char bOpen
+        41 |   unsigned char[53] reserved
+           | [sizeof=94, align=1,
+           |  nvsize=94, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct sCardStack
+         0 |   unsigned long uid
+         4 |   unsigned long typeId
+         8 |   int count
+        12 |   unsigned char bValid
+        13 |   unsigned char unknownD
+           | [sizeof=14, align=1,
+           |  nvsize=14, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_ITEM_COMMON
+         0 |   _Bool Final
+         4 |   unsigned int TypeId
+         8 |   char[40] Name
+    48:0-6 |   unsigned char Level
+    48:7-7 |   unsigned char IsUnderLvl
+        49 |   char[40] Icon
+        92 |   unsigned int Price
+        96 |   unsigned int SalePrice
+       100 |   unsigned int UsedPrice
+   104:0-0 |   unsigned char IsCash
+   104:1-4 |   unsigned char IsSalable
+   104:5-7 |   unsigned char InStock
+   105:0-0 |   unsigned char New
+   105:1-1 |   unsigned char Hit
+   105:2-2 |   unsigned char Reserve
+       106 |   unsigned char TimeFlag
+       107 |   unsigned char Time
+       108 |   unsigned int Point
+       112 |   struct _SYSTEMTIME saleStart
+       112 |     unsigned short wYear
+       114 |     unsigned short wMonth
+       116 |     unsigned short wDayOfWeek
+       118 |     unsigned short wDay
+       120 |     unsigned short wHour
+       122 |     unsigned short wMinute
+       124 |     unsigned short wSecond
+       126 |     unsigned short wMilliseconds
+       128 |   struct _SYSTEMTIME saleEnd
+       128 |     unsigned short wYear
+       130 |     unsigned short wMonth
+       132 |     unsigned short wDayOfWeek
+       134 |     unsigned short wDay
+       136 |     unsigned short wHour
+       138 |     unsigned short wMinute
+       140 |     unsigned short wSecond
+       142 |     unsigned short wMilliseconds
+           | [sizeof=144, align=4,
+           |  nvsize=144, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sChar
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] Data
+       184 |   char[40] HairTex
+       224 |   char[40] ShirtsTex
+       264 |   char[40] FaceTex
+       304 |   short[5] Attr
+       314 |   unsigned char nParts
+       315 |   unsigned char nAcsries
+       316 |   unsigned char ClubType
+       320 |   float ClubScale
+       324 |   char[5] PCL
+       329 |   char[40] Mtn30sWinner
+           | [sizeof=372, align=4,
+           |  nvsize=372, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sPart
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] Data
+       184 |   unsigned char Category
+       188 |   unsigned int PosMask
+       192 |   unsigned int HideMask
+       196 |   char[3][40] Tex
+       316 |   char[3][40] OrgTex
+       436 |   short[5] Attr
+       446 |   short[5] Slot
+       456 |   char[40] EquippableWith
+       496 |   unsigned int[2] SubPart
+       504 |   short CharacterSlot
+       506 |   short CaddieSlot
+       508 |   unsigned int RentalPrice
+       512 |   unsigned char Beginner
+       514 |   short Point
+           | [sizeof=516, align=4,
+           |  nvsize=516, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sClub
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] Data
+       184 |   unsigned char Type
+       186 |   short[5] COM
+           | [sizeof=196, align=4,
+           |  nvsize=196, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sClubSet
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   unsigned int[4] ClubIds
+       160 |   short[5] Attr
+       170 |   short[5] Slot
+           | [sizeof=180, align=4,
+           |  nvsize=180, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sBall
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] Data
+       184 |   unsigned int Bound
+       188 |   unsigned int Roll
+       192 |   char[7][40] Fx
+       472 |   char[7][40] FxBone
+       752 |   short[5] COM
+           | [sizeof=764, align=4,
+           |  nvsize=764, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sCaddie
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   unsigned int MonthlyFee
+       148 |   char[40] Data
+       188 |   short[5] Attr
+           | [sizeof=200, align=4,
+           |  nvsize=200, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sCadItem
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] FaceTex
+       184 |   char[40] BodyTex
+       224 |   short[5] COM
+           | [sizeof=236, align=4,
+           |  nvsize=236, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sSetItem
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   unsigned char nElems
+       148 |   unsigned int[10] ElemIds
+       188 |   short[10] ElemNum
+       208 |   short[5] COM
+           | [sizeof=220, align=4,
+           |  nvsize=220, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sCourse
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] Data
+       184 |   char[40] AmbientSnd
+   224:0-3 |   unsigned char Difficulty
+   224:4-7 |   unsigned char DiffFlag
+       225 |   char[40] TexProp
+       268 |   float Slope
+       272 |   char[40] SkyFx
+           | [sizeof=312, align=4,
+           |  nvsize=312, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sMatch
+         0 |   _Bool Final
+         4 |   unsigned int TypeId
+         8 |   char[80] Name
+        88 |   unsigned char Level
+        89 |   char[6][40] Icon
+           | [sizeof=332, align=4,
+           |  nvsize=332, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sTitle
+         0 |   _Bool Final
+         4 |   unsigned int TypeId
+         8 |   char[40] Name
+        48 |   char[40] Icon
+           | [sizeof=88, align=4,
+           |  nvsize=88, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sEnchant
+         0 |   _Bool Final
+         4 |   unsigned int TypeId
+         8 |   unsigned int ReqdPang
+        12 |   unsigned char ReqdLevel
+           | [sizeof=16, align=4,
+           |  nvsize=16, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sSkin
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] Tex
+       184 |   unsigned char HScroll
+       185 |   unsigned char VScroll
+       186 |   short[5] COM
+           | [sizeof=196, align=4,
+           |  nvsize=196, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sHairStyle
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   unsigned char cHairID
+       145 |   unsigned char cCharID
+           | [sizeof=148, align=4,
+           |  nvsize=148, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sChildItem
+         0 |   _Bool Final
+         4 |   unsigned int TypeId
+         8 |   char[40] Name
+    48:0-6 |   unsigned char Level
+    48:7-7 |   unsigned char IsUnderLvl
+    49:0-0 |   unsigned char IsDisplay
+    49:1-1 |   unsigned char IsCash
+    49:2-2 |   unsigned char IsSalable
+        52 |   unsigned int NumberPrice
+        56 |   unsigned char NumberFlag
+        58 |   unsigned short Number
+        60 |   unsigned int TimePrice
+        64 |   unsigned char TimeFlag
+        66 |   unsigned short Time
+        68 |   short FailPercent
+           | [sizeof=72, align=4,
+           |  nvsize=72, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sItem
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+   144:0-0 |   unsigned int RandomBox
+       148 |   char[40] Data
+       188 |   short[5] COM
+       198 |   short Point
+           | [sizeof=200, align=4,
+           |  nvsize=200, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sMascot
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] Data
+       184 |   char[40] MsgTex
+       224 |   char[5] COM
+       229 |   char[5] Attr
+       234 |   char DriveUp
+       236 |   unsigned short ItemDropUp
+       238 |   unsigned short ComboUp
+       240 |   unsigned short PangUp
+       242 |   unsigned short ExpUp
+       244 |   unsigned char ItemSlot
+       245 |   unsigned char ShowMsg
+       248 |   unsigned int MsgFee
+           | [sizeof=252, align=4,
+           |  nvsize=252, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sAuxPart
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   short[5] COM
+       154 |   char[5] Attr
+       159 |   char[5] Slot
+       164 |   char DriveUp
+       166 |   unsigned short ItemDropUp
+       168 |   unsigned short ComboUp
+       170 |   unsigned short PangUp
+       172 |   unsigned short ExpUp
+           | [sizeof=176, align=4,
+           |  nvsize=176, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sQuestDrop
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   struct _SYSTEMTIME dropStart
+       144 |     unsigned short wYear
+       146 |     unsigned short wMonth
+       148 |     unsigned short wDayOfWeek
+       150 |     unsigned short wDay
+       152 |     unsigned short wHour
+       154 |     unsigned short wMinute
+       156 |     unsigned short wSecond
+       158 |     unsigned short wMilliseconds
+       160 |   struct _SYSTEMTIME dropEnd
+       160 |     unsigned short wYear
+       162 |     unsigned short wMonth
+       164 |     unsigned short wDayOfWeek
+       166 |     unsigned short wDay
+       168 |     unsigned short wHour
+       170 |     unsigned short wMinute
+       172 |     unsigned short wSecond
+       174 |     unsigned short wMilliseconds
+       176 |   char[40] dropFx
+       216 |   unsigned char dropCycle
+       218 |   unsigned short[10] holesToPlay
+       238 |   unsigned char mapDiff
+       239 |   unsigned char holeDrop
+       240 |   unsigned char timeDrop
+           | [sizeof=244, align=4,
+           |  nvsize=244, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sQuest
+         0 |   _Bool Final
+         4 |   unsigned int TypeId
+         8 |   char[40] Name
+        48 |   unsigned char Level
+        49 |   char[40] Icon
+        92 |   unsigned long[10] CompTid
+       132 |   unsigned char[10] CompProb
+       144 |   unsigned long[5] DropTid
+       164 |   unsigned char[5] DropNum
+       170 |   unsigned short ProbTotal
+       172 |   unsigned short CurItemIdx
+       176 |   unsigned int * aTidItems
+       180 |   struct _SYSTEMTIME questStart
+       180 |     unsigned short wYear
+       182 |     unsigned short wMonth
+       184 |     unsigned short wDayOfWeek
+       186 |     unsigned short wDay
+       188 |     unsigned short wHour
+       190 |     unsigned short wMinute
+       192 |     unsigned short wSecond
+       194 |     unsigned short wMilliseconds
+       196 |   struct _SYSTEMTIME questEnd
+       196 |     unsigned short wYear
+       198 |     unsigned short wMonth
+       200 |     unsigned short wDayOfWeek
+       202 |     unsigned short wDay
+       204 |     unsigned short wHour
+       206 |     unsigned short wMinute
+       208 |     unsigned short wSecond
+       210 |     unsigned short wMilliseconds
+       212 |   unsigned char BtnType
+           | [sizeof=216, align=4,
+           |  nvsize=216, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sCard
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   unsigned char RareType
+       145 |   char[40] Image
+       186 |   short[5] COM
+       196 |   unsigned short Avility
+       198 |   unsigned short AvilityValue
+       200 |   char[40] SubIcon
+       240 |   char[40] SlotImg
+       280 |   char[40] BuffImg
+       320 |   unsigned short UseTime
+       322 |   unsigned short Volume
+       324 |   unsigned short CardIndex
+           | [sizeof=328, align=4,
+           |  nvsize=328, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sFurniture
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   char[40] Data
+       184 |   short Num
+       186 |   short IsOwn
+       188 |   short IsMove
+       190 |   short IsFunction
+       192 |   short Etc
+       196 |   float[4] Pos
+       212 |   char[3][40] Tex
+       332 |   char[3][40] OrgTex
+       452 |   short[5] COM
+       462 |   unsigned short UseTime
+           | [sizeof=464, align=4,
+           |  nvsize=464, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sOfflineShop
+         0 |   struct IFF_ITEM_COMMON c
+         0 |     _Bool Final
+         4 |     unsigned int TypeId
+         8 |     char[40] Name
+    48:0-6 |     unsigned char Level
+    48:7-7 |     unsigned char IsUnderLvl
+        49 |     char[40] Icon
+        92 |     unsigned int Price
+        96 |     unsigned int SalePrice
+       100 |     unsigned int UsedPrice
+   104:0-0 |     unsigned char IsCash
+   104:1-4 |     unsigned char IsSalable
+   104:5-7 |     unsigned char InStock
+   105:0-0 |     unsigned char New
+   105:1-1 |     unsigned char Hit
+   105:2-2 |     unsigned char Reserve
+       106 |     unsigned char TimeFlag
+       107 |     unsigned char Time
+       108 |     unsigned int Point
+       112 |     struct _SYSTEMTIME saleStart
+       112 |       unsigned short wYear
+       114 |       unsigned short wMonth
+       116 |       unsigned short wDayOfWeek
+       118 |       unsigned short wDay
+       120 |       unsigned short wHour
+       122 |       unsigned short wMinute
+       124 |       unsigned short wSecond
+       126 |       unsigned short wMilliseconds
+       128 |     struct _SYSTEMTIME saleEnd
+       128 |       unsigned short wYear
+       130 |       unsigned short wMonth
+       132 |       unsigned short wDayOfWeek
+       134 |       unsigned short wDay
+       136 |       unsigned short wHour
+       138 |       unsigned short wMinute
+       140 |       unsigned short wSecond
+       142 |       unsigned short wMilliseconds
+       144 |   unsigned char nElems
+       148 |   unsigned int[10] ElemIds
+       188 |   short[5] COM
+           | [sizeof=200, align=4,
+           |  nvsize=200, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sDesc
+         0 |   unsigned int TypeId
+         4 |   char[512] Desc
+           | [sizeof=516, align=4,
+           |  nvsize=516, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sRandomBox
+         0 |   _Bool active
+         1 |   unsigned char[35] unknown01
+        36 |   unsigned int boxTypeId
+        40 |   unsigned char kind
+        44 |   unsigned long typeId
+        48 |   unsigned long[2] unknown30
+        56 |   unsigned long checkTypeId
+        60 |   unsigned long[42] unknown3C
+           | [sizeof=228, align=4,
+           |  nvsize=228, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sRandomRecycle
+         0 |   unsigned int uiRandSeq
+         4 |   unsigned int uiTypeId
+         8 |   unsigned int uiCount
+        12 |   unsigned int uiProbs
+           | [sizeof=16, align=4,
+           |  nvsize=16, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sNonVisibleItem
+         0 |   _Bool active
+         4 |   unsigned long type
+         8 |   unsigned long typeId
+        12 |   struct _SYSTEMTIME start
+        12 |     unsigned short wYear
+        14 |     unsigned short wMonth
+        16 |     unsigned short wDayOfWeek
+        18 |     unsigned short wDay
+        20 |     unsigned short wHour
+        22 |     unsigned short wMinute
+        24 |     unsigned short wSecond
+        26 |     unsigned short wMilliseconds
+        28 |   struct _SYSTEMTIME end
+        28 |     unsigned short wYear
+        30 |     unsigned short wMonth
+        32 |     unsigned short wDayOfWeek
+        34 |     unsigned short wDay
+        36 |     unsigned short wHour
+        38 |     unsigned short wMinute
+        40 |     unsigned short wSecond
+        42 |     unsigned short wMilliseconds
+           | [sizeof=44, align=4,
+           |  nvsize=44, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sSubscriptionItem
+         0 |   _Bool active
+         4 |   unsigned long type
+         8 |   unsigned long typeId
+        12 |   struct _SYSTEMTIME start
+        12 |     unsigned short wYear
+        14 |     unsigned short wMonth
+        16 |     unsigned short wDayOfWeek
+        18 |     unsigned short wDay
+        20 |     unsigned short wHour
+        22 |     unsigned short wMinute
+        24 |     unsigned short wSecond
+        26 |     unsigned short wMilliseconds
+        28 |   struct _SYSTEMTIME end
+        28 |     unsigned short wYear
+        30 |     unsigned short wMonth
+        32 |     unsigned short wDayOfWeek
+        34 |     unsigned short wDay
+        36 |     unsigned short wHour
+        38 |     unsigned short wMinute
+        40 |     unsigned short wSecond
+        42 |     unsigned short wMilliseconds
+           | [sizeof=44, align=4,
+           |  nvsize=44, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sSpecialPrizeItem
+         0 |   unsigned long typeId
+         4 |   unsigned long ability
+         8 |   float rate
+           | [sizeof=12, align=4,
+           |  nvsize=12, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sCadieMagicBox
+         0 |   unsigned int uiNumber
+         4 |   _Bool bFinal
+         8 |   unsigned int uiCategory
+        12 |   int iCharacter
+        16 |   int iLevel
+        20 |   unsigned int uiOutput
+        24 |   unsigned int uiOutputCount
+        28 |   unsigned int[4] uiElem
+        44 |   unsigned int[4] uiElemCount
+        60 |   unsigned int uiRandSeq
+        64 |   char[40] szRandName
+           | [sizeof=104, align=4,
+           |  nvsize=104, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::S5::sCutinInformation
+         0 |   _Bool bFinal
+         4 |   unsigned int NormalTypeId
+         8 |   unsigned int RareTypeId
+        12 |   unsigned int Rarity
+        16 |   int Condition
+        20 |   int Img_Pos
+        24 |   int CharIndex
+        28 |   char[40] Char_Tex
+        68 |   unsigned int Char_Ani
+        72 |   char[40] Bg_Tex
+       112 |   unsigned int Bg_Ani
+       116 |   char[40] Pattern_Tex
+       156 |   unsigned int Pattern_Ani
+       160 |   char[40] Text_Tex
+       200 |   unsigned int Text_Ani
+       204 |   unsigned int Out_Ani
+           | [sizeof=208, align=4,
+           |  nvsize=208, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sFurnitureAbility
+         0 |   _Bool bFinal
+         1 |   unsigned char btAbilityType
+         4 |   unsigned long dwFurnitureTID
+         8 |   unsigned char btSuccessType
+        12 |   int iStayTime
+        16 |   unsigned char btEffectType
+        20 |   unsigned long dwSetInTID
+        24 |   int iMaxCountAtFurniture
+        28 |   struct _SYSTEMTIME stStart
+        28 |     unsigned short wYear
+        30 |     unsigned short wMonth
+        32 |     unsigned short wDayOfWeek
+        34 |     unsigned short wDay
+        36 |     unsigned short wHour
+        38 |     unsigned short wMinute
+        40 |     unsigned short wSecond
+        42 |     unsigned short wMilliseconds
+        44 |   unsigned long dwDuringTime
+        48 |   unsigned long dwPutOutTID
+        52 |   int iProbability
+        56 |   int iMaxCountAtUser
+           | [sizeof=60, align=4,
+           |  nvsize=60, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sTikiOutputTable
+         0 |   unsigned int uiIndex
+         4 |   _Bool bFinal
+         5 |   char[32] strCategory
+        40 |   unsigned int uiTypeID
+        44 |   unsigned int uiCount
+        48 |   unsigned int uiRate
+           | [sizeof=52, align=4,
+           |  nvsize=52, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sTikiPointTable
+         0 |   unsigned int uiIndex
+         4 |   _Bool bFinal
+         5 |   char[32] strCategory
+        40 |   unsigned int uiMin
+        44 |   unsigned int uiMax
+           | [sizeof=48, align=4,
+           |  nvsize=48, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IFF_STRUCT::sTikiSpecialRecipe
+         0 |   unsigned int uiIndex
+         4 |   _Bool bFinal
+         5 |   char[32] strCategory
+        40 |   unsigned int uiElemCount
+        44 |   unsigned int[4] uiElem
+           | [sizeof=60, align=4,
+           |  nvsize=60, nvalign=4]

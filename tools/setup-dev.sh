@@ -27,4 +27,9 @@ fi
 for db in pangya pangya_test; do
   [ -n "$(psql_q "select 1 from pg_database where datname='$db'")" ] || psql_q "create database $db owner pangya"
 done
+# dados do jogo (pangya.iff extraído do projectg642.pak do cliente; cópia somente leitura do emulador Python)
+IFF_SOURCE=${IFF_SOURCE:-/root/pangya-server-work/emu/data/pangya.iff}
+mkdir -p data
+[ -f data/pangya.iff ] || cp "$IFF_SOURCE" data/pangya.iff
+
 echo "setup-dev: ok (bancos pangya e pangya_test; config em config/pangya.json e config/test.json)"

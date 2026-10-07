@@ -1,3 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Base comum: cifra, pacotes, IFF, configuração, logs e limites. -->
+  <ItemGroup>
+    <!-- Tabelas de chave da cifra, extraídas do cliente por tools/CryptoCheck/generate.sh -->
+    <EmbeddedResource Include="Crypto\keytables.bin" LogicalName="keytables.bin" />
+  </ItemGroup>
 </Project>

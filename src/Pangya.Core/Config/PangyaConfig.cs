@@ -13,6 +13,8 @@ public sealed class PangyaConfig
     public NetworkConfig Network { get; set; } = new();
     public DatabaseConfig Database { get; set; } = new();
     public LimitsConfig Limits { get; set; } = new();
+    public LoggingConfig Logging { get; set; } = new();
+    public DataConfig Data { get; set; } = new();
 
     static readonly JsonSerializerOptions Json = new()
     {
@@ -20,6 +22,7 @@ public sealed class PangyaConfig
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        Converters = { new JsonStringEnumConverter() },
     };
 
     /// <summary>Caminho padrão: variável PANGYA_CONFIG ou config/pangya.json.</summary>
@@ -59,6 +62,20 @@ public sealed class NetworkConfig
 public sealed class DatabaseConfig
 {
     public string ConnectionString { get; set; } = "";
+}
+
+public sealed class LoggingConfig
+{
+    /// <summary>Debug, Info, Warn ou Error. Debug mostra cada pacote.</summary>
+    public Logging.LogLevel Level { get; set; } = Logging.LogLevel.Info;
+    /// <summary>Pasta dos arquivos de log (vazio = só console).</summary>
+    public string Dir { get; set; } = "logs";
+}
+
+public sealed class DataConfig
+{
+    /// <summary>Dados do jogo do cliente (ZIP de tabelas .iff).</summary>
+    public string IffPath { get; set; } = "data/pangya.iff";
 }
 
 /// <summary>Limites contra abuso.</summary>

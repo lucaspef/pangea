@@ -7,6 +7,13 @@
   "Database": {
     "ConnectionString": "Host=127.0.0.1;Port=5432;Database=pangya;Username=pangya;Password=CHANGE_ME"
   },
+  "Logging": {
+    "Level": "Info",
+    "Dir": "logs"
+  },
+  "Data": {
+    "IffPath": "data/pangya.iff"
+  },
   "Limits": {
     "MaxConnectionsPerIp": 10,
     "MaxPacketsPerSecond": 100,
