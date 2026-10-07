@@ -9,14 +9,14 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
 {
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    sealed record PlayerRow(long AccountId, string Login, string Nickname, int IdentityFlags, short Level, int Exp, long Pang, long Cookie, int Flags, string Equip, long LockerPang);
+    sealed record PlayerRow(long AccountId, string Login, string Nickname, int IdentityFlags, short Level, int Exp, long Pang, long Cookie, int Flags, string Equip, long LockerPang, string Stats);
     sealed record ItemRow(int Id, int TypeId, int Quantity, string Attrs, DateTime? ExpiresAt, short Location);
 
     public async Task<Player?> LoadAsync(long accountId)
     {
         await using var c = await db.OpenAsync();
         var p = await c.QuerySingleOrDefaultAsync<PlayerRow>("""
-            select p.account_id, a.login, coalesce(a.nickname, '') nickname, a.identity_flags, p.level, p.exp, p.pang, p.cookie, p.flags, p.equip::text equip, p.locker_pang
+            select p.account_id, a.login, coalesce(a.nickname, '') nickname, a.identity_flags, p.level, p.exp, p.pang, p.cookie, p.flags, p.equip::text equip, p.locker_pang, p.stats::text stats
             from players p join accounts a on a.id = p.account_id where p.account_id = @accountId
             """, new { accountId });
         if (p == null) return null;
@@ -28,6 +28,9 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
             Level = p.Level, Exp = p.Exp, Pang = p.Pang, Cookie = p.Cookie, Flags = p.Flags, LockerPang = p.LockerPang,
             Equip = JsonSerializer.Deserialize<Equipment>(p.Equip, Json) ?? new(),
         };
+        if (JsonNode.Parse(p.Stats)?["courses"] is JsonObject courses)
+            foreach (var (k, v) in courses)
+                if (int.TryParse(k, out var course) && v != null && v.Deserialize<CourseRecord>(Json) is { } rec) player.Courses[course] = rec;
         foreach (var i in items)
             player.Add(new Item
             {
@@ -63,12 +66,14 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
         await c.ExecuteAsync("""
             update players set pang = coalesce(@Pang, pang), cookie = coalesce(@Cookie, cookie),
                 locker_pang = coalesce(@LockerPang, locker_pang), level = coalesce(@Level::smallint, level),
-                exp = coalesce(@Exp, exp), flags = coalesce(@Flags, flags), equip = coalesce(@equip::jsonb, equip)
+                exp = coalesce(@Exp, exp), flags = coalesce(@Flags, flags), equip = coalesce(@equip::jsonb, equip),
+                stats = coalesce(jsonb_set(stats, '{courses}', @courses::jsonb), stats)
             where account_id = @accountId
             """, new
         {
             accountId, ch.Pang, ch.Cookie, ch.LockerPang, ch.Level, ch.Exp, ch.Flags,
             equip = ch.Equip == null ? null : JsonSerializer.Serialize(ch.Equip, Json),
+            courses = ch.Courses == null ? null : JsonSerializer.Serialize(ch.Courses, Json),
         }, tx);
         await tx.CommitAsync();
     }

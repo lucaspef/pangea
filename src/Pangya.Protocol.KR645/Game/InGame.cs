@@ -72,7 +72,8 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         Log.Info($"sala {room.Index}: fim de jogo ({end.Kind})");
         foreach (var r in end.Results)                               // recompensa de quem terminou (humanos)
             if (room.Find(r.Guid)?.Session is GameHandler h)
-                h.OnGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false });
+                h.OnGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false },
+                    end.Kind == GameEndKind.Stroke ? (room.CoursePlayed, r.Score) : null);   // match/skins/team: placar não é vs par
     }
 
     public void BotTurn(GamePlayer bot)

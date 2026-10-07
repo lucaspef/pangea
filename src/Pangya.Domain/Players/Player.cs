@@ -82,6 +82,8 @@ public sealed class Player
     public Equipment Equip { get; set; } = new();
     /// <summary>Todos os objetos do jogador, por id.</summary>
     public Dictionary<int, Item> Items { get; } = [];
+    /// <summary>Estatística por curso (número do mapa).</summary>
+    public Dictionary<int, CourseRecord> Courses { get; } = [];
 
     public const int FlagTutorialDone = 1;
 
@@ -153,6 +155,8 @@ public sealed class PlayerChanges
     public int? Exp { get; set; }
     public int? Flags { get; set; }
     public Equipment? Equip { get; set; }
+    /// <summary>Todas as estatísticas por curso (substitui as gravadas).</summary>
+    public Dictionary<int, CourseRecord>? Courses { get; set; }
     public bool IsEmpty => Added.Count == 0 && Updated.Count == 0 && Removed.Count == 0 && Pang == null && Cookie == null
-        && LockerPang == null && Level == null && Exp == null && Flags == null && Equip == null;
+        && LockerPang == null && Level == null && Exp == null && Flags == null && Equip == null && Courses == null;
 }

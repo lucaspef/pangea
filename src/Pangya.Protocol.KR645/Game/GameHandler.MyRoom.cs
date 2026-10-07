@@ -216,10 +216,21 @@ public sealed partial class GameHandler
         conn.Send(new PacketWriter(0x156).U32(uid).Struct(ui.charInfo));
         conn.Send(new PacketWriter(0x150).U8(season).U32(uid).Struct(stats));
         conn.Send(new PacketWriter(0x151).U8(season).U32(uid).Zeros(0x4E));
-        conn.Send(new PacketWriter(0x154).U8(season).U32(uid).U16(0));
+        // 0x154 por tipo: 5/0 = normal (temporada atual/anterior), 0x33/0x0A = clássico. Sempre os 20 cursos, senão o
+        // cache do cliente fica zerado e todas as linhas viram o curso 0 com recorde 0.
+        bool current = season != 0;
+        conn.Send(MapStats(season, uid, current ? target : null));
+        conn.Send(MapStats(current ? (byte)0x33 : (byte)0x0A, uid, null));
         conn.Send(new PacketWriter(0x152).U8(season).U32(uid).U16(0));
         conn.Send(new PacketWriter(0x153).U8(season).U32(uid).U16(0));
         conn.Send(new PacketWriter(SUserInfoDone).U32(1).U8(season).U32(uid));
+    }
+
+    static PacketWriter MapStats(byte kind, uint uid, Player? p)
+    {
+        var w = new PacketWriter(0x154, 16 + PlayerStructs.MapStatCount * 43).U8(kind).U32(uid).U16(PlayerStructs.MapStatCount);
+        for (int i = 0; i < PlayerStructs.MapStatCount; i++) w.Struct(PlayerStructs.MapStat(p, i));
+        return w;
     }
 
     /// <summary>0x73 u32 id, str mensagem -> 0xE0 u8 4, u32 id, str mensagem, u64 pang (ou u8 1, u32 id).</summary>

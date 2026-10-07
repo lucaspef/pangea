@@ -103,6 +103,25 @@ public static class PlayerStructs
         return s;
     }
 
+    /// <summary>Número de registros de mapa que o cliente guarda (posição i = curso i).</summary>
+    public const int MapStatCount = 20;
+
+    /// <summary>
+    /// sMapStatistics do curso i (docs/protocolo/SPEC-perfil-mapas.md): bMap = i sempre (0xFF esconde a linha, 0 em todas
+    /// faz todas virarem o curso 0); sem partida = cBestScore 127 ("-").
+    /// </summary>
+    public static sMapStatistics MapStat(Player? p, int course)
+    {
+        var s = new sMapStatistics { bMap = (byte)course, cBestScore = CourseRecord.NoRecord };
+        if (p == null || !p.Courses.TryGetValue(course, out var r)) return s;
+        s.dwHole = (uint)r.Holes;
+        s.iTotalScore = r.TotalScore;
+        s.cBestScore = (sbyte)Math.Clamp(r.BestScore, -128, CourseRecord.NoRecord);
+        s.i64MaxPang = r.MaxPang;
+        s.tidChar = (uint)r.CharacterTypeId;
+        return s;
+    }
+
     /// <summary>sUserInfo (0xB92): dados completos do jogador que vão no 0x42 e nas salas.</summary>
     public static sUserInfo UserInfo(Player p)
     {
@@ -117,7 +136,7 @@ public static class PlayerStructs
         u.stat.dwExp = (uint)p.Exp;
         u.stat.i64Pang = p.Pang;
         for (int i = 0; i < 6; i++) u.stat.cBestScore[i] = 127;           // 127 = sem recorde
-        for (int i = 0; i < 20; i++) { u.mapStat[i].bMap = 0xFF; u.classicMapStat[i].bMap = 0xFF; }
+        for (int i = 0; i < MapStatCount; i++) { u.mapStat[i] = MapStat(p, i); u.classicMapStat[i] = MapStat(null, i); }
         u.userEquip = Equip(p);
         if (p.Character is { } ch) u.charInfo = Character(ch);
         if (p.Find(p.Equip.CaddieId) is { } cad) u.caddieInfo = Caddie(cad);

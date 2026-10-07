@@ -247,7 +247,7 @@ public class MyRoomTests(DbFixture fx)
             seq.Add(id);
             if (id == 0x87) { Assert.Equal(1u, r.U32()); break; }
         }
-        Assert.Equal([0x14F, 0x14E, 0x156, 0x150, 0x151, 0x154, 0x152, 0x153, 0x87], seq.Select(x => (int)x));
+        Assert.Equal([0x14F, 0x14E, 0x156, 0x150, 0x151, 0x154, 0x154, 0x152, 0x153, 0x87], seq.Select(x => (int)x));
         await c.SendAsync(new PacketWriter(0x2F).U32(0x7FFFFFF0).U8(5));
         Assert.Equal(3u, (await c.ExpectAsync(0x87)).U32());
 

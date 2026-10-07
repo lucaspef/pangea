@@ -208,14 +208,15 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
     }
 
     /// <summary>Fim de partida: credita pang (limitado) e EXP e atualiza o pang mostrado. Chamado sob o lock da sala.</summary>
-    public void OnGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished)
+    /// <summary>Fim de partida: recompensa e, nos modos com placar contra o par, a estatística do curso (mapa, placar).</summary>
+    public void OnGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished, (int Course, int Score)? course = null)
     {
         var p = player!;
         _ = Task.Run(async () =>
         {
             try
             {
-                var r = await Rewards.ApplyAsync(ctx.Players.Store, p, reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards);
+                var r = await Rewards.ApplyAsync(ctx.Players.Store, p, reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards, course);
                 if (r.Pang == 0 && r.Exp == 0) return;
                 Log.Info($"{conn} recompensa: +{r.Pang} pang, +{r.Exp} EXP{(r.LevelsUp > 0 ? $", subiu {r.LevelsUp} nível(is) -> {p.Level}" : "")}");
                 conn.Send(new PacketWriter(SPang).U64((ulong)p.Pang).U64(0));

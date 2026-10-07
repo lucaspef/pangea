@@ -76,6 +76,7 @@ public sealed class MassOutput(Room room) : IMassOutput
     public void GameOver(List<MassPlayer> players)
     {
         foreach (var p in players)                                      // recompensa de quem terminou (humanos)
-            if (p.RoomPlayer.Session is GameHandler h) h.OnGameEnd(p.Pang, p.Bonus, Game.HoleCount, p.Finished);
+            if (p.RoomPlayer.Session is GameHandler h)
+                h.OnGameEnd(p.Pang, p.Bonus, Game.HoleCount, p.Finished, Game is ApproachGame ? null : (room.CoursePlayed, p.Score));
     }
 }

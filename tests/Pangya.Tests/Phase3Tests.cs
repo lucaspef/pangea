@@ -105,7 +105,7 @@ public class GameLobbyTests(DbFixture fx)
         Assert.Equal(0x10000000u, u.clubInfo.tid);
         Assert.Equal(u.userEquip.guidClubSet, u.clubInfo.guid);
         Assert.Equal(0x14000000u, u.userEquip.tidBall);
-        Assert.Equal(0xFF, u.mapStat[19].bMap);
+        Assert.Equal((19, (sbyte)127), (u.mapStat[19].bMap, u.mapStat[19].cBestScore));   // curso 19 sem recorde
 
         var ch4b = await c.ExpectAsync(0x4B);
         Assert.Equal(1, ch4b.U8());
