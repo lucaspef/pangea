@@ -18,6 +18,10 @@ public interface IGameData
     IReadOnlyDictionary<int, Shop.CardInfo> Cards { get; }
     /// <summary>Mapas que o cliente oferece, na ordem da tela de escolha (só os ativos nos dados).</summary>
     IReadOnlyList<byte> Courses { get; }
+    /// <summary>Receitas da Caixa Mágica, na posição Index (= uiNumber-1, o índice que o cliente manda).</summary>
+    IReadOnlyList<Shop.MagicBoxRecipe> MagicBox { get; }
+    /// <summary>Sorteios da Caixa Mágica por grupo (uiRandSeq).</summary>
+    IReadOnlyDictionary<int, Shop.MagicBoxOutput[]> MagicBoxRandom { get; }
 }
 
 /// <summary>Resultado da conferência/criação de nickname (os códigos são os do cliente KR: 0x0D/0x0E).</summary>

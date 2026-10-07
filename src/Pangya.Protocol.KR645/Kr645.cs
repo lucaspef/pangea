@@ -47,6 +47,8 @@ public sealed class Kr645Iff(IffArchive archive)
     public Iff.sCard[] Cards { get; } = archive.Table<Iff.sCard>("Card.iff");
     public Iff.sFurniture[] Furniture { get; } = archive.Table<Iff.sFurniture>("Furniture.iff");
     public Iff.sEnchant[] Enchants { get; } = archive.Table<Iff.sEnchant>("Enchant.iff");
+    public Iff.sCadieMagicBox[] MagicBox { get; } = archive.Table<Iff.sCadieMagicBox>("CadieMagicBox.iff");
+    public Iff.sRandomRecycle[] MagicBoxRandom { get; } = archive.Table<Iff.sRandomRecycle>("CadieMagicBoxRandom.iff");
 
     public static Kr645Iff Load(string path) => new(IffArchive.Load(path));
 

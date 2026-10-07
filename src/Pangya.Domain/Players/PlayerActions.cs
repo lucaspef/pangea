@@ -59,12 +59,20 @@ public sealed class PlayerActions(IPlayerStore store, IGameData data)
 
     static bool IsStorable(Player p, Item it)
     {
-        var e = p.Equip;
         if (it.Group is ItemGroup.Character or ItemGroup.Caddie or ItemGroup.Mascot or ItemGroup.Card or ItemGroup.Furniture) return false;
-        if (it.Id == e.ClubSetId || it.TypeId == e.BallTypeId || Array.IndexOf(e.ItemSlots, it.TypeId) >= 0) return false;
-        foreach (var c in p.Items.Values)                                   // peça vestida por um personagem
-            if (c.Group == ItemGroup.Character && Array.IndexOf(c.IntArray("part_ids", 24), it.Id) >= 0) return false;
-        return true;
+        var e = p.Equip;
+        return !IsEquipped(p, it) && it.TypeId != e.BallTypeId && Array.IndexOf(e.ItemSlots, it.TypeId) < 0;
+    }
+
+    /// <summary>Objeto em uso: club set, caddie, mascote ou personagem equipados, ou peça vestida por algum personagem.</summary>
+    public static bool IsEquipped(Player p, Item it)
+    {
+        var e = p.Equip;
+        if (it.Id == e.ClubSetId || it.Id == e.CaddieId || it.Id == e.MascotId || it.Id == e.CharacterId) return true;
+        if (it.Group != ItemGroup.Part) return false;
+        foreach (var c in p.Items.Values)
+            if (c.Group == ItemGroup.Character && Array.IndexOf(c.IntArray("part_ids", 24), it.Id) >= 0) return true;
+        return false;
     }
 
     /// <summary>Tira um item do armário de volta para o inventário. null = não está lá.</summary>

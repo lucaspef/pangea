@@ -28,6 +28,7 @@ public sealed partial class GameHandler
                 conn.Send(new PacketWriter(SScratchSerial).U32(2));
                 return true;
             case CScratchReload: return true;                                       // cartões comprados na web: não há
+            case CMagicBox: await MagicBoxAsync(p); return true;
             default: return false;
         }
     }

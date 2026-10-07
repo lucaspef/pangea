@@ -20,6 +20,8 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
     public PlayerActions Actions { get; } = new(players.Store, data);
     Domain.Shop.LotteryService? lotteryService;
     public Domain.Shop.LotteryService Lottery => lotteryService ??= new(Shop, Data, lottery ?? new());
+    Domain.Shop.MagicBoxService? magicBoxService;
+    public Domain.Shop.MagicBoxService MagicBox => magicBoxService ??= new(Shop, Data);
 }
 
 /// <summary>

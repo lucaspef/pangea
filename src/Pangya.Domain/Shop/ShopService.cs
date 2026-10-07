@@ -207,6 +207,7 @@ internal sealed class ShopDraft(Player p, IPlayerStore store)
 {
     readonly Dictionary<int, Item> edited = [];
     readonly HashSet<int> added = [];
+    readonly HashSet<int> removed = [];
     public PlayerChanges Changes { get; } = new();
     public Equipment Equip { get; } = Copy(p.Equip);
 
@@ -222,14 +223,19 @@ internal sealed class ShopDraft(Player p, IPlayerStore store)
     {
         foreach (var it in edited.Values)
             if (it.TypeId == tid && it.Location == ItemLocation.Inventory) return it;
-        var found = p.FindType(tid);
-        return found == null ? null : Current(found);
+        Item? best = null;                                          // como Player.FindType, sem os apagados
+        foreach (var it in p.Items.Values)
+            if (it.TypeId == tid && it.Location == ItemLocation.Inventory && !removed.Contains(it.Id) && (best == null || it.Id < best.Id))
+                best = it;
+        return best == null ? null : Current(best);
     }
 
     public List<Item> OfGroup(ItemGroup g)
     {
-        var list = p.OfGroup(g);
-        for (int i = 0; i < list.Count; i++) list[i] = Current(list[i]);
+        var all = p.OfGroup(g);
+        var list = new List<Item>(all.Count);
+        foreach (var it in all)
+            if (!removed.Contains(it.Id)) list.Add(Current(it));
         foreach (var id in added)
             if (edited[id].Group == g) list.Add(edited[id]);
         return list;
@@ -242,6 +248,15 @@ internal sealed class ShopDraft(Player p, IPlayerStore store)
         edited[it.Id] = c;
         return c;
     }
+
+    /// <summary>Apaga um objeto do jogador (material gasto).</summary>
+    public void Remove(Item it)
+    {
+        edited.Remove(it.Id);
+        removed.Add(it.Id);
+    }
+
+    public bool IsRemoved(int id) => removed.Contains(id);
 
     public async Task<Item> AddAsync(int tid, int quantity)
     {
@@ -260,6 +275,7 @@ internal sealed class ShopDraft(Player p, IPlayerStore store)
             else if (it.Quantity <= 0 && it.IsConsumable) Changes.Removed.Add(id);    // pilha gasta (cupom, cartão)
             else Changes.Updated.Add(it);
         }
+        Changes.Removed.AddRange(removed);
         Changes.Equip = Equip;
         await store.ApplyAsync(p.AccountId, Changes);
         foreach (var it in edited.Values) p.Items[it.Id] = it;      // só depois de gravado

@@ -68,6 +68,52 @@ public sealed class Kr645GameData : IGameData
         }
     }
 
+    List<MagicBoxRecipe>? magicBox;
+    Dictionary<int, MagicBoxOutput[]>? magicBoxRandom;
+
+    /// <summary>CadieMagicBox.iff na posição uiNumber-1 (o arquivo vem ordenado e contíguo; buracos ficam sem receita).</summary>
+    public IReadOnlyList<MagicBoxRecipe> MagicBox
+    {
+        get
+        {
+            if (magicBox != null) return magicBox;
+            int max = 0;
+            foreach (var r in Iff.MagicBox) max = Math.Max(max, (int)r.uiNumber);
+            var list = new List<MagicBoxRecipe>(max);
+            var byNumber = new Dictionary<int, MagicBoxRecipe>();
+            foreach (var r in Iff.MagicBox)
+            {
+                int n = 0;
+                while (n < 4 && r.uiElem[n] != 0) n++;
+                var elems = new int[n];
+                var counts = new int[n];
+                for (int i = 0; i < n; i++) { elems[i] = (int)r.uiElem[i]; counts[i] = (int)Math.Max(r.uiElemCount[i], 1u); }
+                byNumber[(int)r.uiNumber] = new MagicBoxRecipe((int)r.uiNumber - 1, r.iLevel, (int)r.uiOutput,
+                    (int)Math.Max(r.uiOutputCount, 1u), elems, counts, (int)r.uiRandSeq);
+            }
+            for (int i = 1; i <= max; i++)                              // receita ausente: sem materiais e sem saída
+                list.Add(byNumber.GetValueOrDefault(i) ?? new MagicBoxRecipe(i - 1, int.MaxValue, 0, 1, [], [], 0));
+            return magicBox = list;
+        }
+    }
+
+    public IReadOnlyDictionary<int, MagicBoxOutput[]> MagicBoxRandom
+    {
+        get
+        {
+            if (magicBoxRandom != null) return magicBoxRandom;
+            var groups = new Dictionary<int, List<MagicBoxOutput>>();
+            foreach (var r in Iff.MagicBoxRandom)
+            {
+                if (!groups.TryGetValue((int)r.uiRandSeq, out var g)) groups[(int)r.uiRandSeq] = g = [];
+                g.Add(new MagicBoxOutput((int)r.uiTypeId, (int)r.uiCount, (int)r.uiProbs));
+            }
+            var d = new Dictionary<int, MagicBoxOutput[]>(groups.Count);
+            foreach (var (k, v) in groups) d[k] = v.ToArray();
+            return magicBoxRandom = d;
+        }
+    }
+
     Dictionary<int, ShopItem>? shop;
     Dictionary<uint, int>? enchant;
 
