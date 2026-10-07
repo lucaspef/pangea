@@ -13,13 +13,15 @@ public static class Migrator
 
     static List<(int, string)> Load()
     {
-        var asm = typeof(Migrator).Assembly;
-        return asm.GetManifestResourceNames()
-            .Where(n => n.EndsWith(".sql"))
-            .Select(n => n.Split('.')[^2])                     // Migrations.001_base.sql -> 001_base
-            .Select(n => (int.Parse(n[..n.IndexOf('_')]), n))
-            .OrderBy(m => m.Item1)
-            .ToList();
+        var list = new List<(int, string)>();
+        foreach (var res in typeof(Migrator).Assembly.GetManifestResourceNames())
+        {
+            if (!res.EndsWith(".sql")) continue;
+            var name = res.Split('.')[^2];                      // Migrations.001_base.sql -> 001_base
+            list.Add((int.Parse(name[..name.IndexOf('_')]), name));
+        }
+        list.Sort((a, b) => a.Item1.CompareTo(b.Item1));
+        return list;
     }
 
     static string Sql(string name)
@@ -42,10 +44,11 @@ public static class Migrator
         await conn.ExecuteAsync("select pg_advisory_lock(7212001)");
         try
         {
-            var done = (await conn.QueryAsync<int>("select version from schema_migrations")).ToHashSet();
+            var done = new HashSet<int>(await conn.QueryAsync<int>("select version from schema_migrations"));
             var applied = new List<int>();
-            foreach (var (version, name) in All.Where(m => !done.Contains(m.Version)))
+            foreach (var (version, name) in All)
             {
+                if (done.Contains(version)) continue;
                 await using var tx = await conn.BeginTransactionAsync(ct);
                 await conn.ExecuteAsync(Sql(name), transaction: tx);
                 await conn.ExecuteAsync("insert into schema_migrations(version, name) values (@version, @name)", new { version, name }, tx);

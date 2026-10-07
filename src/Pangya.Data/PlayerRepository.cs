@@ -22,17 +22,42 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
         if (p == null) return null;
         var items = await c.QueryAsync<ItemRow>(
             "select id, type_id, quantity, attrs::text attrs, expires_at from items where account_id = @accountId order by id", new { accountId });
-        return new Player
+        var player = new Player
         {
             AccountId = p.AccountId, Login = p.Login, Nickname = p.Nickname, IdentityFlags = p.IdentityFlags,
             Level = p.Level, Exp = p.Exp, Pang = p.Pang, Cookie = p.Cookie, Flags = p.Flags,
             Equip = JsonSerializer.Deserialize<Equipment>(p.Equip, Json) ?? new(),
-            Items = items.Select(i => new Item
+        };
+        foreach (var i in items)
+            player.Add(new Item
             {
                 Id = i.Id, TypeId = i.TypeId, Quantity = i.Quantity, ExpiresAt = i.ExpiresAt,
                 Attrs = JsonNode.Parse(i.Attrs)?.AsObject() ?? [],
-            }).ToList(),
-        };
+            });
+        return player;
+    }
+
+    public async Task<int[]> NewIdsAsync(int count)
+    {
+        await using var c = await db.OpenAsync();
+        return [.. await c.QueryAsync<int>("select nextval('object_id_seq')::int from generate_series(1, @count)", new { count })];
+    }
+
+    public async Task SaveItemAsync(long accountId, Item item)
+    {
+        await using var c = await db.OpenAsync();
+        if (item.Quantity <= 0)
+            await c.ExecuteAsync("delete from items where id = @Id and account_id = @accountId", new { item.Id, accountId });
+        else
+            await c.ExecuteAsync("update items set quantity = @Quantity, attrs = @attrs::jsonb, expires_at = @ExpiresAt where id = @Id and account_id = @accountId",
+                new { item.Id, item.Quantity, item.ExpiresAt, attrs = item.Attrs.ToJsonString(), accountId });
+    }
+
+    public async Task SaveEquipAsync(long accountId, Equipment equip)
+    {
+        await using var c = await db.OpenAsync();
+        await c.ExecuteAsync("update players set equip = @equip::jsonb where account_id = @accountId",
+            new { accountId, equip = JsonSerializer.Serialize(equip, Json) });
     }
 
     public async Task<Player> CreateAsync(long accountId, NewPlayer spec)

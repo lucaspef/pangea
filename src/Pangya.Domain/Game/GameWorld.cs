@@ -41,7 +41,15 @@ public sealed class GameWorld(GameConfig config)
     readonly ConcurrentDictionary<long, IGameSession> online = new();
 
     public GameConfig Config { get; } = config;
-    public IReadOnlyList<Channel> Channels { get; } = config.Channels.Select((c, i) => new Channel(i, c.Name, c.MaxUsers)).ToList();
+    public Rooms.RoomManager Rooms { get; } = new();
+    public IReadOnlyList<Channel> Channels { get; } = CreateChannels(config);
+
+    static List<Channel> CreateChannels(GameConfig cfg)
+    {
+        var list = new List<Channel>(cfg.Channels.Length);
+        for (int i = 0; i < cfg.Channels.Length; i++) list.Add(new Channel(i, cfg.Channels[i].Name, cfg.Channels[i].MaxUsers));
+        return list;
+    }
     public int OnlineCount => online.Count;
     public bool IsFull => online.Count >= Config.MaxUsers;
 

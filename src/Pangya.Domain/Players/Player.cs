@@ -38,7 +38,12 @@ public sealed class Item
     }
 
     public int Int(string key) => Attrs[key]?.GetValue<int>() ?? 0;
-    public void Set(string key, int[] values) => Attrs[key] = new JsonArray(values.Select(v => (JsonNode)v).ToArray());
+    public void Set(string key, int[] values)
+    {
+        var arr = new JsonArray();
+        foreach (var v in values) arr.Add(v);
+        Attrs[key] = arr;
+    }
     public void Set(string key, int value) => Attrs[key] = value;
 }
 
@@ -67,13 +72,43 @@ public sealed class Player
     public long Cookie { get; set; }
     public int Flags { get; set; }
     public Equipment Equip { get; set; } = new();
-    public List<Item> Items { get; init; } = [];
+    /// <summary>Todos os objetos do jogador, por id.</summary>
+    public Dictionary<int, Item> Items { get; } = [];
 
     public const int FlagTutorialDone = 1;
 
-    public Item? Find(int id) => id == 0 ? null : Items.Find(i => i.Id == id);
-    public IEnumerable<Item> OfGroup(ItemGroup g) => Items.Where(i => i.Group == g);
-    public Item? Character => Find(Equip.CharacterId) ?? OfGroup(ItemGroup.Character).FirstOrDefault();
+    public void Add(Item it) => Items[it.Id] = it;
+    public Item? Find(int id) => Items.GetValueOrDefault(id);
+
+    /// <summary>Itens de um grupo, em ordem de id (ordem de criação).</summary>
+    public List<Item> OfGroup(ItemGroup g)
+    {
+        var list = new List<Item>();
+        foreach (var it in Items.Values)
+            if (it.Group == g) list.Add(it);
+        list.Sort(static (a, b) => a.Id.CompareTo(b.Id));
+        return list;
+    }
+
+    /// <summary>Personagem equipado (ou o primeiro, se o equipado sumiu).</summary>
+    public Item? Character
+    {
+        get
+        {
+            if (Find(Equip.CharacterId) is { } c) return c;
+            var all = OfGroup(ItemGroup.Character);
+            return all.Count > 0 ? all[0] : null;
+        }
+    }
+
+    /// <summary>Primeiro item com o typeid (bolas e consumíveis ficam numa pilha por typeid).</summary>
+    public Item? FindType(int typeId)
+    {
+        Item? best = null;
+        foreach (var it in Items.Values)
+            if (it.TypeId == typeId && (best == null || it.Id < best.Id)) best = it;
+        return best;
+    }
 }
 
 /// <summary>Acesso aos dados de jogador (implementado em Pangya.Data).</summary>
@@ -82,6 +117,11 @@ public interface IPlayerStore
     Task<Player?> LoadAsync(long accountId);
     /// <summary>Cria o jogador com os itens iniciais numa transação; ids vêm do banco.</summary>
     Task<Player> CreateAsync(long accountId, NewPlayer spec);
+    /// <summary>Reserva ids únicos (da mesma sequência dos itens), ex.: para os objetos do bot.</summary>
+    Task<int[]> NewIdsAsync(int count);
+    /// <summary>Grava quantidade/atributos de um item (quantidade 0 apaga).</summary>
+    Task SaveItemAsync(long accountId, Item item);
+    Task SaveEquipAsync(long accountId, Equipment equip);
 }
 
 /// <summary>Conteúdo inicial de um jogador novo.</summary>

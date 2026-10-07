@@ -21,6 +21,9 @@ junto com o cliente. Primeiro tudo pronto localmente; a abertura pública com se
 12. Núcleo independente de versão: lógica do jogo (Domain) separada do protocolo; uma camada de protocolo
     por versão de cliente (KR645 hoje, S9 no futuro); banco genérico (tipo + quantidade + atributos jsonb);
     funcionalidades ligáveis por versão (como o IsLocalContent do cliente).
+13. Sem LINQ no código do servidor (src/): laços explícitos; Dictionary/HashSet para buscas por chave
+    (evita alocações e buscas lineares escondidas). Testes e ferramentas (tests/, tools/) podem usar LINQ.
+    (Pedido do usuário em 2026-10-07.)
 
 ## Servidores
 | Servidor | Quem conecta | Função |

@@ -319,8 +319,8 @@ public class LoginFlowTests(DbFixture fx)
         Assert.Equal(0x10000000, p.Find(p.Equip.ClubSetId)!.TypeId);
         Assert.Equal(0x14000000, p.Equip.BallTypeId);
         Assert.Equal(100, p.OfGroup(ItemGroup.Ball).Single().Quantity);
-        Assert.All(p.Items, i => Assert.True(i.Id >= 1_000_000));
-        Assert.Equal(p.Items.Count, p.Items.Select(i => i.Id).Distinct().Count());
+        Assert.All(p.Items.Values, i => Assert.True(i.Id >= 1_000_000));
+        Assert.Equal(p.Items.Values.Count, p.Items.Values.Select(i => i.Id).Distinct().Count());
 
         // segunda conta não pode usar o mesmo nickname
         var login2 = NewLogin();

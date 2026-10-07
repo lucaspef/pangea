@@ -98,8 +98,8 @@ public static class PlayerStructs
             // só um mascote que está na lista 0xDF (lobbymain.cpp:12420 lê além do fim se não estiver)
             guidMascot = (uint)(p.Find(e.MascotId) != null ? e.MascotId : 0),
         };
-        for (int i = 0; i < 10; i++) s.tidItemSlot[i] = (uint)e.ItemSlots.ElementAtOrDefault(i);
-        for (int i = 0; i < 6; i++) s.tidSkin[i] = (uint)e.SkinTypeIds.ElementAtOrDefault(i);
+        for (int i = 0; i < 10 && i < e.ItemSlots.Length; i++) s.tidItemSlot[i] = (uint)e.ItemSlots[i];
+        for (int i = 0; i < 6 && i < e.SkinTypeIds.Length; i++) s.tidSkin[i] = (uint)e.SkinTypeIds[i];
         return s;
     }
 

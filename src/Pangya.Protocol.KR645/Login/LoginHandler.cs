@@ -147,9 +147,11 @@ public sealed class LoginHandler(Connection conn, LoginContext ctx) : IConnectio
     /// <summary>u8 quantidade + n × sGameServerInfo (92 bytes).</summary>
     static PacketWriter ServerList(ushort id, IReadOnlyList<ServerInfo> servers)
     {
-        var w = new PacketWriter(id).U8((byte)Math.Min(servers.Count, 255));
-        foreach (var s in servers.Take(255))
+        int n = Math.Min(servers.Count, 255);
+        var w = new PacketWriter(id).U8((byte)n);
+        for (int i = 0; i < n; i++)
         {
+            var s = servers[i];
             var e = new sGameServerInfo { id = (uint)s.Id, maxUser = s.MaxUsers, curUser = s.CurUsers, port = s.Port, eventFlags = (uint)s.Flags };
             Cp949.Write(e.name, s.Name);
             Cp949.Write(e.addr, s.Address);

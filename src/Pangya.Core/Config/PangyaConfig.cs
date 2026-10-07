@@ -90,6 +90,12 @@ public sealed class GameConfig
     public int Port { get; set; } = 20201;
     public int MaxUsers { get; set; } = 1000;
     public ChannelConfig[] Channels { get; set; } = [new()];
+    /// <summary>Espera do bot antes de tacar (segundos).</summary>
+    public double BotDelaySeconds { get; set; } = 4;
+    /// <summary>Se nem todos mandarem "pronto para o tee", o servidor libera depois deste tempo (segundos).</summary>
+    public double TeeFallbackSeconds { get; set; } = 15;
+    /// <summary>true = o bot só passa a vez (estouro de tempo) em vez de tacar.</summary>
+    public bool BotPasses { get; set; }
 }
 
 public sealed class ChannelConfig

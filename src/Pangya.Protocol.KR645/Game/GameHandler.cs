@@ -16,16 +16,17 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
 }
 
 /// <summary>
-/// Game server do cliente 645 até o lobby (docs/protocolo/SPEC-game.md, SPEC-player-shop.md):
+/// Game server do cliente 645. Este arquivo: entrada até o lobby (docs/protocolo/SPEC-game.md, SPEC-player-shop.md):
 /// hello -> 0x02 login -> 0x42 dados do jogador + 0x4B canais + inventário -> 0x04 entrar no canal -> 0x4C.
+/// Salas: GameHandler.Room.cs. Partida: GameHandler.Play.cs.
 /// </summary>
-public sealed class GameHandler(Connection conn, GameContext ctx) : IConnectionHandler, IGameSession
+public sealed partial class GameHandler(Connection conn, GameContext ctx) : IConnectionHandler, IGameSession
 {
     // ids C->S
     const ushort CLogin = 0x02, CEnterChannel = 0x04, CEnterChannelAlt = 0x83, CAfterChannel = 0x99, CHeartbeat = 0xF6, CUnknown55 = 0x55;
     // ids S->C
     const ushort SHello = 0x3D, SPlayerInfo = 0x42, SChannels = 0x4B, SEnterChannel = 0x4C, SCharacters = 0x6E, SCaddies = 0x6F,
-        SEquip = 0x70, SItems = 0x71, SGiftBox = 0x78, SCookie = 0x94, SMascots = 0xDF,
+        SEquip = 0x70, SItems = 0x71, SGiftBox = 0x78, SCookie = 0x94, SMascots = 0xDF, SItemCounts = 0xA5,
         SCardsClear = 0x12D, SCardPeriodsClear = 0x12E, SCardPeriods = 0x12F, SCards = 0x130;
 
     Player? player;
@@ -43,7 +44,13 @@ public sealed class GameHandler(Connection conn, GameContext ctx) : IConnectionH
 
     public ValueTask OnDisconnectedAsync()
     {
-        if (player != null) ctx.World.Leave(this);
+        if (player == null) return ValueTask.CompletedTask;
+        lock (ctx.World.Rooms.Sync)
+        {
+            ctx.World.Rooms.Lobby.Remove(this);
+            LeaveRoom(notifySelf: false);
+        }
+        ctx.World.Leave(this);
         GameWorld.LeaveChannel(channel);
         channel = null;
         return ValueTask.CompletedTask;
@@ -58,6 +65,7 @@ public sealed class GameHandler(Connection conn, GameContext ctx) : IConnectionH
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
+        if (await HandleRoomAsync(p) || HandlePlay(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;
@@ -115,6 +123,9 @@ public sealed class GameHandler(Connection conn, GameContext ctx) : IConnectionH
         conn.Send(w);
     }
 
+    static bool InItemList(ItemGroup g) => g is ItemGroup.Part or ItemGroup.Club or ItemGroup.ClubSet or ItemGroup.Ball
+        or ItemGroup.Usable or ItemGroup.Skin or ItemGroup.SetItem;
+
     /// <summary>
     /// Listas que o cliente guarda (o 0x42 limpa o inventário, então vêm depois dele). Em cada lista total == n,
     /// senão o cliente espera mais pacotes.
@@ -122,27 +133,29 @@ public sealed class GameHandler(Connection conn, GameContext ctx) : IConnectionH
     void SendInventory()
     {
         var p = player!;
-        var chars = p.OfGroup(ItemGroup.Character).ToList();
+        var chars = p.OfGroup(ItemGroup.Character);
         var w = new PacketWriter(SCharacters, 8 + chars.Count * 0x1BC).U16((ushort)chars.Count).U16((ushort)chars.Count);
         foreach (var c in chars) w.Struct(PlayerStructs.Character(c));
         conn.Send(w);
 
-        var caddies = p.OfGroup(ItemGroup.Caddie).ToList();
+        var caddies = p.OfGroup(ItemGroup.Caddie);
         w = new PacketWriter(SCaddies).U16((ushort)caddies.Count).U16((ushort)caddies.Count);
         foreach (var c in caddies) w.Struct(PlayerStructs.Caddie(c));
         conn.Send(w);
 
-        var items = p.Items.Where(i => i.Group is ItemGroup.Part or ItemGroup.Club or ItemGroup.ClubSet or ItemGroup.Ball
-            or ItemGroup.Usable or ItemGroup.Skin or ItemGroup.SetItem).ToList();
+        var items = new List<Item>();
+        foreach (var it in p.Items.Values)
+            if (InItemList(it.Group)) items.Add(it);
         w = new PacketWriter(SItems, 8 + items.Count * 0xA8).U16((ushort)items.Count).U16((ushort)items.Count);
-        foreach (var i in items) w.Struct(PlayerStructs.ItemInfo(i));
+        foreach (var it in items) w.Struct(PlayerStructs.ItemInfo(it));
         conn.Send(w);
 
         conn.Send(new PacketWriter(SEquip).Struct(PlayerStructs.Equip(p)));
 
-        var mascots = p.OfGroup(ItemGroup.Mascot).Take(255).ToList();
-        w = new PacketWriter(SMascots).U8((byte)mascots.Count);
-        foreach (var m in mascots) w.Struct(PlayerStructs.Mascot(m));
+        var mascots = p.OfGroup(ItemGroup.Mascot);
+        int nm = Math.Min(mascots.Count, 255);
+        w = new PacketWriter(SMascots).U8((byte)nm);
+        for (int i = 0; i < nm; i++) w.Struct(PlayerStructs.Mascot(mascots[i]));
         conn.Send(w);
 
         conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0));   // caixa de presentes vazia (modo 1)

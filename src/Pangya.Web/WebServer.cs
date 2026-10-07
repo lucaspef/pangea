@@ -104,8 +104,13 @@ public static class LoginXml
     };
 
     /// <summary>Remove acentos e o que não for ASCII visível.</summary>
-    static string Ascii(string s) =>
-        new(s.Normalize(System.Text.NormalizationForm.FormD).Where(c => c is >= ' ' and <= '~').ToArray());
+    static string Ascii(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s.Normalize(System.Text.NormalizationForm.FormD))
+            if (c is >= ' ' and <= '~') sb.Append(c);
+        return sb.ToString();
+    }
 }
 
 static class RegisterPage

@@ -21,7 +21,7 @@ cat > "$CFG" <<EOF
   "Database": { "ConnectionString": "$CONN" },
   "Web": { "Port": $BASE },
   "Login": { "Ports": [$((BASE + 1))] },
-  "Game": { "Id": $((BASE + 2)), "Name": "Protocolo", "Port": $((BASE + 2)) },
+  "Game": { "Id": $((BASE + 2)), "Name": "Protocolo", "Port": $((BASE + 2)), "BotDelaySeconds": 0.3 },
   "Logging": { "Level": "Debug", "Dir": "" },
   "Data": { "IffPath": "$ROOT/data/pangya.iff" }
 }
@@ -35,7 +35,9 @@ run() { # nome, comando...
 
 su postgres -c "psql -q -d pangya_test -c 'delete from servers'" 2>/dev/null
 USER=tester$BASE
-dotnet "$DLL" --config "$CFG" account-create "$USER" x "Tester$BASE" > /dev/null 2>&1   # pode já existir
+for u in tester roomA roomB golf; do   # contas dos testes (senha "x", como os scripts mandam); podem já existir
+  dotnet "$DLL" --config "$CFG" account-create "$u$BASE" x "N$u$BASE" > /dev/null 2>&1
+done
 dotnet "$DLL" --config "$CFG" > "$LOG" 2>&1 &
 PID=$!
 for _ in $(seq 50); do ss -ltn | grep -q ":$((BASE + 2)) " && break; sleep 0.2; done
@@ -44,6 +46,12 @@ sleep 0.5      # primeiro heartbeat no registro
 cd "$EMU/test"
 run "fakeclient: web -> login -> lista -> game -> 0x42 -> canais -> lobby" \
   env EMU_HTTP=$BASE EMU_LOGIN=$((BASE + 1)) python3 fakeclient.py 127.0.0.1 "$USER"
+
+run "test_room.py: lista de salas, criar/entrar/sair, chat, config, pronto, bot, início (0x74/0x50)" \
+  env EMU_HTTP=$BASE EMU_LOGIN=$((BASE + 1)) python3 test_room.py "$BASE"
+# test_ingame.py: a parte 1 testa o módulo Python em memória; a parte 2 é a partida de ponta a ponta contra o C#
+run "test_ingame.py: partida completa com bot (3 buracos, tacada especial, resultado cifrado, fim de jogo)" \
+  env EMU_HTTP=$BASE EMU_LOGIN=$((BASE + 1)) python3 test_ingame.py "$BASE"
 
 if [ $FAIL -ne 0 ]; then echo "--- log do servidor:"; grep -v DEBUG "$LOG" | tail -30; fi
 rm -f "$LOG"

@@ -48,5 +48,11 @@ public sealed class SessionService(ISessionStore store)
     public Task<long?> ValidateGameLoginAsync(string key) =>
         IsWellFormed(key) ? store.ValidateAsync(key, SessionKind.GameLogin, consume: false) : Task.FromResult<long?>(null);
 
-    static bool IsWellFormed(string key) => key.Length == 16 && key.All(Uri.IsHexDigit);
+    static bool IsWellFormed(string key)
+    {
+        if (key.Length != 16) return false;
+        foreach (var ch in key)
+            if (!Uri.IsHexDigit(ch)) return false;
+        return true;
+    }
 }

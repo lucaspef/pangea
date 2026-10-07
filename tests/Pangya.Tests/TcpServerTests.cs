@@ -168,7 +168,8 @@ public class TcpServerTests
     {
         var (s, cts) = await StartAsync(new LimitsConfig { MaxPacketsPerSecond = 10 });
         await using var c = await HelloAsync(s.Port);
-        for (int i = 0; i < 50; i++) await c.SendAsync(new PacketWriter(1).U8(1));
+        try { for (int i = 0; i < 50; i++) await c.SendAsync(new PacketWriter(1).U8(1)); }
+        catch (IOException) { }                       // o servidor pode fechar antes do último envio
         Assert.True(await c.IsClosedByServerAsync());
         cts.Cancel();
     }

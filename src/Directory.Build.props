@@ -1,0 +1,8 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <!-- Regra 13: sem LINQ no código do servidor (laços e Dictionary/HashSet). Tirar o using implícito faz o
+       compilador acusar o uso; tests/ e tools/ continuam com LINQ. -->
+  <ItemGroup>
+    <Using Remove="System.Linq" />
+  </ItemGroup>
+</Project>

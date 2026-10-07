@@ -11,16 +11,23 @@ namespace Pangya.Login;
 /// <summary>Sobe um TcpServer por porta de login configurada (cliente KR 645).</summary>
 public static class LoginServer
 {
-    public static List<TcpServer> Create(ServerServices s, IEnumerable<int>? ports = null)
+    public static List<TcpServer> Create(ServerServices s, int[]? ports = null)
     {
         var cfg = s.Config;
         var players = new PlayerService(s.Players, Kr645GameData.Load(cfg.Data.IffPath), cfg.NewPlayer);
         var ctx = new LoginContext(new LoginService(s.Accounts, s.Sessions, players), s.Registry, cfg.Login, cfg.Limits.MaxLoginAttemptsPerMinute);
         var ip = IPAddress.Parse(cfg.Network.BindIp);
-        return (ports ?? cfg.Login.Ports).Select(port =>
-            new TcpServer("LOGIN", new IPEndPoint(ip, port), cfg.Limits, c => new LoginHandler(c, ctx))).ToList();
+        var servers = new List<TcpServer>();
+        foreach (var port in ports ?? cfg.Login.Ports)
+            servers.Add(new TcpServer("LOGIN", new IPEndPoint(ip, port), cfg.Limits, c => new LoginHandler(c, ctx)));
+        return servers;
     }
 
-    public static Task RunAsync(ServerServices s, CancellationToken ct) =>
-        Task.WhenAll(Create(s).Select(t => t.StartAsync(ct)));
+    public static Task RunAsync(ServerServices s, CancellationToken ct)
+    {
+        var servers = Create(s);
+        var tasks = new Task[servers.Count];
+        for (int i = 0; i < servers.Count; i++) tasks[i] = servers[i].StartAsync(ct);
+        return Task.WhenAll(tasks);
+    }
 }

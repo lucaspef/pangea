@@ -15,20 +15,20 @@ public sealed class Kr645GameData : IGameData
         Iff = iff;
         foreach (var p in iff.Parts) parts.Add((int)p.c.TypeId);
         typeIds.UnionWith(parts);
-        typeIds.UnionWith(iff.Characters.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.Clubs.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.ClubSets.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.Balls.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.Items.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.Caddies.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.CaddieItems.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.SetItems.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.Skins.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.HairStyles.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.Mascots.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.AuxParts.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.Cards.Select(x => (int)x.c.TypeId));
-        typeIds.UnionWith(iff.Furniture.Select(x => (int)x.c.TypeId));
+        foreach (var x in iff.Characters) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.Clubs) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.ClubSets) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.Balls) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.Items) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.Caddies) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.CaddieItems) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.SetItems) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.Skins) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.HairStyles) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.Mascots) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.AuxParts) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.Cards) typeIds.Add((int)x.c.TypeId);
+        foreach (var x in iff.Furniture) typeIds.Add((int)x.c.TypeId);
     }
 
     public static Kr645GameData Load(string iffPath) => new(Kr645Iff.Load(iffPath));
@@ -39,6 +39,12 @@ public sealed class Kr645GameData : IGameData
     public int[] DefaultParts(int characterTypeId)
     {
         int idx = characterTypeId & 0xFF;
-        return Enumerable.Range(0, 24).Select(slot => 0x08000400 | (idx << 18) | (slot << 13)).Select(t => parts.Contains(t) ? t : 0).ToArray();
+        var result = new int[24];
+        for (int slot = 0; slot < 24; slot++)
+        {
+            int t = 0x08000400 | (idx << 18) | (slot << 13);
+            result[slot] = parts.Contains(t) ? t : 0;
+        }
+        return result;
     }
 }

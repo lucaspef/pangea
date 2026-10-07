@@ -74,6 +74,10 @@ public sealed class AttemptLimiter(int maxAttempts, TimeSpan window)
     {
         foreach (var (k, q) in attempts)
             lock (q)
-                if (q.Count == 0 || now - q.Last() > window.TotalMilliseconds) attempts.TryRemove(k, out _);
+            {
+                // a fila está em ordem de tempo: se a primeira já venceu e não há outras recentes, a chave sai
+                while (q.Count > 0 && now - q.Peek() > window.TotalMilliseconds) q.Dequeue();
+                if (q.Count == 0) attempts.TryRemove(k, out _);
+            }
     }
 }
