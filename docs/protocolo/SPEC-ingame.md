@@ -83,7 +83,7 @@ msg 0x279 = Decode4 sync time). All real captures so far are `u16 0 + 46` (48 by
 |0x10|u8 |bar phase doc+0xe0 (4 counts as "pangya" in ChangeGameMode(0x40))|
 |0x11|u32|special-shot flags (ball+0x44)|
 |0x15|u32|PVS+0x21c0|
-|0x19|f32|aim angle doc+0x10c (yaw vs +Z, RotMat(Y).z = (sin,0,cos))|
+|0x19|f32|aim angle doc+0x10c, radians from world +Z: dir = (-sin a, 0, cos a); angle to a target = atan2(-dx, dz) (wmath.cpp:283, rival.cpp:271). The old `(sin,0,cos)` / `atan2(dx,dz)` here was wrong (mirrored). Final yaw = a + f32(+0x2A) + phase/curve delta|
 |0x1D|i32|shot time doc+0x170|
 |0x21|u32|doc+0xec|
 |0x25|u8 |club index|
@@ -120,17 +120,43 @@ player 0x4e0), i8 score vs par (0x4e4), u8 total strokes (0x4e1), u16 ?, u32 tot
 
 ## Bot
 Room player with `bot=True`, `sess=None` (room.py `!bot` chat command). On its turn (after `EMU_BOT_DELAY`, default 4 s):
-- `EMU_BOT_MODE=shoot` (default): server sends 0x53 with a fabricated 46-byte block = last human shot block with power, aim angle and
-  club replaced (club by distance with assumed yardages 1W 230 .. SW 80, putter <= 30 y; 1 yard = 3.2 units assumed; power bar =
-  140 + 360*frac^2; angle = atan2(dx, dz) to the pin from the 0x1B position / tee). Each human client simulates the bot's ball
+- `EMU_BOT_MODE=shoot` (default): server sends 0x53 with a fabricated 46-byte block. Each human client simulates the bot's ball
   physics and reports it in 0x1B (guid = bot), which is relayed as 0x62 like any shot; bot gives up at par+4 like everyone else.
 - `EMU_BOT_MODE=pass`: server sends 0x5A (time-out); clients add a stroke and send 0x1C; turn rotates; the bot gives up at par+4.
+
+**Servidor C# (2026-10-07): o bot segue o modelo do oponente de computador do próprio cliente** (CRival::SetVariable, rival.cpp).
+Lógica pura em `src/Pangya.Domain/Rooms/BotGolfer.cs` (ShotModel, BotGolfer, ShotCalibration); o bloco é montado em
+`InGameOutput.BotBlock` (src/Pangya.Protocol.KR645/Game/InGame.cs).
+- Mira: a = atan2(-dx, dz) (direção (-sen a, 0, cos a)); +0x2A = 0 (soma na mira final).
+- Distância linear na barra (rival.cpp:87): unidades = alcance_jd × 3,2 × (barra − 140)/360 × lie, ou seja
+  barra = 140 + 360 × D / (alcance × 3,2). 1 jarda = 3,2 unidades (confirmado). O lie (rough etc.) não chega ao servidor: lie = 1.
+- Tacos (+0x25) e alcance em jardas: 0 1W 230, 1 2W 210, 2 3W 190, 3 2I 180, 4 3I 170, 5 4I 160, 6 5I 150, 7 6I 140, 8 7I 130,
+  9 8I 120, 10 9I 110, 11 PW 100, 12 SW 80, 13 1PT 20 (40 "putt longo" fora do green ou a 15+ jd da bandeira), 14 2PT 10 (30).
+  Madeiras: + 2 × stat de força (o bot tem o kit de um jogador novo: 0). PW/SW têm alcances especiais perto da bandeira
+  (até 30 jd -> 30; 30..58 -> 60): o bot não usa esses tacos (9I até 110 jd fora do green).
+- Escolha: putter 1PT a até 20 jd da bandeira (**suposição de green**: o lie da bola não é conhecido no servidor; o 0x1B não diz
+  "green" de forma confiável); senão o taco mais curto de 1W..9I que alcança; longe demais = 1W com o alvo na linha da bandeira
+  limitado ao alcance (buracos longos em etapas; a geometria do campo — dogleg, árvores, água — não é conhecida no servidor).
+  Putt: força = (distância + 1 jd)/alcance, direto na bandeira, sem vento (o cliente usa a inclinação do green, que o servidor
+  não tem). Depois de água/OB (estado 3) no buraco, usa 2 tacos mais curtos (como o CRival, até o 9I).
+- Vento (0x59, wind.cpp): W = (byte+1) × (-sen(d × 0,02464), 0, cos(d × 0,02464)); o oponente do cliente mira em alvo − 3 × W
+  (madeiras/ferros; putts não). A força também usa |alvo − pos − 3W|.
+- Bloco (tacada reta): +0x00 barra; +0x04 = f32 em +0x21 (centro do impacto, 140); +0x08/+0x0C = 0 (sem efeito);
+  +0x10 = 4; +0x11 = 0 (sem tacada especial); +0x15, +0x1D, +0x21 da última tacada humana (sem modelo: +0x21 = 140f,
+  +0x1D = 3000); +0x19 mira; +0x25 taco; +0x26 = 0; +0x2A = 0.
+- Imprecisão: `Game.BotAccuracy` (0..1, padrão 0,85): mira ± (1 − p) × 0,15 rad e força × (1 ± (1 − p) × 0,3), uniformes.
+- Calibração online (ShotCalibration, média móvel α = 0,3): para cada tacada limpa (fase 4, sem efeito/especial, +0x2A = 0) que não
+  é putt, água/OB nem bola no buraco, compara o deslocamento real (0x1B, menos 3W) com o previsto (mira, barra, taco): desvio de mira
+  (limitado a ±0,15 rad) de todos; fator de distância (0,8..1,25) só das tacadas do bot e dos ferros humanos (madeiras dependem do
+  stat de força de cada um). Desvios > 0,3 rad ou razão fora de 0,5..2 são descartados (obstáculo/curva). O log
+  "resultado" mostra direção real x mira, distância real x prevista e o estado da calibração.
 
 ## Uncertainties
 - Not verified against the real client: whether the client counts the OB/water penalty exactly like the server (+1 for state 3),
   the semantics of state 2 vs 5, the meaning of the 0x64 fields marked `?`, and the wind byte meaning (direction encoding).
-- Bot shots: the field semantics of the shot block beyond power/angle/club are copied from the human's last shot; the yard scale, club
-  yardages and angle sign are assumptions, so bot balls may land far from the pin (the game still finishes through par+4 give-up).
+- Bot shots (C#): angle sign, linear bar, yard scale and club ranges come from the decompiled client; still to confirm with real-client
+  logs: the 3 × W wind drift, the putter range near the green (20 vs 40 jd under 15 jd depends on the lie, unknown to the server),
+  the lie factor on rough/bunker, and whether +0x15/+0x1D from the human template are fine for the bot.
 - 0x34/0x8E is assumed once per hole (doc+0x14e); if the client only sends it on hole 1 the 15 s fallback covers the bot case.
 - Game result/EXP screen packets (0x77 doc+0x456e, 0xC6 pang update, 0xCA prizes) are not sent; pang/EXP are not credited to the account.
 - Only stroke rules are implemented (match/team/skins/30s modes use other ids/fields).

@@ -95,7 +95,7 @@ public sealed partial class GameHandler
         var block = rest.Slice(start, InGameOutput.ShotLength);
         var after = rest.Slice(start + InGameOutput.ShotLength, tail);
         var output = (InGameOutput)g.Output;
-        output.LogShot(me, block);
+        output.OnShot(me, block);
         output.Remember(block, after);
         // para TODOS, inclusive quem tacou: o voo da própria bola começa com este eco (byte a byte, com as flags especiais)
         InGameOutput.Broadcast(r, new PacketWriter(InGameOutput.SShot).U32(me.Guid).Bytes(block).Bytes(after));
@@ -112,7 +112,7 @@ public sealed partial class GameHandler
             BinaryPrimitives.ReadSingleLittleEndian(res[8..]), BinaryPrimitives.ReadSingleLittleEndian(res[12..]), res[0x10],
             BinaryPrimitives.ReadUInt32LittleEndian(res[0x13..]), BinaryPrimitives.ReadUInt32LittleEndian(res[0x17..]));
         if (!g.Result(sr)) return;
-        ((InGameOutput)g.Output).LogResult(sr);
+        ((InGameOutput)g.Output).OnResult(sr);
         InGameOutput.Broadcast(r, new PacketWriter(InGameOutput.SShotResult).Bytes(res));
     }
 

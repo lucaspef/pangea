@@ -96,6 +96,8 @@ public sealed class GameConfig
     public double TeeFallbackSeconds { get; set; } = 15;
     /// <summary>true = o bot só passa a vez (estouro de tempo) em vez de tacar.</summary>
     public bool BotPasses { get; set; }
+    /// <summary>Precisão do bot, 0..1 (1 = sem erro aleatório de mira/força).</summary>
+    public float BotAccuracy { get; set; } = 0.85f;
 }
 
 public sealed class ChannelConfig

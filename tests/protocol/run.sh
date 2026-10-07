@@ -33,7 +33,8 @@ run() { # nome, comando...
   if "$@"; then echo "--- OK: $name"; else echo "--- FALHOU: $name"; FAIL=1; fi
 }
 
-su postgres -c "psql -q -d pangya_test -c 'delete from servers'" 2>/dev/null
+DBNAME=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')     # o banco de config/test.json (não um nome fixo)
+su postgres -c "psql -q -d ${DBNAME:-pangya_test} -c 'delete from servers'" 2>/dev/null
 USER=tester$BASE
 for u in tester roomA roomB golf; do   # contas dos testes (senha "x", como os scripts mandam); podem já existir
   dotnet "$DLL" --config "$CFG" account-create "$u$BASE" x "N$u$BASE" > /dev/null 2>&1

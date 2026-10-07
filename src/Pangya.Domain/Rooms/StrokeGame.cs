@@ -87,6 +87,9 @@ public sealed class StrokeGame
     public bool ShotOpen { get; private set; }
     public bool Started { get; private set; }
     public bool Over { get; private set; }
+    /// <summary>Vento da vez atual (bytes do 0x59: intensidade 0..8, direção 0..255).</summary>
+    public byte WindStrength { get; private set; }
+    public byte WindDirection { get; private set; }
 
     public StrokeGame(Room room, IGameOutput output, object sync, TimeSpan botDelay, TimeSpan teeFallback)
     {
@@ -244,7 +247,12 @@ public sealed class StrokeGame
         p.Strokes[HoleIndex]++;
     }
 
-    void NewWind() => output.Wind((byte)rng.Next(9), (byte)rng.Next(256));
+    void NewWind()
+    {
+        WindStrength = (byte)rng.Next(9);
+        WindDirection = (byte)rng.Next(256);
+        output.Wind(WindStrength, WindDirection);
+    }
 
     void Advance()
     {
