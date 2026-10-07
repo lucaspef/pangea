@@ -10,7 +10,11 @@ namespace Pangya.Core.Config;
 /// </summary>
 public sealed class PangyaConfig
 {
+    /// <summary>Servidores que este processo roda (se a linha de comando não disser): web, login.</summary>
+    public string[] Run { get; set; } = ["web", "login"];
     public NetworkConfig Network { get; set; } = new();
+    public WebConfig Web { get; set; } = new();
+    public LoginConfig Login { get; set; } = new();
     public DatabaseConfig Database { get; set; } = new();
     public LimitsConfig Limits { get; set; } = new();
     public LoggingConfig Logging { get; set; } = new();
@@ -57,6 +61,22 @@ public sealed class NetworkConfig
     public string BindIp { get; set; } = "0.0.0.0";
     /// <summary>IP anunciado ao cliente (lista de servidores).</summary>
     public string PublicIp { get; set; } = "127.0.0.1";
+}
+
+/// <summary>Servidor HTTP: login do cliente (LoginForGame.aspx) e página de cadastro.</summary>
+public sealed class WebConfig
+{
+    public int Port { get; set; } = 80;
+    /// <summary>Login com conta inexistente cria a conta. SÓ PARA TESTES: nunca ligue num servidor aberto.</summary>
+    public bool AutoRegister { get; set; }
+}
+
+public sealed class LoginConfig
+{
+    /// <summary>O cliente 645 conecta na 10101 (fixo no exe); o 642 live sorteia 10101/10102.</summary>
+    public int[] Ports { get; set; } = [10101];
+    /// <summary>Identificador mandado no hello.</summary>
+    public uint ServerUid { get; set; } = 10101;
 }
 
 public sealed class DatabaseConfig

@@ -1,5 +1,7 @@
 // Configuração usada pelos testes automáticos (banco pangya_test, apagado e recriado a cada execução).
 {
+  "Web": { "Port": 0, "AutoRegister": false },
+  "Login": { "Ports": [0], "ServerUid": 10101 },
   "Network": {
     "BindIp": "127.0.0.1",
     "PublicIp": "127.0.0.1"

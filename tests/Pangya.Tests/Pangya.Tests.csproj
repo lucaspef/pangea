@@ -12,5 +12,8 @@
     <ProjectReference Include="..\..\src\Pangya.Domain\Pangya.Domain.csproj" />
     <ProjectReference Include="..\..\src\Pangya.Protocol.KR645\Pangya.Protocol.KR645.csproj" />
     <ProjectReference Include="..\..\src\Pangya.Data\Pangya.Data.csproj" />
+    <ProjectReference Include="..\..\src\Pangya.Web\Pangya.Web.csproj" />
+    <ProjectReference Include="..\..\src\Pangya.Login\Pangya.Login.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

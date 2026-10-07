@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Executável único: roda os servidores escolhidos (web, login, game...) num processo. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Pangya.Web\Pangya.Web.csproj" />
+    <ProjectReference Include="..\Pangya.Login\Pangya.Login.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,3 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Lógica do jogo, independente de versão do cliente (sem bytes nem IDs de pacote). -->
+  <ItemGroup>
+    <ProjectReference Include="..\Pangya.Core\Pangya.Core.csproj" />
+  </ItemGroup>
 </Project>
