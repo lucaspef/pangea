@@ -8,11 +8,15 @@ using Pangya.Domain.Players;
 namespace Pangya.Protocol.KR645.Game;
 
 /// <summary>Serviços do game server (um por processo).</summary>
-public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players)
+public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players, IGameData data)
 {
     public GameWorld World { get; } = world;
     public SessionService Sessions { get; } = sessions;
     public PlayerService Players { get; } = players;
+    public IGameData Data { get; } = data;
+    public Domain.Shop.ShopService Shop { get; } = new(players.Store, data);
+    public Domain.Shop.CardService Cards { get; } = new(players.Store, data);
+    public PlayerActions Actions { get; } = new(players.Store, data);
 }
 
 /// <summary>
@@ -23,11 +27,12 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
 public sealed partial class GameHandler(Connection conn, GameContext ctx) : IConnectionHandler, IGameSession
 {
     // ids C->S
-    const ushort CLogin = 0x02, CEnterChannel = 0x04, CEnterChannelAlt = 0x83, CAfterChannel = 0x99, CHeartbeat = 0xF6, CUnknown55 = 0x55;
+    const ushort CLogin = 0x02, CEnterChannel = 0x04, CEnterChannelAlt = 0x83, CAfterChannel = 0x99, CHeartbeat = 0xF6, CUnknown55 = 0x55,
+        CGuildList = 0x105;
     // ids S->C
     const ushort SHello = 0x3D, SPlayerInfo = 0x42, SChannels = 0x4B, SEnterChannel = 0x4C, SCharacters = 0x6E, SCaddies = 0x6F,
         SEquip = 0x70, SItems = 0x71, SGiftBox = 0x78, SCookie = 0x94, SMascots = 0xDF, SItemCounts = 0xA5,
-        SCardsClear = 0x12D, SCardPeriodsClear = 0x12E, SCardPeriods = 0x12F, SCards = 0x130;
+        SCardsClear = 0x12D, SCardPeriodsClear = 0x12E, SCardPeriods = 0x12F, SCards = 0x130, SGuildList = 0x1BA;
 
     Player? player;
     Channel? channel;
@@ -65,12 +70,13 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
-        if (await HandleRoomAsync(p) || HandlePlay(p)) return;
+        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;
             case CEnterChannel or CEnterChannelAlt: EnterChannel(p.U8()); break;
             case CAfterChannel or CHeartbeat or CUnknown55: break;
+            case CGuildList: p.Skip(p.Remaining); conn.Send(new PacketWriter(SGuildList).U32(1).U32(1).U32(1).U16(0)); break;   // guildas: Fase futura
             default: Log.Debug($"{conn} pacote não tratado 0x{p.Id:X4} ({p.Remaining} bytes)"); break;
         }
     }
@@ -145,7 +151,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
 
         var items = new List<Item>();
         foreach (var it in p.Items.Values)
-            if (InItemList(it.Group)) items.Add(it);
+            if (InItemList(it.Group) && it.Location == ItemLocation.Inventory) items.Add(it);
         w = new PacketWriter(SItems, 8 + items.Count * 0xA8).U16((ushort)items.Count).U16((ushort)items.Count);
         foreach (var it in items) w.Struct(PlayerStructs.ItemInfo(it));
         conn.Send(w);
@@ -159,11 +165,53 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         conn.Send(w);
 
         conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0));   // caixa de presentes vazia (modo 1)
-        conn.Send(new PacketWriter(SCardsClear));
-        conn.Send(new PacketWriter(SCards).U32(0).U16(0));                  // cards: Fase 5
-        conn.Send(new PacketWriter(SCardPeriodsClear));
-        conn.Send(new PacketWriter(SCardPeriods).U16(0));
+        SendCards();
         conn.Send(new PacketWriter(SCookie).U64((ulong)p.Cookie));
+    }
+
+    /// <summary>0x12D limpa + 0x130 pilhas de cards (sCards) + 0x12E limpa + 0x12F cards ativos/encaixados.</summary>
+    void SendCards()
+    {
+        var p = player!;
+        var stacks = p.OfGroup(ItemGroup.Card);
+        conn.Send(new PacketWriter(SCardsClear));
+        var w = new PacketWriter(SCards, 8 + stacks.Count * 0x3A).U32(0).U16((ushort)stacks.Count);
+        foreach (var c in stacks) w.Struct(new sCards { uid = (uint)c.Id, typeId = (uint)c.TypeId, count = c.Quantity, type = 1 });
+        conn.Send(w);
+        var now = DateTime.UtcNow;
+        var active = new List<Item>();
+        foreach (var it in p.Items.Values)
+            if (it.Location == ItemLocation.ActiveCard && (it.ExpiresAt == null || it.ExpiresAt > now)) active.Add(it);
+        conn.Send(new PacketWriter(SCardPeriodsClear));
+        w = new PacketWriter(SCardPeriods, 8 + active.Count * 0x41).U16((ushort)active.Count);
+        foreach (var it in active)
+        {
+            var a = Domain.Shop.CardService.ToActive(it);
+            w.Struct(new sSCardAvilityPeriodInfo
+            {
+                uid = (uint)a.Id, tid = (uint)a.TypeId, partsTid = (uint)a.PartTypeId, partsUid = (uint)a.PartId, slotNum = a.Slot,
+                useStartTime = PlayerStructs.SystemTime(a.Start?.ToLocalTime()), useEndTime = PlayerStructs.SystemTime(a.End?.ToLocalTime()),
+                cardType = (a.TypeId >> 22) & 0xF, valid = 1,
+            });
+        }
+        conn.Send(w);
+    }
+
+    /// <summary>Fim de partida: credita pang (limitado) e EXP e atualiza o pang mostrado. Chamado sob o lock da sala.</summary>
+    public void OnGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished)
+    {
+        var p = player!;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var r = await Rewards.ApplyAsync(ctx.Players.Store, p, reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards);
+                if (r.Pang == 0 && r.Exp == 0) return;
+                Log.Info($"{conn} recompensa: +{r.Pang} pang, +{r.Exp} EXP{(r.LevelsUp > 0 ? $", subiu {r.LevelsUp} nível(is) -> {p.Level}" : "")}");
+                conn.Send(new PacketWriter(SPang).U64((ulong)p.Pang).U64(0));
+            }
+            catch (Exception e) { Log.Error($"{conn} falha ao gravar a recompensa", e); }
+        });
     }
 
     void EnterChannel(byte id)

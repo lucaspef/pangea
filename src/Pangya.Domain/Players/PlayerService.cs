@@ -10,6 +10,12 @@ public interface IGameData
     bool Exists(int typeId);
     /// <summary>Partes padrão (24 typeids) de um personagem recém-criado.</summary>
     int[] DefaultParts(int characterTypeId);
+    /// <summary>Item do catálogo da loja (null = não existe).</summary>
+    Shop.ShopItem? GetShopItem(int typeId);
+    /// <summary>Preço em pang para subir um atributo (0 força .. 4 curva) a partir do nível atual; null = não dá.</summary>
+    int? UpgradePrice(int stat, int current);
+    /// <summary>Todos os cards do jogo, por typeid.</summary>
+    IReadOnlyDictionary<int, Shop.CardInfo> Cards { get; }
 }
 
 /// <summary>Resultado da conferência/criação de nickname (os códigos são os do cliente KR: 0x0D/0x0E).</summary>

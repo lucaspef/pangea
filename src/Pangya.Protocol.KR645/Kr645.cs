@@ -34,7 +34,7 @@ public sealed class Kr645Iff(IffArchive archive)
     public Iff.sClub[] Clubs { get; } = archive.Table<Iff.sClub>("Club.iff");
     public Iff.sClubSet[] ClubSets { get; } = archive.Table<Iff.sClubSet>("ClubSet.iff");
     public Iff.sBall[] Balls { get; } = archive.Table<Iff.sBall>("Ball.iff");
-    public IffItem642[] Items { get; } = archive.Table<IffItem642>("Item.iff");
+    public IffItem642[] Items { get; } = LoadItems(archive);
     public Iff.sCaddie[] Caddies { get; } = archive.Table<Iff.sCaddie>("Caddie.iff");
     public Iff.sCadItem[] CaddieItems { get; } = archive.Table<Iff.sCadItem>("CaddieItem.iff");
     public Iff.sSetItem[] SetItems { get; } = archive.Table<Iff.sSetItem>("SetItem.iff");
@@ -46,6 +46,21 @@ public sealed class Kr645Iff(IffArchive archive)
     public Iff.sAuxPart[] AuxParts { get; } = archive.Table<Iff.sAuxPart>("AuxPart.iff");
     public Iff.sCard[] Cards { get; } = archive.Table<Iff.sCard>("Card.iff");
     public Iff.sFurniture[] Furniture { get; } = archive.Table<Iff.sFurniture>("Furniture.iff");
+    public Iff.sEnchant[] Enchants { get; } = archive.Table<Iff.sEnchant>("Enchant.iff");
 
     public static Kr645Iff Load(string path) => new(IffArchive.Load(path));
+
+    /// <summary>
+    /// Item.iff existe em dois formatos: dados 642 (196 bytes) e o convertido para o exe 645 (200 bytes, com o
+    /// RandomBox; projectg_zzfix.pak do make_iff_fix.py). Os dois viram o formato 642.
+    /// </summary>
+    static IffItem642[] LoadItems(IffArchive a)
+    {
+        if (a.RecordSize("Item.iff") == 196) return a.Table<IffItem642>("Item.iff");
+        var full = a.Table<Iff.sItem>("Item.iff");
+        var list = new IffItem642[full.Length];
+        for (int i = 0; i < full.Length; i++)
+            list[i] = new IffItem642 { c = full[i].c, Data = full[i].Data, COM = full[i].COM, Point = full[i].Point };
+        return list;
+    }
 }

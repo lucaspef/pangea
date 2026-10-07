@@ -9,29 +9,29 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
 {
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    sealed record PlayerRow(long AccountId, string Login, string Nickname, int IdentityFlags, short Level, int Exp, long Pang, long Cookie, int Flags, string Equip);
-    sealed record ItemRow(int Id, int TypeId, int Quantity, string Attrs, DateTime? ExpiresAt);
+    sealed record PlayerRow(long AccountId, string Login, string Nickname, int IdentityFlags, short Level, int Exp, long Pang, long Cookie, int Flags, string Equip, long LockerPang);
+    sealed record ItemRow(int Id, int TypeId, int Quantity, string Attrs, DateTime? ExpiresAt, short Location);
 
     public async Task<Player?> LoadAsync(long accountId)
     {
         await using var c = await db.OpenAsync();
         var p = await c.QuerySingleOrDefaultAsync<PlayerRow>("""
-            select p.account_id, a.login, coalesce(a.nickname, '') nickname, a.identity_flags, p.level, p.exp, p.pang, p.cookie, p.flags, p.equip::text equip
+            select p.account_id, a.login, coalesce(a.nickname, '') nickname, a.identity_flags, p.level, p.exp, p.pang, p.cookie, p.flags, p.equip::text equip, p.locker_pang
             from players p join accounts a on a.id = p.account_id where p.account_id = @accountId
             """, new { accountId });
         if (p == null) return null;
         var items = await c.QueryAsync<ItemRow>(
-            "select id, type_id, quantity, attrs::text attrs, expires_at from items where account_id = @accountId order by id", new { accountId });
+            "select id, type_id, quantity, attrs::text attrs, expires_at, location from items where account_id = @accountId order by id", new { accountId });
         var player = new Player
         {
             AccountId = p.AccountId, Login = p.Login, Nickname = p.Nickname, IdentityFlags = p.IdentityFlags,
-            Level = p.Level, Exp = p.Exp, Pang = p.Pang, Cookie = p.Cookie, Flags = p.Flags,
+            Level = p.Level, Exp = p.Exp, Pang = p.Pang, Cookie = p.Cookie, Flags = p.Flags, LockerPang = p.LockerPang,
             Equip = JsonSerializer.Deserialize<Equipment>(p.Equip, Json) ?? new(),
         };
         foreach (var i in items)
             player.Add(new Item
             {
-                Id = i.Id, TypeId = i.TypeId, Quantity = i.Quantity, ExpiresAt = i.ExpiresAt,
+                Id = i.Id, TypeId = i.TypeId, Quantity = i.Quantity, ExpiresAt = i.ExpiresAt, Location = (ItemLocation)i.Location,
                 Attrs = JsonNode.Parse(i.Attrs)?.AsObject() ?? [],
             });
         return player;
@@ -41,6 +41,36 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
     {
         await using var c = await db.OpenAsync();
         return [.. await c.QueryAsync<int>("select nextval('object_id_seq')::int from generate_series(1, @count)", new { count })];
+    }
+
+    public async Task ApplyAsync(long accountId, PlayerChanges ch)
+    {
+        if (ch.IsEmpty) return;
+        await using var c = await db.OpenAsync();
+        await using var tx = await c.BeginTransactionAsync();
+        foreach (var it in ch.Added)
+            await c.ExecuteAsync("""
+                insert into items(id, account_id, type_id, quantity, attrs, expires_at, location)
+                values (@Id, @accountId, @TypeId, @Quantity, @attrs::jsonb, @ExpiresAt, @loc)
+                """, new { it.Id, accountId, it.TypeId, it.Quantity, attrs = it.Attrs.ToJsonString(), it.ExpiresAt, loc = (short)it.Location }, tx);
+        foreach (var it in ch.Updated)
+            await c.ExecuteAsync("""
+                update items set quantity = @Quantity, attrs = @attrs::jsonb, expires_at = @ExpiresAt, location = @loc
+                where id = @Id and account_id = @accountId
+                """, new { it.Id, accountId, it.Quantity, attrs = it.Attrs.ToJsonString(), it.ExpiresAt, loc = (short)it.Location }, tx);
+        foreach (var id in ch.Removed)
+            await c.ExecuteAsync("delete from items where id = @id and account_id = @accountId", new { id, accountId }, tx);
+        await c.ExecuteAsync("""
+            update players set pang = coalesce(@Pang, pang), cookie = coalesce(@Cookie, cookie),
+                locker_pang = coalesce(@LockerPang, locker_pang), level = coalesce(@Level::smallint, level),
+                exp = coalesce(@Exp, exp), flags = coalesce(@Flags, flags), equip = coalesce(@equip::jsonb, equip)
+            where account_id = @accountId
+            """, new
+        {
+            accountId, ch.Pang, ch.Cookie, ch.LockerPang, ch.Level, ch.Exp, ch.Flags,
+            equip = ch.Equip == null ? null : JsonSerializer.Serialize(ch.Equip, Json),
+        }, tx);
+        await tx.CommitAsync();
     }
 
     public async Task SaveItemAsync(long accountId, Item item)

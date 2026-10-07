@@ -51,6 +51,9 @@ public sealed class InGameOutput(Room room, bool botPasses) : IGameOutput
              .U32(r.Pang).U32(0).U32(r.BonusPang).Zeros(12);
         All(w);
         Log.Info($"sala {room.Index}: fim de jogo");
+        foreach (var r in results)                                   // recompensa de quem terminou (humanos)
+            if (room.Find(r.Guid)?.Session is GameHandler h)
+                h.OnGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false });
     }
 
     public void BotTurn(GamePlayer bot)

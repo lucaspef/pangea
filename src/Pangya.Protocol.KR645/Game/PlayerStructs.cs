@@ -55,7 +55,7 @@ public static class PlayerStructs
         var s = new sCaddieInfo { guid = (uint)c.Id, tid = (uint)c.TypeId, tidPart = (uint)part, Level = (byte)c.Int("level"), Exp = (uint)c.Int("exp") };
         if (part != 0 && c.Attrs["part_until"]?.GetValue<DateTime>() is { } until)
         {
-            var hours = Math.Max(0, (int)(until - DateTime.UtcNow).TotalHours);
+            var hours = Math.Max(0, (int)Math.Ceiling((until - DateTime.UtcNow).TotalHours - 1e-6));
             s.Remain_Partdate = (ushort)Math.Min(hours, ushort.MaxValue);
             s.Remain_Date = (ushort)Math.Min(hours / 24, 255);
         }
@@ -79,7 +79,7 @@ public static class PlayerStructs
         var s = new sMascotInfo
         {
             guid = (uint)m.Id, tid = (uint)m.TypeId, Level = (byte)m.Int("level"),
-            Remain_Date = (ushort)Math.Clamp((int)(end - DateTime.Now).TotalHours, 0, ushort.MaxValue),
+            Remain_Date = (ushort)Math.Clamp((int)Math.Ceiling((end - DateTime.Now).TotalHours - 1e-6), 0, ushort.MaxValue),
             endDate = SystemTime(end),
         };
         Cp949.Write(s.szMsg, m.Attrs["msg"]?.GetValue<string>() ?? "PANGYA!");

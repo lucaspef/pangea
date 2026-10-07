@@ -24,7 +24,8 @@ public sealed class GameServer
         services = s;
         var cfg = s.Config;
         World = new GameWorld(cfg.Game);
-        var ctx = new GameContext(World, s.Sessions, new PlayerService(s.Players, Kr645GameData.Load(cfg.Data.IffPath), cfg.NewPlayer));
+        var data = Kr645GameData.Load(cfg.Data.IffPath);
+        var ctx = new GameContext(World, s.Sessions, new PlayerService(s.Players, data, cfg.NewPlayer), data);
         Tcp = new TcpServer("GAME", new IPEndPoint(IPAddress.Parse(cfg.Network.BindIp), portOverride ?? cfg.Game.Port), cfg.Limits,
             c => new GameHandler(c, ctx));
     }

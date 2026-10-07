@@ -8,4 +8,4 @@ logs/
 # configurações locais (têm senhas); os modelos ficam em config/*.example.json
 config/pangya.json
 config/test.json
-data/
+/data/

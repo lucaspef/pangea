@@ -14,13 +14,15 @@ public sealed class GameEnv : IAsyncDisposable
     public ServerServices S { get; }
     public GameServer Game { get; }
     public PlayerService Players { get; }
+    public IGameData Data { get; }
     readonly CancellationTokenSource cts = new();
 
     GameEnv(ServerServices s)
     {
         S = s;
         Game = new GameServer(s, 0);
-        Players = new PlayerService(s.Players, Kr645GameData.Load(s.Config.Data.IffPath), s.Config.NewPlayer);
+        Data = Kr645GameData.Load(s.Config.Data.IffPath);
+        Players = new PlayerService(s.Players, Data, s.Config.NewPlayer);
         _ = Game.Tcp.StartAsync(cts.Token);
     }
 

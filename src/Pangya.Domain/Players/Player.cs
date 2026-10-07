@@ -9,6 +9,9 @@ public enum ItemGroup
     Skin = 0xE, HairColor = 0xF, Mascot = 0x10, Furniture = 0x12, Card = 0x1F,
 }
 
+/// <summary>Onde o objeto está.</summary>
+public enum ItemLocation : short { Inventory = 0, Locker = 1, ActiveCard = 2 }
+
 /// <summary>Um objeto do jogo de um jogador. Id único global (sequência do banco).</summary>
 public sealed class Item
 {
@@ -18,6 +21,10 @@ public sealed class Item
     /// <summary>Atributos que dependem do tipo (partes do personagem, upgrades, mensagem do mascote...).</summary>
     public JsonObject Attrs { get; set; } = [];
     public DateTime? ExpiresAt { get; set; }
+    public ItemLocation Location { get; set; }
+
+    /// <summary>Cópia independente (atributos inclusive), para mudar sem afetar o original até salvar.</summary>
+    public Item Clone() => new() { Id = Id, TypeId = TypeId, Quantity = Quantity, Attrs = (System.Text.Json.Nodes.JsonObject)Attrs.DeepClone(), ExpiresAt = ExpiresAt, Location = Location };
 
     public ItemGroup Group => GroupOf(TypeId);
 
@@ -70,6 +77,7 @@ public sealed class Player
     public int Exp { get; set; }
     public long Pang { get; set; }
     public long Cookie { get; set; }
+    public long LockerPang { get; set; }
     public int Flags { get; set; }
     public Equipment Equip { get; set; } = new();
     /// <summary>Todos os objetos do jogador, por id.</summary>
@@ -85,7 +93,7 @@ public sealed class Player
     {
         var list = new List<Item>();
         foreach (var it in Items.Values)
-            if (it.Group == g) list.Add(it);
+            if (it.Group == g && it.Location == ItemLocation.Inventory) list.Add(it);
         list.Sort(static (a, b) => a.Id.CompareTo(b.Id));
         return list;
     }
@@ -106,7 +114,7 @@ public sealed class Player
     {
         Item? best = null;
         foreach (var it in Items.Values)
-            if (it.TypeId == typeId && (best == null || it.Id < best.Id)) best = it;
+            if (it.TypeId == typeId && it.Location == ItemLocation.Inventory && (best == null || it.Id < best.Id)) best = it;
         return best;
     }
 }
@@ -119,6 +127,8 @@ public interface IPlayerStore
     Task<Player> CreateAsync(long accountId, NewPlayer spec);
     /// <summary>Reserva ids únicos (da mesma sequência dos itens), ex.: para os objetos do bot.</summary>
     Task<int[]> NewIdsAsync(int count);
+    /// <summary>Grava várias mudanças do jogador numa transação (tudo ou nada).</summary>
+    Task ApplyAsync(long accountId, PlayerChanges changes);
     /// <summary>Grava quantidade/atributos de um item (quantidade 0 apaga).</summary>
     Task SaveItemAsync(long accountId, Item item);
     Task SaveEquipAsync(long accountId, Equipment equip);
@@ -129,3 +139,20 @@ public sealed record NewPlayer(long Pang, long Cookie, IReadOnlyList<NewItem> It
 
 /// <summary>Item inicial; Equip diz em que posição ele entra equipado.</summary>
 public sealed record NewItem(int TypeId, int Quantity, JsonObject? Attrs = null, bool Equip = false);
+
+/// <summary>Mudanças a gravar juntas (compra, upgrade, armário...). Itens novos já têm id reservado.</summary>
+public sealed class PlayerChanges
+{
+    public List<Item> Added { get; } = [];
+    public List<Item> Updated { get; } = [];
+    public List<int> Removed { get; } = [];
+    public long? Pang { get; set; }
+    public long? Cookie { get; set; }
+    public long? LockerPang { get; set; }
+    public int? Level { get; set; }
+    public int? Exp { get; set; }
+    public int? Flags { get; set; }
+    public Equipment? Equip { get; set; }
+    public bool IsEmpty => Added.Count == 0 && Updated.Count == 0 && Removed.Count == 0 && Pang == null && Cookie == null
+        && LockerPang == null && Level == null && Exp == null && Flags == null && Equip == null;
+}

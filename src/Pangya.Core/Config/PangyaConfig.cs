@@ -96,6 +96,14 @@ public sealed class GameConfig
     public double TeeFallbackSeconds { get; set; } = 15;
     /// <summary>true = o bot só passa a vez (estouro de tempo) em vez de tacar.</summary>
     public bool BotPasses { get; set; }
+    public RewardConfig Rewards { get; set; } = new();
+}
+
+/// <summary>Recompensa de fim de partida (o pang informado pelo cliente é limitado por buraco).</summary>
+public sealed class RewardConfig
+{
+    public int ExpPerHole { get; set; } = 2;
+    public int MaxPangPerHole { get; set; } = 1000;
 }
 
 public sealed class ChannelConfig
