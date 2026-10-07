@@ -82,14 +82,19 @@ public sealed class ShopService(IPlayerStore store, IGameData data)
         var now = DateTime.UtcNow;
         switch (Item.GroupOf(tid))
         {
-            case ItemGroup.SetItem:                                         // set: entrega cada peça
+            case ItemGroup.SetItem:
+            {
+                // pacote: entrega cada peça. Quase todos incluem o personagem ("누리포함"), então peças que o jogador
+                // já tem são puladas; só recusa se não sobrar nada novo.
                 if (depth > 2 || data.GetShopItem(tid) is not { } set) return ShopCode.Fail;
+                int before = granted.Count;
                 foreach (var (etid, n) in set.SetElements)
                 {
                     var c = await GrantAsync(d, etid, n, days, granted, depth + 1);
-                    if (c != ShopCode.Ok) return c;
+                    if (c != ShopCode.Ok && c != ShopCode.AlreadyOwned) return c;
                 }
-                return ShopCode.Ok;
+                return granted.Count > before ? ShopCode.Ok : ShopCode.AlreadyOwned;
+            }
             case ItemGroup.Character:                                       // personagem com as partes padrão; o cliente já equipa
             {
                 if (d.FindType(tid) != null) return ShopCode.AlreadyOwned;

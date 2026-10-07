@@ -40,7 +40,9 @@ public sealed partial class GameHandler
             reqs.Add(new BuyRequest((int)b.TypeCode, b.DayCount, (int)Math.Min(b.ItemCount, int.MaxValue)));
         }
         var (code, granted) = await ctx.Shop.BuyAsync(Player, reqs);
-        Log.Info($"{conn} loja: {n} item(ns) -> {code}; pang={Player.Pang} cookie={Player.Cookie}");
+        var asked = new System.Text.StringBuilder();
+        foreach (var r in reqs) asked.Append($" 0x{r.TypeId:X8}/{r.Days}d x{r.Quantity}");
+        Log.Info($"{conn} loja:{asked} -> {code}; pang={Player.Pang} cookie={Player.Cookie}");
         if (code != ShopCode.Ok)
         {
             conn.Send(new PacketWriter(SBuyResult).U32((uint)code));

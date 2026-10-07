@@ -262,3 +262,26 @@ public class MyRoomTests(DbFixture fx)
         Assert.Equal(0x109, next);
     }
 }
+
+[Collection("db")]
+public class SetItemTests(DbFixture fx)
+{
+    [Fact]
+    public async Task PackageWithOwnedCharacterDeliversTheRest()
+    {
+        _ = fx;
+        await using var env = await GameEnv.StartAsync();
+        var (c, acc) = await LobbyClient.EnterAsync(env);
+        await using var _c = c;
+        // 블랙리본정장세트(누리포함): Nuri (já tem) + 3 roupas, em cookies (preço de promoção do catálogo)
+        long price = env.Data.GetShopItem(0x24200008)!.UnitPrice;
+        var (code, recs) = await LobbyClient.BuyAsync(c, (0x24200008, 0, 1));
+        Assert.Equal(0u, code);
+        Assert.Equal([0x8006020u, 0x800a017u, 0x8010016u], recs.Select(r => r.Tid).Order());
+        var p = (await env.Players.LoadAsync(acc.Id))!;
+        Assert.Single(p.OfGroup(ItemGroup.Character));                      // não ganhou outra Nuri
+        Assert.Equal(1000 - price, p.Cookie);
+        Assert.Equal(4u, (await LobbyClient.BuyAsync(c, (0x24200008, 0, 1))).Code);   // já tem tudo: recusa, sem cobrar
+        Assert.Equal(1000 - price, (await env.Players.LoadAsync(acc.Id))!.Cookie);
+    }
+}
