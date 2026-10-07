@@ -203,7 +203,9 @@ public class LoginFlowTests(DbFixture fx)
         var (key, member) = Phase2Env.ParseArg(await env.HttpLoginAsync(login, "senha123"));
         Assert.Equal(16, key.Length);
         Assert.True(member > 100000);
-        Assert.Contains("<result>false</result>", await env.HttpLoginAsync(login, "errada!!"));
+        var fail = await env.HttpLoginAsync(login, "errada!!");
+        Assert.Contains("<result>false</result>", fail);
+        Assert.All(fail, ch => Assert.True(ch < 128));       // o cliente só mostra ASCII em qualquer Windows
         Assert.Contains("<result>false</result>", await env.HttpLoginAsync("<script>", "x"));
     }
 

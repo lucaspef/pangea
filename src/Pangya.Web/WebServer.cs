@@ -94,13 +94,18 @@ public static class LoginXml
     public static string Failure(AuthStatus status, Account? acc) =>
         $"<?xml version=\"1.0\"?><response><result>false</result><messages>{SecurityElement.Escape(Message(status, acc))}</messages></response>";
 
-    // O cliente mostra <messages> convertido para cp949 (logininfo.cpp:443): o texto tem de ser coreano/ASCII.
+    // O cliente converte <messages> de UTF-8 para a codepage OEM do Windows (logininfo.cpp:449, CP_OEMCP):
+    // fora de um Windows coreano, só ASCII sobrevive. Por isso: português sem acentos.
     static string Message(AuthStatus status, Account? acc) => status switch
     {
-        AuthStatus.Blocked => "계정이 정지되었습니다." + (acc?.BlockReason is { } r ? " " + r : ""),   // conta bloqueada
-        AuthStatus.TooManyAttempts => "잠시 후 다시 시도해 주세요.",                                    // tente mais tarde
-        _ => "아이디나 비밀번호가 잘못 입력되었습니다.",                                                 // ID ou senha incorretos (texto do cliente)
+        AuthStatus.Blocked => "Conta bloqueada." + (acc?.BlockReason is { } r ? " Motivo: " + Ascii(r) : ""),
+        AuthStatus.TooManyAttempts => "Tentativas demais. Espere 1 minuto.",
+        _ => "ID ou senha incorretos.",
     };
+
+    /// <summary>Remove acentos e o que não for ASCII visível.</summary>
+    static string Ascii(string s) =>
+        new(s.Normalize(System.Text.NormalizationForm.FormD).Where(c => c is >= ' ' and <= '~').ToArray());
 }
 
 static class RegisterPage
