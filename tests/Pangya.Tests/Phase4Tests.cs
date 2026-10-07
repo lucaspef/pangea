@@ -11,7 +11,8 @@ sealed class FakeOutput : IGameOutput
 {
     public List<string> Events { get; } = [];
     public StrokeGame? Game { get; set; }
-    public void Wind(byte wind, byte direction) => Events.Add("wind");
+    public (byte, byte) LastWind { get; private set; }
+    public void Wind(byte wind, byte direction) { Events.Add("wind"); LastWind = (wind, direction); }
     public void HoleStart(GamePlayer first) => Events.Add($"start {first.Guid}");
     public void TeeReady() => Events.Add("tee");
     public void NextTurn(GamePlayer p) => Events.Add($"turn {p.Guid}");
@@ -138,6 +139,8 @@ public class StrokeGameTests
         }
         Assert.Equal("turn 100", o.Last);
         Assert.Equal(RoomState.Playing, room.State);
+        Assert.Equal(o.LastWind, (g.WindStrength, g.WindDirection));      // o bot mira com o vento que os clientes têm
+        Assert.InRange(g.WindStrength, 0, 8);
     }
 
     [Fact]
