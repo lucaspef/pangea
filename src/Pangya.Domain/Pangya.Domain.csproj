@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Lógica do jogo, independente de versão do cliente (sem bytes nem IDs de pacote). -->
+</Project>

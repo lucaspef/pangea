@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Pangya.Core\Pangya.Core.csproj" />
+    <ProjectReference Include="..\..\src\Pangya.Domain\Pangya.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Pangya.Protocol.KR645\Pangya.Protocol.KR645.csproj" />
+    <ProjectReference Include="..\..\src\Pangya.Data\Pangya.Data.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tradução pacotes <-> lógica para o cliente KR "645 QA". -->
+  <ItemGroup>
+    <ProjectReference Include="..\Pangya.Core\Pangya.Core.csproj" />
+    <ProjectReference Include="..\Pangya.Domain\Pangya.Domain.csproj" />
+  </ItemGroup>
+</Project>

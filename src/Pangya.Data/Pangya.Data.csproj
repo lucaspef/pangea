@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Acesso ao PostgreSQL: migrações SQL numeradas e repositórios (SQL direto via Dapper). -->
+  <ItemGroup>
+    <ProjectReference Include="..\Pangya.Core\Pangya.Core.csproj" />
+    <ProjectReference Include="..\Pangya.Domain\Pangya.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations\*.sql" LogicalName="Migrations.%(Filename).sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.89" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+</Project>

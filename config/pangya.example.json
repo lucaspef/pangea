@@ -1,0 +1,17 @@
+// Modelo da configuração. Copie para config/pangya.json (tools/setup-dev.sh faz isso e gera a senha do banco).
+{
+  "Network": {
+    "BindIp": "0.0.0.0",
+    "PublicIp": "127.0.0.1"
+  },
+  "Database": {
+    "ConnectionString": "Host=127.0.0.1;Port=5432;Database=pangya;Username=pangya;Password=CHANGE_ME"
+  },
+  "Limits": {
+    "MaxConnectionsPerIp": 10,
+    "MaxPacketsPerSecond": 100,
+    "MaxPacketSize": 8192,
+    "MaxLoginAttemptsPerMinute": 10,
+    "IdleTimeoutSeconds": 120
+  }
+}
