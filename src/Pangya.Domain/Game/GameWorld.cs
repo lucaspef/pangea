@@ -62,6 +62,9 @@ public sealed class GameWorld(GameConfig config)
 
     public IGameSession? Find(long accountId) => online.GetValueOrDefault(accountId);
 
+    /// <summary>Sessões online (cópia instantânea; para avisos globais).</summary>
+    public ICollection<IGameSession> Online => online.Values;
+
     public ChannelJoinResult JoinChannel(int id, Channel? current, out Channel? joined)
     {
         joined = id >= 0 && id < Channels.Count ? Channels[id] : null;

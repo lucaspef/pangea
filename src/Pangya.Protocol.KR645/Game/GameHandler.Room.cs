@@ -213,7 +213,7 @@ public sealed partial class GameHandler
         }
         lock (Rooms.Sync)
         {
-            var w = RoomPackets.Chat(Player.Nickname, text);
+            var w = RoomPackets.Chat(Player.Nickname, text, IsGm ? ChatGm : (byte)0);   // bit 0x80 = texto azul de GM
             if (room != null) { InGameOutput.Broadcast(room, w); return; }
             foreach (var s in Rooms.Lobby)
                 if (s != this) ((GameHandler)s).Connection.Send(w.Body);
