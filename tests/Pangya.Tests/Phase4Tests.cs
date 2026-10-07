@@ -305,3 +305,47 @@ public class InGameItemTests(DbFixture fx)
         Assert.Fail("consumo do item não foi salvo no banco");
     }
 }
+
+public class WindTests
+{
+    [Fact]
+    public void WindIsDrawnOncePerHoleAndRepeatedOnEachTurn()
+    {
+        var mgr = new RoomManager();
+        var room = mgr.Create(new RoomSettings { Holes = 2 }, 1);
+        for (int i = 0; i < 2; i++)
+        {
+            var s = new FakeSession(100 + i);
+            RoomManager.Join(room, new RoomPlayer { Guid = (uint)(100 + i), Player = s.Player, Session = s });
+        }
+        RoomManager.PrepareStart(room, new Random(1));
+        room.HoleOrder = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+        var winds = new List<(byte, byte)>();
+        var o = new WindRecorder(winds);
+        var g = new StrokeGame(room, o, mgr.Sync, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
+        room.Game = g;
+        g.HoleData(1, new HoleInfo(4, 0, 0, 0, 320));
+        foreach (var p in g.Players) g.Loaded(p);
+        for (int shot = 0; shot < 3; shot++)
+        {
+            var p = g.Turn!;
+            g.Shoot(p);
+            g.Result(new ShotResult(p.Guid, 0, 0, 50 + shot * 10, 5, 0, 0));
+            foreach (var h in g.Players) g.ShotFinished(h);
+        }
+        Assert.True(winds.Count >= 4);
+        Assert.All(winds, w => Assert.Equal(winds[0], w));              // o mesmo vento em todas as vezes do buraco
+    }
+
+    sealed class WindRecorder(List<(byte, byte)> winds) : IGameOutput
+    {
+        public void Wind(byte wind, byte direction) => winds.Add((wind, direction));
+        public void HoleStart(GamePlayer first) { }
+        public void TeeReady() { }
+        public void NextTurn(GamePlayer p) { }
+        public void NextHole() { }
+        public void GameEnd(List<GameResult> results) { }
+        public void PlayerLeft(GamePlayer p) { }
+        public void BotTurn(GamePlayer bot) { }
+    }
+}

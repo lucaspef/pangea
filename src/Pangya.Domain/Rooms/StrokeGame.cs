@@ -247,6 +247,7 @@ public sealed class StrokeGame
         p.Strokes[HoleIndex]++;
     }
 
+    /// <summary>Vento novo: sorteado uma vez por buraco.</summary>
     void NewWind()
     {
         WindStrength = (byte)rng.Next(9);
@@ -261,7 +262,7 @@ public sealed class StrokeGame
         if (next != null)
         {
             Turn = next;
-            NewWind();
+            output.Wind(WindStrength, WindDirection);    // mesmo vento do buraco (o cliente espera o 0x59 antes da vez)
             output.NextTurn(next);
             MaybeBot();
             return;

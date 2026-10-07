@@ -120,6 +120,7 @@ public sealed class LoginHandler(Connection conn, LoginContext ctx) : IConnectio
                 var acc = r.Account!;
                 pending = null;
                 loggedIn = true;
+                conn.IdleTimeoutSeconds = 0;   // o cliente deixa a conexão de login aberta e calada durante o jogo
                 conn.Send(new PacketWriter(SGameKey).Str(r.GameKey!));
                 conn.Send(new PacketWriter(SLoginResult).U8(Ok).Str(typedId).U32((uint)acc.Id).U32((uint)acc.IdentityFlags)
                     .U8(0).U8(1).U32(0).U32(0).Str(acc.Nickname!));

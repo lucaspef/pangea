@@ -31,6 +31,7 @@ public sealed class Connection
     static int nextId;
     readonly Socket socket;
     readonly LimitsConfig limits;
+    public LimitsConfig Limits => limits;
     readonly Channel<(byte[] Buf, int Start, int Len)> outbox =
         Channel.CreateBounded<(byte[], int, int)>(new BoundedChannelOptions(4096) { SingleReader = true, FullMode = BoundedChannelFullMode.DropWrite });
     readonly CancellationTokenSource cts = new();
@@ -43,11 +44,14 @@ public sealed class Connection
     public int ParseKey { get; set; }
     public bool IsClosed => closed != 0;
     public IConnectionHandler Handler { get; set; } = null!;
+    /// <summary>Fecha a conexão sem pacotes por este tempo (0 = nunca). Começa com Limits.IdleTimeoutSeconds.</summary>
+    public int IdleTimeoutSeconds { get; set; }
 
     internal Connection(Socket socket, string name, LimitsConfig limits)
     {
         this.socket = socket;
         this.limits = limits;
+        IdleTimeoutSeconds = limits.IdleTimeoutSeconds;
         Name = name;
         Remote = (IPEndPoint)socket.RemoteEndPoint!;
         socket.NoDelay = true;
@@ -116,7 +120,7 @@ public sealed class Connection
             await Handler.OnConnectedAsync();
             while (!IsClosed)
             {
-                idle.CancelAfter(TimeSpan.FromSeconds(limits.IdleTimeoutSeconds));
+                idle.CancelAfter(IdleTimeoutSeconds > 0 ? TimeSpan.FromSeconds(IdleTimeoutSeconds) : Timeout.InfiniteTimeSpan);
                 if (!await ReadExactlyAsync(buf.AsMemory(0, PacketCipher.ClientHeader), idle.Token)) break;
                 int len = BinaryPrimitives.ReadUInt16LittleEndian(buf.AsSpan(1));
                 if (len < 3 || len > limits.MaxPacketSize) { Close($"tamanho de pacote inválido ({len})"); break; }

@@ -152,7 +152,10 @@ public sealed class LimitsConfig
     public int MaxPacketsPerSecond { get; set; } = 100;
     public int MaxPacketSize { get; set; } = 8192;
     public int MaxLoginAttemptsPerMinute { get; set; } = 10;
+    /// <summary>Inatividade antes do login (conexões que não se identificam).</summary>
     public int IdleTimeoutSeconds { get; set; } = 120;
+    /// <summary>Inatividade depois do login no game server (jogador parado no lobby). A conexão de login autenticada não expira.</summary>
+    public int SessionIdleTimeoutSeconds { get; set; } = 900;
 
     internal void Validate()
     {

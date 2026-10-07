@@ -99,6 +99,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             return;
         }
         player = loaded;
+        conn.IdleTimeoutSeconds = conn.Limits.SessionIdleTimeoutSeconds;
         ctx.World.Enter(this);
         Log.Info($"{conn} entrou: {player.Login} ({player.Nickname}) uid={uid} versão={version}");
         SendPlayerInfo();

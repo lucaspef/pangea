@@ -41,10 +41,11 @@ public sealed class Phase2Env : IAsyncDisposable
 
     Phase2Env(ServerServices s, WebApplication web, TcpServer login, int webPort) => (S, Web, Login, WebPort) = (s, web, login, webPort);
 
-    public static async Task<Phase2Env> StartAsync(bool autoRegister = false)
+    public static async Task<Phase2Env> StartAsync(bool autoRegister = false, int idleSeconds = 0)
     {
         var cfg = TestEnv.Config;
         cfg.Web.AutoRegister = autoRegister;
+        if (idleSeconds > 0) cfg.Limits.IdleTimeoutSeconds = idleSeconds;
         var s = new ServerServices(cfg);
         var web = WebServer.Build(s, 0);
         await web.StartAsync();
@@ -356,5 +357,28 @@ public class BallTests
         Assert.False(new Item { TypeId = Item.BasicBall }.IsConsumable);
         Assert.True(new Item { TypeId = 0x14000001 }.IsConsumable);       // outras bolas gastam
         Assert.False(new Item { TypeId = 0x10000000 }.IsConsumable);      // club set não
+    }
+}
+
+[Collection("db")]
+public class LoginIdleTests(DbFixture fx)
+{
+    [Fact]
+    public async Task AuthenticatedLoginConnectionIsNeverClosedForIdleness()
+    {
+        _ = fx;
+        // o cliente deixa a conexão de login aberta e calada durante o jogo: fechar mostra "servidor de login desconectado"
+        await using var env = await Phase2Env.StartAsync(idleSeconds: 1);
+        var login = "i" + Guid.NewGuid().ToString("N")[..12];
+        var (_, acc) = await env.S.AccountService.RegisterAsync(login, "senha123", "t");
+        await env.S.Accounts.SetNicknameAsync(acc!.Id, "N" + login[1..8]);
+        await env.S.Players.CreateAsync(acc.Id, new NewPlayer(0, 0, []));
+        var (key, member) = Phase2Env.ParseArg(await env.HttpLoginAsync(login, "senha123"));
+        await using var anon = await env.ConnectLoginAsync();                    // sem login: cai por inatividade
+        await using var c = await env.ConnectLoginAsync();
+        await Phase2Env.SendLoginAsync(c, login, key, member);
+        await c.ExpectAsync(0x02);
+        Assert.True(await anon.IsClosedByServerAsync(4000));
+        Assert.False(await c.IsClosedByServerAsync(2500));
     }
 }
