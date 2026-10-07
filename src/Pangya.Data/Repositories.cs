@@ -37,7 +37,7 @@ public sealed class AccountRepository(Db db) : IAccountStore
     public async Task<bool> SetNicknameAsync(long id, string nickname)
     {
         await using var c = await db.OpenAsync();
-        try { return await c.ExecuteAsync("update accounts set nickname = @nickname where id = @id", new { id, nickname }) == 1; }
+        try { return await c.ExecuteAsync("update accounts set nickname = @nickname where id = @id and nickname is null", new { id, nickname }) == 1; }
         catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation) { return false; }
     }
 

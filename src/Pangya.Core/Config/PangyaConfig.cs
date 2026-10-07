@@ -19,6 +19,7 @@ public sealed class PangyaConfig
     public LimitsConfig Limits { get; set; } = new();
     public LoggingConfig Logging { get; set; } = new();
     public DataConfig Data { get; set; } = new();
+    public NewPlayerConfig NewPlayer { get; set; } = new();
 
     static readonly JsonSerializerOptions Json = new()
     {
@@ -77,6 +78,18 @@ public sealed class LoginConfig
     public int[] Ports { get; set; } = [10101];
     /// <summary>Identificador mandado no hello.</summary>
     public uint ServerUid { get; set; } = 10101;
+}
+
+/// <summary>O que um jogador novo recebe (typeids do pangya.iff).</summary>
+public sealed class NewPlayerConfig
+{
+    public long Pang { get; set; } = 100_000;
+    public long Cookie { get; set; }
+    /// <summary>Air Knight: o club set que o tutorial dá (golfruletutorial.cpp:125).</summary>
+    public int ClubSet { get; set; } = 0x10000000;
+    /// <summary>Pangya Aztec: a bola básica.</summary>
+    public int Ball { get; set; } = 0x14000000;
+    public int BallCount { get; set; } = 100;
 }
 
 public sealed class DatabaseConfig

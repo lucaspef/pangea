@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Pangya.Core.Net;
 using Pangya.Data;
 using Pangya.Domain.Accounts;
+using Pangya.Domain.Players;
 using Pangya.Domain.Servers;
 using Pangya.Login;
 using Pangya.Web;
@@ -213,6 +214,7 @@ public class LoginFlowTests(DbFixture fx)
         var login = NewLogin();
         var (_, acc) = await env.S.AccountService.RegisterAsync(login, "senha123", "t");
         Assert.True(await env.S.Accounts.SetNicknameAsync(acc!.Id, "Nick" + login[1..6]));
+        await env.S.Players.CreateAsync(acc.Id, new NewPlayer(0, 0, []));
         await env.S.Registry.HeartbeatAsync(new ServerInfo(20201, "game", "Servidor Teste", "127.0.0.1", 20201, 3000, 7, 0), TimeSpan.FromMinutes(1));
         var (key, member) = Phase2Env.ParseArg(await env.HttpLoginAsync(login, "senha123"));
 
@@ -246,6 +248,7 @@ public class LoginFlowTests(DbFixture fx)
         var login = NewLogin();
         var (_, acc) = await env.S.AccountService.RegisterAsync(login, "senha123", "t");
         await env.S.Accounts.SetNicknameAsync(acc!.Id, "N" + login[1..8]);
+        await env.S.Players.CreateAsync(acc.Id, new NewPlayer(0, 0, []));
         var (key, member) = Phase2Env.ParseArg(await env.HttpLoginAsync(login, "senha123"));
 
         await using var c = await env.ConnectLoginAsync();
@@ -259,8 +262,9 @@ public class LoginFlowTests(DbFixture fx)
         Assert.Equal(6, (await c.ExpectAsync(0x01)).U8());
     }
 
+
     [Fact]
-    public async Task AccountWithoutNicknameGoesToCharacterCreation()
+    public async Task NewAccountCreatesNicknameAndCharacterThenGetsServerList()
     {
         await using var env = await Phase2Env.StartAsync();
         var login = NewLogin();
@@ -268,6 +272,87 @@ public class LoginFlowTests(DbFixture fx)
         var (key, member) = Phase2Env.ParseArg(await env.HttpLoginAsync(login, "senha123"));
         await using var c = await env.ConnectLoginAsync();
         await Phase2Env.SendLoginAsync(c, login, key, member);
-        Assert.Equal(0xD9, (await c.ExpectAsync(0x01)).U8());
+
+        var r = await c.ExpectAsync(0x01);
+        Assert.Equal(0xD8, r.U8());                                    // abre o diálogo de nickname
+        Assert.Equal(0xFFFFFFFF, r.U32());
+
+        var nick = "Nk" + login[1..9];
+        await c.SendAsync(new PacketWriter(0x07).Str("ab"));             // curto demais
+        Assert.Equal(3u, (await c.ExpectAsync(0x0E)).U32());
+        await c.SendAsync(new PacketWriter(0x07).Str(nick));
+        r = await c.ExpectAsync(0x0E);
+        Assert.Equal(0u, r.U32());
+        Assert.Equal(nick, r.Str());
+        await c.SendAsync(new PacketWriter(0x06).Str(nick + "x"));      // diferente do conferido
+        Assert.Equal(10u, (await c.ExpectAsync(0x0D)).U32());
+        await c.SendAsync(new PacketWriter(0x06).Str(nick));
+        r = await c.ExpectAsync(0x0D);
+        Assert.Equal(0u, r.U32());
+        Assert.Equal(nick, r.Str());
+        Assert.Equal(0xD9, (await c.ExpectAsync(0x01)).U8());           // abre a criação de personagem
+
+        await c.SendAsync(new PacketWriter(0x08).U32(0x04000005).U8(0)); // personagem não oferecido
+        Assert.Equal(1, (await c.ExpectAsync(0x11)).U8());
+        await c.SendAsync(new PacketWriter(0x08).U32(0x04000000).U8(0x21)); // cabelo 1, camisa 2
+        Assert.Equal(0, (await c.ExpectAsync(0x11)).U8());
+        var gameKey = (await c.ExpectAsync(0x10)).Str();
+        r = await c.ExpectAsync(0x01);
+        Assert.Equal(0, r.U8());
+        r.Str(); r.U32(); r.U32(); r.U8(); r.U8(); r.U32(); r.U32();
+        Assert.Equal(nick, r.Str());
+        Assert.Equal(0xDE, (await c.ExpectAsync(0x01)).U8());
+        await c.ExpectAsync(0x02);
+        Assert.NotNull(await env.S.Sessions.ValidateGameLoginAsync(gameKey));
+
+        var p = (await env.S.Players.LoadAsync(member))!;
+        Assert.Equal(100_000, p.Pang);
+        var ch = p.Character!;
+        Assert.Equal(0x04000000, ch.TypeId);
+        Assert.Equal(1, ch.Int("hair"));
+        Assert.Equal(2, ch.Int("shirt"));
+        Assert.Equal([0x08000400, 0, 0x08004400, 0x08006400, 0x08008400, 0x0800A400, 0, 0x0800E400, 0x08010400,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0x08024400, 0, 0, 0, 0, 0], ch.IntArray("parts", 24));
+        Assert.Equal(ch.Id, p.Equip.CharacterId);
+        Assert.Equal(0x10000000, p.Find(p.Equip.ClubSetId)!.TypeId);
+        Assert.Equal(0x14000000, p.Equip.BallTypeId);
+        Assert.Equal(100, p.OfGroup(ItemGroup.Ball).Single().Quantity);
+        Assert.All(p.Items, i => Assert.True(i.Id >= 1_000_000));
+        Assert.Equal(p.Items.Count, p.Items.Select(i => i.Id).Distinct().Count());
+
+        // segunda conta não pode usar o mesmo nickname
+        var login2 = NewLogin();
+        await env.S.AccountService.RegisterAsync(login2, "senha123", "t");
+        var (key2, member2) = Phase2Env.ParseArg(await env.HttpLoginAsync(login2, "senha123"));
+        await using var c2 = await env.ConnectLoginAsync();
+        await Phase2Env.SendLoginAsync(c2, login2, key2, member2);
+        await c2.ExpectAsync(0x01);
+        await c2.SendAsync(new PacketWriter(0x07).Str(nick.ToUpperInvariant()));
+        Assert.Equal(2u, (await c2.ExpectAsync(0x0E)).U32());
+    }
+}
+
+public class NicknameTests
+{
+    [Theory]
+    [InlineData("Jogador1", true)]
+    [InlineData("한글닉네임", true)]
+    [InlineData("abc", false)]                   // menos de 4 bytes
+    [InlineData("12345678901234567", false)]     // mais de 16 bytes
+    [InlineData("tem espaco", false)]
+    [InlineData("aspa'x", false)]
+    [InlineData("Ação", false)]                  // fora de ASCII/Hangul
+    [InlineData("meulogin", false)]              // igual ao login
+    public void ClientRulesAreEnforced(string nick, bool ok) => Assert.Equal(ok, NicknameRules.IsValid(nick, "MeuLogin"));
+}
+
+public class BallTests
+{
+    [Fact]
+    public void BasicBallIsNeverConsumed()
+    {
+        Assert.False(new Item { TypeId = Item.BasicBall }.IsConsumable);
+        Assert.True(new Item { TypeId = 0x14000001 }.IsConsumable);       // outras bolas gastam
+        Assert.False(new Item { TypeId = 0x10000000 }.IsConsumable);      // club set não
     }
 }

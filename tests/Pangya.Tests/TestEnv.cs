@@ -9,7 +9,15 @@ public static class TestEnv
 {
     public static string Root { get; } = FindRoot();
 
-    public static PangyaConfig Config => PangyaConfig.Load(Path.Combine(Root, "config", "test.json"));
+    public static PangyaConfig Config
+    {
+        get
+        {
+            var cfg = PangyaConfig.Load(Path.Combine(Root, "config", "test.json"));
+            cfg.Data.IffPath = Path.Combine(Root, cfg.Data.IffPath);
+            return cfg;
+        }
+    }
 
     static string FindRoot()
     {

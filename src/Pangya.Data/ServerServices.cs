@@ -1,6 +1,7 @@
 using Pangya.Core.Config;
 using Pangya.Domain.Accounts;
 using Pangya.Domain.Auth;
+using Pangya.Domain.Players;
 using Pangya.Domain.Servers;
 
 namespace Pangya.Data;
@@ -14,6 +15,7 @@ public sealed class ServerServices : IAsyncDisposable
     public AccountService AccountService { get; }
     public SessionService Sessions { get; }
     public IServerRegistry Registry { get; }
+    public IPlayerStore Players { get; }
 
     public ServerServices(PangyaConfig config)
     {
@@ -23,6 +25,7 @@ public sealed class ServerServices : IAsyncDisposable
         AccountService = new AccountService(Accounts, config.Limits.MaxLoginAttemptsPerMinute, config.Web.AutoRegister);
         Sessions = new SessionService(new SessionRepository(Db));
         Registry = new ServerRegistry(Db);
+        Players = new PlayerRepository(Db);
     }
 
     public ValueTask DisposeAsync() => Db.DisposeAsync();

@@ -94,11 +94,12 @@ public static class LoginXml
     public static string Failure(AuthStatus status, Account? acc) =>
         $"<?xml version=\"1.0\"?><response><result>false</result><messages>{SecurityElement.Escape(Message(status, acc))}</messages></response>";
 
+    // O cliente mostra <messages> convertido para cp949 (logininfo.cpp:443): o texto tem de ser coreano/ASCII.
     static string Message(AuthStatus status, Account? acc) => status switch
     {
-        AuthStatus.Blocked => "Conta bloqueada" + (acc?.BlockReason is { } r ? ": " + r : ""),
-        AuthStatus.TooManyAttempts => "Tentativas demais. Espere um minuto.",
-        _ => "ID ou senha incorretos.",
+        AuthStatus.Blocked => "계정이 정지되었습니다." + (acc?.BlockReason is { } r ? " " + r : ""),   // conta bloqueada
+        AuthStatus.TooManyAttempts => "잠시 후 다시 시도해 주세요.",                                    // tente mais tarde
+        _ => "아이디나 비밀번호가 잘못 입력되었습니다.",                                                 // ID ou senha incorretos (texto do cliente)
     };
 }
 
