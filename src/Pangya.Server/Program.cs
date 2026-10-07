@@ -3,6 +3,7 @@
 //   Pangya.Server [--config ...] server-add <id> <tipo> <nome> <endereço> <porta> [máx]   servidor fixo na lista
 //   Pangya.Server [--config ...] server-remove <id>
 //   Pangya.Server [--config ...] account-create <login> <senha> <nickname>              conta pronta para jogar
+//   Pangya.Server [--config ...] player-set <login> [pang=N] [cookie=N] [level=N]         ajusta um jogador (desconectado)
 using Pangya.Core.Hosting;
 using Pangya.Core.Logging;
 using Pangya.Data;
@@ -50,6 +51,29 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
             Pangya.Protocol.KR645.Kr645GameData.Load(cfg.Data.IffPath), cfg.NewPlayer);
         await players.CreateAsync(acc.Id, 0x04000000, 0, 0);
         Log.Info($"conta criada: {rest[1]} uid={acc.Id} nick={rest[3]}");
+        return;
+    }
+
+    if (command == "player-set" && rest.Count >= 3)
+    {
+        // administração: muda pang/cookie/nível de um jogador (ele deve estar desconectado, senão a sessão aberta sobrescreve)
+        var acc = await s.Accounts.FindByLoginAsync(rest[1]) ?? throw new InvalidOperationException($"login {rest[1]} não existe");
+        var p = await s.Players.LoadAsync(acc.Id) ?? throw new InvalidOperationException($"{rest[1]} ainda não criou o personagem");
+        var ch = new Pangya.Domain.Players.PlayerChanges();
+        for (int i = 2; i < rest.Count; i++)
+        {
+            var kv = rest[i].Split('=', 2);
+            long v = kv.Length == 2 && long.TryParse(kv[1], out var n) && n >= 0 ? n : throw new ArgumentException($"valor inválido: {rest[i]}");
+            switch (kv[0])
+            {
+                case "pang": ch.Pang = v; break;
+                case "cookie": ch.Cookie = v; break;
+                case "level": ch.Level = (int)Math.Min(v, Pangya.Domain.Players.Levels.Max); ch.Exp = 0; break;
+                default: throw new ArgumentException($"campo desconhecido: {kv[0]} (use pang, cookie, level)");
+            }
+        }
+        await s.Players.ApplyAsync(acc.Id, ch);
+        Log.Info($"{rest[1]}: pang={ch.Pang ?? p.Pang} cookie={ch.Cookie ?? p.Cookie} nível={ch.Level ?? p.Level}");
         return;
     }
 
