@@ -53,6 +53,12 @@ public sealed class AccountRepository(Db db) : IAccountStore
         await c.ExecuteAsync("update accounts set password_hash = @passwordHash where id = @id", new { id, passwordHash });
     }
 
+    public async Task SetIdentityFlagsAsync(long id, int flags)
+    {
+        await using var c = await db.OpenAsync();
+        await c.ExecuteAsync("update accounts set identity_flags = @flags where id = @id", new { id, flags });
+    }
+
     public async Task RecordLoginAsync(long id, string ip)
     {
         await using var c = await db.OpenAsync();

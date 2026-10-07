@@ -32,5 +32,7 @@ public interface IAccountStore
     Task<bool> SetNicknameAsync(long id, string nickname);
     Task<bool> NicknameExistsAsync(string nickname);
     Task UpdatePasswordHashAsync(long id, string passwordHash);
+    /// <summary>Bits de identidade do cliente: 0x04 GM, 0x10 GM visível, 0x0E admin/desenvolvedor.</summary>
+    Task SetIdentityFlagsAsync(long id, int flags);
     Task RecordLoginAsync(long id, string ip);
 }

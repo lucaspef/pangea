@@ -3,7 +3,7 @@
 //   Pangya.Server [--config ...] server-add <id> <tipo> <nome> <endereço> <porta> [máx]   servidor fixo na lista
 //   Pangya.Server [--config ...] server-remove <id>
 //   Pangya.Server [--config ...] account-create <login> <senha> <nickname>              conta pronta para jogar
-//   Pangya.Server [--config ...] player-set <login> [pang=N] [cookie=N] [level=N]         ajusta um jogador (desconectado)
+//   Pangya.Server [--config ...] player-set <login> [pang=N] [cookie=N] [level=N] [identity=N]   ajusta um jogador (desconectado)
 using Pangya.Core.Hosting;
 using Pangya.Core.Logging;
 using Pangya.Data;
@@ -60,20 +60,24 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
         var acc = await s.Accounts.FindByLoginAsync(rest[1]) ?? throw new InvalidOperationException($"login {rest[1]} não existe");
         var p = await s.Players.LoadAsync(acc.Id) ?? throw new InvalidOperationException($"{rest[1]} ainda não criou o personagem");
         var ch = new Pangya.Domain.Players.PlayerChanges();
+        int? identity = null;
         for (int i = 2; i < rest.Count; i++)
         {
             var kv = rest[i].Split('=', 2);
-            long v = kv.Length == 2 && long.TryParse(kv[1], out var n) && n >= 0 ? n : throw new ArgumentException($"valor inválido: {rest[i]}");
+            long v = kv.Length == 2 && (kv[1].StartsWith("0x") ? long.TryParse(kv[1][2..], System.Globalization.NumberStyles.HexNumber, null, out var n) : long.TryParse(kv[1], out n)) && n >= 0
+                ? n : throw new ArgumentException($"valor inválido: {rest[i]}");
             switch (kv[0])
             {
                 case "pang": ch.Pang = v; break;
                 case "cookie": ch.Cookie = v; break;
                 case "level": ch.Level = (int)Math.Min(v, Pangya.Domain.Players.Levels.Max); ch.Exp = 0; break;
-                default: throw new ArgumentException($"campo desconhecido: {kv[0]} (use pang, cookie, level)");
+                case "identity": identity = (int)v; break;     // 0x14 = GM, 0x1E = GM + admin (aceita 0x...)
+                default: throw new ArgumentException($"campo desconhecido: {kv[0]} (use pang, cookie, level, identity)");
             }
         }
         await s.Players.ApplyAsync(acc.Id, ch);
-        Log.Info($"{rest[1]}: pang={ch.Pang ?? p.Pang} cookie={ch.Cookie ?? p.Cookie} nível={ch.Level ?? p.Level}");
+        if (identity is { } id) await s.Accounts.SetIdentityFlagsAsync(acc.Id, id);
+        Log.Info($"{rest[1]}: pang={ch.Pang ?? p.Pang} cookie={ch.Cookie ?? p.Cookie} nível={ch.Level ?? p.Level} identidade=0x{identity ?? acc.IdentityFlags:X}");
         return;
     }
 
