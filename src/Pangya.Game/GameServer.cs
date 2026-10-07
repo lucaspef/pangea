@@ -25,9 +25,17 @@ public sealed class GameServer
         var cfg = s.Config;
         World = new GameWorld(cfg.Game);
         var data = Kr645GameData.Load(cfg.Data.IffPath);
+        World.Rooms.Courses = cfg.Game.Courses.Length > 0 ? Bytes(cfg.Game.Courses) : data.Courses;
         var ctx = new GameContext(World, s.Sessions, new PlayerService(s.Players, data, cfg.NewPlayer), data);
         Tcp = new TcpServer("GAME", new IPEndPoint(IPAddress.Parse(cfg.Network.BindIp), portOverride ?? cfg.Game.Port), cfg.Limits,
             c => new GameHandler(c, ctx));
+    }
+
+    static byte[] Bytes(int[] v)
+    {
+        var b = new byte[v.Length];
+        for (int i = 0; i < v.Length; i++) b[i] = (byte)v[i];
+        return b;
     }
 
     ServerInfo Info => new(services.Config.Game.Id, "game", services.Config.Game.Name, services.Config.Network.PublicIp,

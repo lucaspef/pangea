@@ -16,6 +16,8 @@ public interface IGameData
     int? UpgradePrice(int stat, int current);
     /// <summary>Todos os cards do jogo, por typeid.</summary>
     IReadOnlyDictionary<int, Shop.CardInfo> Cards { get; }
+    /// <summary>Mapas que o cliente oferece, na ordem da tela de escolha (só os ativos nos dados).</summary>
+    IReadOnlyList<byte> Courses { get; }
 }
 
 /// <summary>Resultado da conferência/criação de nickname (os códigos são os do cliente KR: 0x0D/0x0E).</summary>

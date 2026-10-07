@@ -349,3 +349,40 @@ public class WindTests
         public void BotTurn(GamePlayer bot) { }
     }
 }
+
+public class CourseTests
+{
+    [Fact]
+    public void CoursesFollowTheClientMapList()
+    {
+        var data = Pangya.Protocol.KR645.Kr645GameData.Load(Path.Combine(TestEnv.Root, "data/pangya.iff"));
+        var c = data.Courses;
+        Assert.DoesNotContain((byte)0x11, c);                          // Chaos e Ice Inferno não são escolhíveis no 645
+        Assert.DoesNotContain((byte)0x12, c);
+        Assert.Equal(c.Count, c.Distinct().Count());
+        Assert.True(c.Count >= 16);
+        // ordem da tela do cliente: (Wiz City se os dados tiverem), 0x10, 0x0F, ...
+        Assert.Equal(c.Contains((byte)0x13) ? 0x13 : 0x10, c[0]);
+    }
+
+    [Fact]
+    public void InvalidCourseBecomesRandomAndRandomPicksAnAllowedMap()
+    {
+        var mgr = new RoomManager { Courses = [0x10, 0x05, 0x02] };
+        Assert.Equal(0x05, mgr.ValidCourse(0x05));
+        Assert.Equal(RoomManager.RandomCourse, mgr.ValidCourse(0x11));      // não permitido
+        Assert.Equal(RoomManager.RandomCourse, mgr.ValidCourse(0xFD));
+        var room = mgr.Create(new RoomSettings { Course = 0x12 }, 1);
+        Assert.Equal(RoomManager.RandomCourse, room.Settings.Course);
+        var rng = new Random(3);
+        for (int i = 0; i < 50; i++)
+        {
+            RoomManager.PrepareStart(room, rng, mgr.Courses);
+            Assert.Contains(room.CoursePlayed, mgr.Courses);
+            room.State = RoomState.Waiting;
+        }
+        room.Settings.Course = 0x02;
+        RoomManager.PrepareStart(room, rng, mgr.Courses);
+        Assert.Equal(0x02, room.CoursePlayed);
+    }
+}

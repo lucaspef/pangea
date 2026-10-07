@@ -139,7 +139,7 @@ public sealed partial class GameHandler
                     case 0: s.Title = p.Str(64); break;
                     case 1: s.Password = p.Str(32); break;
                     case 2: s.Mode = (GameMode)p.U8(); break;
-                    case 3: s.Course = p.U8(); break;
+                    case 3: s.Course = Rooms.ValidCourse(p.U8()); break;
                     case 4: s.Holes = p.U8(); break;
                     case 5: s.HoleType = p.U8(); break;
                     case 6: s.ShotTimeMs = p.U8() * 1000u; break;
@@ -182,7 +182,7 @@ public sealed partial class GameHandler
             var r = room;
             if (r == null || r.State != RoomState.Waiting) return;
             if (r.Find(this) is not { Master: true }) { conn.Send(new PacketWriter(RoomPackets.SStartFailed).U8(1)); return; }
-            RoomManager.PrepareStart(r, Random.Shared);
+            RoomManager.PrepareStart(r, Random.Shared, Rooms.Courses);
             var cfg = ctx.World.Config;
             r.Game = new StrokeGame(r, new InGameOutput(r, cfg.BotPasses, new BotGolfer(Random.Shared, cfg.BotAccuracy)), Rooms.Sync,
                 TimeSpan.FromSeconds(cfg.BotDelaySeconds), TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));

@@ -96,6 +96,9 @@ public sealed class GameConfig
     public double TeeFallbackSeconds { get; set; } = 15;
     /// <summary>true = o bot só passa a vez (estouro de tempo) em vez de tacar.</summary>
     public bool BotPasses { get; set; }
+    /// <summary>Mapas permitidos (número do curso). Vazio = os ativos no Course.iff, como o cliente mostra.
+    /// Ex.: liberar o Wiz City (19) quando o pak dele estiver instalado no cliente.</summary>
+    public int[] Courses { get; set; } = [];
     /// <summary>Precisão do bot, 0..1 (1 = sem erro aleatório de mira/força).</summary>
     public float BotAccuracy { get; set; } = 0.85f;
     public RewardConfig Rewards { get; set; } = new();

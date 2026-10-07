@@ -34,6 +34,26 @@ public sealed class Kr645GameData : IGameData
 
     public static Kr645GameData Load(string iffPath) => new(Kr645Iff.Load(iffPath));
 
+    /// <summary>Ordem da tela de escolha de mapa (mapselectdlg.cpp:14, sem o 0x7F = aleatório).</summary>
+    static readonly byte[] MapOrder = [0x13, 0x10, 0x0F, 0x0E, 0x0D, 0x0B, 0x08, 0x0A, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x09];
+    List<byte>? courses;
+
+    /// <summary>Mapas que o cliente mostra: estão na ordem fixa e têm registro ativo (Final) no Course.iff (typeid 0x28000000 | mapa).</summary>
+    public IReadOnlyList<byte> Courses
+    {
+        get
+        {
+            if (courses != null) return courses;
+            var active = new HashSet<uint>();
+            foreach (var c in Iff.Courses)
+                if (c.c.Final != 0) active.Add(c.c.TypeId);
+            var list = new List<byte>();
+            foreach (var m in MapOrder)
+                if (active.Contains(0x28000000u | m)) list.Add(m);
+            return courses = list;
+        }
+    }
+
     Dictionary<int, CardInfo>? cards;
 
     public IReadOnlyDictionary<int, CardInfo> Cards

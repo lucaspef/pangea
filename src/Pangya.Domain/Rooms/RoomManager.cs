@@ -14,6 +14,19 @@ public sealed class RoomManager
     int nextIndex = 1;
 
     public object Sync { get; } = new();
+    /// <summary>Mapas permitidos (o "aleatório" sorteia entre eles). Vazio = qualquer 0..10 (como o emulador fazia).</summary>
+    public IReadOnlyList<byte> Courses { get; set; } = [];
+    public const byte RandomCourse = 0x7F;
+
+    /// <summary>Mapa escolhido pelo cliente: tem de ser permitido; senão vira aleatório.</summary>
+    public byte ValidCourse(byte course)
+    {
+        if (course >= RandomCourse) return RandomCourse;
+        if (Courses.Count == 0) return course;
+        foreach (var c in Courses)
+            if (c == course) return course;
+        return RandomCourse;
+    }
     public Dictionary<int, Room>.ValueCollection Rooms => rooms.Values;
     /// <summary>Sessões na tela de lista de salas (recebem as atualizações da lista).</summary>
     public HashSet<IGameSession> Lobby { get; } = [];
@@ -23,6 +36,7 @@ public sealed class RoomManager
     public Room Create(RoomSettings settings, long ownerId)
     {
         settings.Normalize();
+        settings.Course = ValidCourse(settings.Course);
         while (rooms.ContainsKey(nextIndex)) nextIndex = nextIndex % 0xFFFE + 1;
         var room = new Room { Index = nextIndex, OwnerId = ownerId };
         nextIndex = nextIndex % 0xFFFE + 1;
@@ -76,10 +90,11 @@ public sealed class RoomManager
     }
 
     /// <summary>Sorteia mapa (se aleatório), ordem e sementes dos buracos e marca a sala como jogando.</summary>
-    public static void PrepareStart(Room room, Random rng)
+    public static void PrepareStart(Room room, Random rng, IReadOnlyList<byte>? courses = null)
     {
         var s = room.Settings;
-        room.CoursePlayed = s.Course >= 0x7F && s.Course != 0xFD ? (byte)rng.Next(11) : s.Course > 0x7F ? (byte)(s.Course - 0x80) : s.Course;
+        room.CoursePlayed = s.Course < RandomCourse ? s.Course                     // >= 0x7F = aleatório
+            : courses is { Count: > 0 } ? courses[rng.Next(courses.Count)] : (byte)rng.Next(11);
         int start = s.HoleType switch { 1 => 9, 2 => rng.Next(18), _ => 0 };
         var order = new byte[18];
         var seeds = new uint[18];
