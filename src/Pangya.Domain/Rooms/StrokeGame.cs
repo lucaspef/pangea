@@ -1,23 +1,15 @@
 namespace Pangya.Domain.Rooms;
 
-/// <summary>Resultado de uma tacada como o cliente reporta (já decifrado pela camada de protocolo).</summary>
-public readonly record struct ShotResult(uint Guid, float X, float Y, float Z, byte State, uint Pang, uint BonusPang)
-{
-    public const byte StateWaterOrOut = 3, StateHoled = 4;
-}
-
-/// <summary>Linha do placar final.</summary>
-public readonly record struct GameResult(uint Guid, int Rank, int ScoreVsPar, int TotalStrokes, uint Pang, uint BonusPang);
-
-/// <summary>O que a partida manda para os clientes (a camada de protocolo transforma em pacotes).</summary>
+/// <summary>O que uma partida por vez manda para os clientes (a camada de protocolo transforma em pacotes).</summary>
 public interface IGameOutput
 {
     void Wind(byte wind, byte direction);
     void HoleStart(GamePlayer first);
     void TeeReady();
     void NextTurn(GamePlayer p);
-    void NextHole();
-    void GameEnd(List<GameResult> results);
+    /// <summary>Buraco encerrado. holeWinner: pang battle (0xFFFFFFFF = acumula para o próximo).</summary>
+    void NextHole(uint holeWinner);
+    void GameEnd(GameEnd end);
     void PlayerLeft(GamePlayer p);
     /// <summary>Vez do bot: a camada de protocolo monta e manda a tacada e chama <see cref="StrokeGame.BotShoot"/>.</summary>
     void BotTurn(GamePlayer bot);
@@ -50,52 +42,40 @@ public sealed class GamePlayer(RoomPlayer rp, int order)
     }
 }
 
-/// <summary>Dados de um buraco que o cliente manda ao carregar (par, tee e bandeira).</summary>
-public readonly record struct HoleInfo(byte Par, float TeeX, float TeeZ, float PinX, float PinZ);
-
 /// <summary>
-/// Partida Stroke (porte do ingame.py validado com o cliente real; docs/protocolo/SPEC-ingame.md).
-/// A física e o julgamento da tacada ficam no cliente; o servidor controla turnos, buracos e placar:
+/// Partida por vez: Stroke, e base de Team/Match (<see cref="SideGame"/>) e Pang Battle (<see cref="SkinsGame"/>).
+/// Porte do ingame.py validado com o cliente real (docs/protocolo/SPEC-ingame.md). A física e o julgamento da tacada
+/// ficam no cliente; o servidor controla turnos, buracos e placar:
 /// - o buraco começa quando todos os humanos carregaram: vento + primeiro jogador;
 /// - durante o buraco joga quem está mais longe da bandeira (quem ainda está no tee joga antes, na ordem do tee);
 /// - o buraco acaba para o jogador quando ele acerta (estado 4) ou chega a par + 4 tacadas.
-/// Todos os métodos são chamados sob o lock <see cref="RoomManager.Sync"/>.
 /// </summary>
-public sealed class StrokeGame
+public class StrokeGame : RoomGame
 {
-    public const int GiveUpOverPar = 4;
-
-    readonly Room room;
-    readonly IGameOutput output;
-    readonly object sync;
     readonly TimeSpan botDelay, teeFallback;
-    readonly CancellationTokenSource cts = new();
     readonly Dictionary<uint, GamePlayer> byGuid = [];
     readonly HashSet<uint> loaded = [], teeReady = [], synced = [];
-    readonly Random rng = new();
     int teeAcked = -1;
     bool resultSent;
 
+    protected IGameOutput Out { get; }
     /// <summary>Participantes na ordem dos slots (no máximo 4: o cliente tem m_userInfo[4]).</summary>
     public List<GamePlayer> Players { get; } = [];
-    public IGameOutput Output => output;
-    public int HoleCount { get; }
+    public IGameOutput Output => Out;
     public int HoleIndex { get; private set; }
-    public byte Hole => HoleIndex < room.HoleOrder.Length ? room.HoleOrder[HoleIndex] : (byte)(HoleIndex + 1);
-    public Dictionary<byte, HoleInfo> Holes { get; } = [];
+    public byte Hole => HoleAt(HoleIndex);
     public GamePlayer? Turn { get; private set; }
     public bool ShotOpen { get; private set; }
     public bool Started { get; private set; }
-    public bool Over { get; private set; }
-    /// <summary>Vento da vez atual (bytes do 0x59: intensidade 0..8, direção 0..255).</summary>
+    /// <summary>Vento do buraco (bytes do 0x59: intensidade 0..8, direção 0..255).</summary>
     public byte WindStrength { get; private set; }
     public byte WindDirection { get; private set; }
+    /// <summary>Vencedor do buraco que acabou de fechar (pang battle; 0xFFFFFFFF = ninguém).</summary>
+    protected uint HoleWinner { get; set; } = 0xFFFFFFFF;
 
-    public StrokeGame(Room room, IGameOutput output, object sync, TimeSpan botDelay, TimeSpan teeFallback)
+    public StrokeGame(Room room, IGameOutput output, object sync, TimeSpan botDelay, TimeSpan teeFallback) : base(room, sync)
     {
-        this.room = room;
-        this.output = output;
-        this.sync = sync;
+        Out = output;
         this.botDelay = botDelay;
         this.teeFallback = teeFallback;
         for (int i = 0; i < room.Players.Count && i < 4; i++)
@@ -104,12 +84,21 @@ public sealed class StrokeGame
             Players.Add(gp);
             byGuid[gp.Guid] = gp;
         }
-        HoleCount = Math.Clamp((int)room.Settings.Holes, 1, 18);
     }
+
+    /// <summary>Partida certa para o modo da sala (os modos em massa usam <see cref="MassGame"/>).</summary>
+    public static StrokeGame For(Room room, IGameOutput output, object sync, TimeSpan botDelay, TimeSpan teeFallback) =>
+        room.Settings.Mode switch
+        {
+            GameMode.Team => new SideGame(room, output, sync, botDelay, teeFallback, perPlayer: false),
+            GameMode.Match => new SideGame(room, output, sync, botDelay, teeFallback, perPlayer: true),
+            GameMode.PangBattle => new SkinsGame(room, output, sync, botDelay, teeFallback),
+            _ => new StrokeGame(room, output, sync, botDelay, teeFallback),
+        };
 
     public GamePlayer? Find(uint guid) => byGuid.GetValueOrDefault(guid);
 
-    bool HasHumans()
+    protected bool HasHumans()
     {
         foreach (var p in Players)
             if (!p.IsBot && !p.Left) return true;
@@ -128,11 +117,7 @@ public sealed class StrokeGame
         return any;
     }
 
-    int ParOf(byte hole) => Holes.TryGetValue(hole, out var h) ? h.Par : 4;
-
     // ------------------------------------------------------------------ entradas (pacotes do cliente)
-
-    public void HoleData(byte hole, HoleInfo info) => Holes[hole] = info;
 
     public void Loaded(GamePlayer p)
     {
@@ -146,7 +131,7 @@ public sealed class StrokeGame
         if (AllHumansIn(teeReady) && teeAcked != HoleIndex)
         {
             teeAcked = HoleIndex;
-            output.TeeReady();
+            Out.TeeReady();
             MaybeBot();
         }
     }
@@ -174,6 +159,7 @@ public sealed class StrokeGame
         if (r.State == ShotResult.StateHoled) p.Holed = p.Done = true;
         else if (r.State == ShotResult.StateWaterOrOut) p.Strokes[HoleIndex]++;         // água/OB: +1 tacada
         if (!p.Done && p.Strokes[HoleIndex] >= ParOf(Hole) + GiveUpOverPar) p.Done = true;
+        OnResult(p, r);
         return true;
     }
 
@@ -195,23 +181,37 @@ public sealed class StrokeGame
     /// <summary>É a vez do jogador e não há tacada em andamento (ex.: para usar item).</summary>
     public bool IsTurnOf(GamePlayer p) => Turn == p && !ShotOpen && !Over;
 
-    public void PlayerLeft(RoomPlayer rp)
+    public override void PlayerLeft(RoomPlayer rp)
     {
         var p = Find(rp.Guid);
         if (p == null || p.Left) return;
         p.Left = p.Done = true;
         if (Over) return;
-        output.PlayerLeft(p);
+        Out.PlayerLeft(p);
         if (!HasHumans()) { Cancel(); return; }
         if (!Started) TryStartHole();
         else if (ShotOpen) TryCloseShot();      // quem saiu não precisa mais confirmar
         else if (Turn == p) Advance();
     }
 
-    public void Cancel()
+    // ------------------------------------------------------------------ ganchos dos modos
+
+    /// <summary>Depois de aplicar o resultado da tacada do jogador da vez.</summary>
+    protected virtual void OnResult(GamePlayer p, ShotResult r) { }
+    /// <summary>Antes de escolher o primeiro jogador de um buraco novo.</summary>
+    protected virtual void OnHoleStart() { }
+    /// <summary>Fim de uma tacada, antes de escolher o próximo. true = a partida acabou aqui.</summary>
+    protected virtual bool OnTurnOver() => false;
+    /// <summary>Placar final.</summary>
+    protected virtual GameEnd BuildEnd()
     {
-        Over = true;
-        cts.Cancel();
+        var ranked = new List<GamePlayer>(Players);    // quem saiu por último; menor placar; empate = ordem do slot
+        ranked.Sort((a, b) => a.Left != b.Left ? a.Left.CompareTo(b.Left)
+            : Score(a) != Score(b) ? Score(a).CompareTo(Score(b)) : a.Order.CompareTo(b.Order));
+        var results = new List<GameResult>(Players.Count);
+        foreach (var p in Players)
+            results.Add(new GameResult(p.Guid, ranked.IndexOf(p) + 1, Score(p), p.TotalStrokes(HoleCount), p.Pang, p.Bonus));
+        return new GameEnd { Kind = GameEndKind.Stroke, Results = results };
     }
 
     // ------------------------------------------------------------------ fluxo
@@ -224,17 +224,18 @@ public sealed class StrokeGame
         teeReady.Clear();
         synced.Clear();
         ShotOpen = false;
+        OnHoleStart();
         Turn = NextPlayer();
         if (Turn == null) { Finish(); return; }
         NewWind();
-        output.HoleStart(Turn);
+        Out.HoleStart(Turn);
         int idx = HoleIndex;
         Later(teeFallback, () =>
         {
             // um cliente que não manda o "pronto para o tee" não pode travar a partida
             if (HoleIndex != idx || teeAcked == idx || !Started) return;
             teeAcked = idx;
-            output.TeeReady();
+            Out.TeeReady();
             MaybeBot();
         });
     }
@@ -250,20 +251,20 @@ public sealed class StrokeGame
     /// <summary>Vento novo: sorteado uma vez por buraco.</summary>
     void NewWind()
     {
-        WindStrength = (byte)rng.Next(9);
-        WindDirection = (byte)rng.Next(256);
-        output.Wind(WindStrength, WindDirection);
+        WindStrength = (byte)Rng.Next(9);
+        WindDirection = (byte)Rng.Next(256);
+        Out.Wind(WindStrength, WindDirection);
     }
 
     void Advance()
     {
-        if (Over) return;
+        if (Over || OnTurnOver()) return;
         var next = NextPlayer();
         if (next != null)
         {
             Turn = next;
-            output.Wind(WindStrength, WindDirection);    // mesmo vento do buraco (o cliente espera o 0x59 antes da vez)
-            output.NextTurn(next);
+            Out.Wind(WindStrength, WindDirection);    // mesmo vento do buraco (o cliente espera o 0x59 antes da vez)
+            Out.NextTurn(next);
             MaybeBot();
             return;
         }
@@ -272,10 +273,10 @@ public sealed class StrokeGame
         loaded.Clear();
         Started = false;
         Turn = null;
-        output.NextHole();     // o cliente mostra o placar, manda os dados do próximo buraco e o "carregado" de novo
+        Out.NextHole(HoleWinner);   // o cliente mostra o placar, manda os dados do próximo buraco e o "carregado" de novo
     }
 
-    GamePlayer? NextPlayer()
+    protected virtual GamePlayer? NextPlayer()
     {
         // 1) alguém ainda no tee: o primeiro na ordem do tee
         //    (1º buraco = ordem dos slots; depois, menos tacadas no buraco anterior primeiro)
@@ -300,27 +301,23 @@ public sealed class StrokeGame
         return far;
     }
 
+    /// <summary>Distância (ao quadrado) da bola até a bandeira do buraco atual.</summary>
+    protected float PinDistance2(float x, float z) =>
+        Holes.TryGetValue(Hole, out var h) ? (x - h.PinX) * (x - h.PinX) + (z - h.PinZ) * (z - h.PinZ) : 0;
+
     public int Score(GamePlayer p)
     {
         int s = 0;
-        for (int i = 0; i < Math.Min(HoleIndex + 1, HoleCount); i++)
-            s += p.Strokes[i] - ParOf(i < room.HoleOrder.Length ? room.HoleOrder[i] : (byte)(i + 1));
+        for (int i = 0; i < Math.Min(HoleIndex + 1, HoleCount); i++) s += p.Strokes[i] - ParOf(HoleAt(i));
         return s;
     }
 
-    void Finish()
+    protected void Finish()
     {
         if (Over) return;
         Cancel();
-        // ranking: quem saiu por último; depois menor placar; empate = ordem do slot
-        var ranked = new List<GamePlayer>(Players);
-        ranked.Sort((a, b) => a.Left != b.Left ? a.Left.CompareTo(b.Left)
-            : Score(a) != Score(b) ? Score(a).CompareTo(Score(b)) : a.Order.CompareTo(b.Order));
-        var results = new List<GameResult>(Players.Count);
-        foreach (var p in Players)
-            results.Add(new GameResult(p.Guid, ranked.IndexOf(p) + 1, Score(p), p.TotalStrokes(HoleCount), p.Pang, p.Bonus));
-        output.GameEnd(results);
-        RoomManager.FinishGame(room);
+        Out.GameEnd(BuildEnd());
+        RoomManager.FinishGame(Room);
     }
 
     // ------------------------------------------------------------------ bot
@@ -331,22 +328,10 @@ public sealed class StrokeGame
         Later(botDelay, () =>
         {
             if (Turn != bot || ShotOpen || !HasHumans()) return;
-            output.BotTurn(bot);
+            Out.BotTurn(bot);
         });
     }
 
     /// <summary>A camada de protocolo mandou a tacada do bot (ou o estouro de tempo dele).</summary>
     public void BotShoot(GamePlayer bot) => BeginShot(bot);
-
-    void Later(TimeSpan delay, Action action)
-    {
-        var token = cts.Token;
-        _ = Task.Run(async () =>
-        {
-            try { await Task.Delay(delay, token); }
-            catch (OperationCanceledException) { return; }
-            lock (sync)
-                if (!Over) action();
-        });
-    }
 }

@@ -28,7 +28,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
 {
     // ids C->S
     const ushort CLogin = 0x02, CEnterChannel = 0x04, CEnterChannelAlt = 0x83, CAfterChannel = 0x99, CHeartbeat = 0xF6, CUnknown55 = 0x55,
-        CGuildList = 0x105;
+        CGuildList = 0x105, CGhost = 0xBA;
     // ids S->C
     const ushort SHello = 0x3D, SPlayerInfo = 0x42, SChannels = 0x4B, SEnterChannel = 0x4C, SCharacters = 0x6E, SCaddies = 0x6F,
         SEquip = 0x70, SItems = 0x71, SGiftBox = 0x78, SCookie = 0x94, SMascots = 0xDF, SItemCounts = 0xA5,
@@ -77,6 +77,10 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             case CEnterChannel or CEnterChannelAlt: EnterChannel(p.U8()); break;
             case CAfterChannel or CHeartbeat or CUnknown55: break;
             case CGuildList: p.Skip(p.Remaining); conn.Send(new PacketWriter(SGuildList).U32(1).U32(1).U32(1).U16(0)); break;   // guildas: Fase futura
+            case CGhost:                                                     // modo Ghost: código morto no 645 (SPEC-ghost.md)
+                Log.Info($"{conn} pacote de Ghost 0xBA sub 0x{(p.Remaining > 0 ? p.U8() : 0):X2} ignorado (exe modificado?)");
+                p.Skip(p.Remaining);
+                break;
             default: Log.Debug($"{conn} pacote não tratado 0x{p.Id:X4} ({p.Remaining} bytes)"); break;
         }
     }

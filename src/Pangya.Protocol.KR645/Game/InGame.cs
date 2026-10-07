@@ -15,7 +15,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
     public const ushort SLoading = 0xA1, SWind = 0x59, SHoleStart = 0x51, STeeReady = 0x8E, SShot = 0x53, SShotResult = 0x62,
         SNextTurn = 0x61, SNextHole = 0x63, SGameEnd = 0x64, STimeOut = 0x5A, SPlayerLeft = 0x5F, SCutIn = 0x192,
         SAim = 0x54, SGauge = 0x55, SPowerShot = 0x56, SClub = 0x57, SUseItem = 0x58, SDrop = 0x5E, SPause = 0x89,
-        STimeBooster = 0xC5, SShotCommand = 0x9A;
+        STimeBooster = 0xC5, SShotCommand = 0x9A, STeamEnd = 0x8F;
 
     public const int ShotLength = 0x2E;     // bloco da tacada (CGolfRule::HitShot)
     public const int ResultLength = 0x25;   // sShotResult
@@ -23,7 +23,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
     /// <summary>Última tacada humana (o bot usa como base) e o que vinha depois do bloco (tempo de sincronia).</summary>
     byte[]? template;
     byte[] trailer = [];
-    StrokeGame Game => room.Game!;
+    StrokeGame Game => (StrokeGame)room.Game!;
 
     /// <summary>Manda para todos os humanos da sala (menos <paramref name="except"/>); o writer é liberado.</summary>
     public static void Broadcast(Room room, PacketWriter w, GameHandler? except = null)
@@ -38,20 +38,39 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
     public void Wind(byte wind, byte direction) => All(new PacketWriter(SWind).U8(wind).U8(0).U16(direction).U8(1));
     public void HoleStart(GamePlayer first) => All(new PacketWriter(SHoleStart).U32(first.Guid));
     public void TeeReady() => All(new PacketWriter(STeeReady));
-    public void NextTurn(GamePlayer p) => All(new PacketWriter(SNextTurn).U32(p.Guid));
-    public void NextHole() => All(new PacketWriter(SNextHole));
+    public void NextTurn(GamePlayer p)
+    {
+        var w = new PacketWriter(SNextTurn).U32(p.Guid);
+        if (room.Settings.Mode == GameMode.PangBattle) w.U16(0);         // pang battle: + u16 mensagem da tacada
+        All(w);
+    }
+
+    /// <summary>0x63: vazio; no pang battle u32 vencedor do buraco (0xFFFFFFFF = acumula).</summary>
+    public void NextHole(uint holeWinner)
+    {
+        var w = new PacketWriter(SNextHole);
+        if (room.Settings.Mode == GameMode.PangBattle) w.U32(holeWinner);
+        All(w);
+    }
+
     public void PlayerLeft(GamePlayer p) => All(new PacketWriter(SPlayerLeft).U32(p.Guid));
 
-    /// <summary>0x64: u8 n, n × 33 bytes {guid, rank, placar vs par, tacadas, u16, pang, u32, bônus, 12 bytes}.</summary>
-    public void GameEnd(List<GameResult> results)
+    /// <summary>
+    /// Fim: registros de 33 bytes {u32 guid, u8 posição, i8 placar, u8 tacadas, u16, i64 pang, i64 bônus, i64 pang do pang battle}.
+    /// Stroke/match: 0x64 u8 n + registros (placar = vs par / buracos ganhos). Pang battle: 0x64 u8 n, u32 vencedor do último
+    /// buraco, u32 vencedor geral, registros. Team: 0x8F u8 n, registros, u8 buracos do lado 0, u8 do lado 1, u8 vencedor.
+    /// </summary>
+    public void GameEnd(GameEnd end)
     {
-        var w = new PacketWriter(SGameEnd).U8((byte)results.Count);
-        foreach (var r in results)
-            w.U32(r.Guid).U8((byte)r.Rank).U8((byte)(sbyte)r.ScoreVsPar).U8((byte)Math.Min(r.TotalStrokes, 255)).U16(0)
-             .U32(r.Pang).U32(0).U32(r.BonusPang).Zeros(12);
+        var w = new PacketWriter(end.Kind == GameEndKind.Team ? STeamEnd : SGameEnd).U8((byte)end.Results.Count);
+        if (end.Kind == GameEndKind.PangBattle) w.U32(end.LastHoleWinner).U32(end.OverallWinner);
+        foreach (var r in end.Results)
+            w.U32(r.Guid).U8((byte)r.Rank).U8((byte)(sbyte)Math.Clamp(r.Score, -128, 127)).U8((byte)Math.Min(r.TotalStrokes, 255)).U16(0)
+             .I64(r.Pang).I64(r.BonusPang).I64(r.Net);
+        if (end.Kind == GameEndKind.Team) w.U8((byte)end.SideWins[0]).U8((byte)end.SideWins[1]).U8((byte)end.Winner);
         All(w);
-        Log.Info($"sala {room.Index}: fim de jogo");
-        foreach (var r in results)                                   // recompensa de quem terminou (humanos)
+        Log.Info($"sala {room.Index}: fim de jogo ({end.Kind})");
+        foreach (var r in end.Results)                               // recompensa de quem terminou (humanos)
             if (room.Find(r.Guid)?.Session is GameHandler h)
                 h.OnGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false });
     }

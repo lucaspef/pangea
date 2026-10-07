@@ -16,8 +16,9 @@ sealed class FakeOutput : IGameOutput
     public void HoleStart(GamePlayer first) => Events.Add($"start {first.Guid}");
     public void TeeReady() => Events.Add("tee");
     public void NextTurn(GamePlayer p) => Events.Add($"turn {p.Guid}");
-    public void NextHole() => Events.Add("hole");
-    public void GameEnd(List<GameResult> results) => Events.Add("end " + string.Join(",", results.Select(r => $"{r.Guid}:{r.Rank}:{r.ScoreVsPar}:{r.TotalStrokes}")));
+    public void NextHole(uint holeWinner) => Events.Add("hole");
+    public GameEnd? End { get; private set; }
+    public void GameEnd(GameEnd end) { End = end; Events.Add("end " + string.Join(",", end.Results.Select(r => $"{r.Guid}:{r.Rank}:{r.Score}:{r.TotalStrokes}"))); }
     public void PlayerLeft(GamePlayer p) => Events.Add($"left {p.Guid}");
     public void BotTurn(GamePlayer bot) { Events.Add($"bot {bot.Guid}"); Game!.BotShoot(bot); }
     public string Last => Events[^1];
@@ -343,8 +344,8 @@ public class WindTests
         public void HoleStart(GamePlayer first) { }
         public void TeeReady() { }
         public void NextTurn(GamePlayer p) { }
-        public void NextHole() { }
-        public void GameEnd(List<GameResult> results) { }
+        public void NextHole(uint holeWinner) { }
+        public void GameEnd(GameEnd end) { }
         public void PlayerLeft(GamePlayer p) { }
         public void BotTurn(GamePlayer bot) { }
     }

@@ -36,7 +36,7 @@ public sealed class RoomSettings
         Password = Password.Length > 15 ? Password[..15] : Password;
         Holes = Math.Clamp(Holes, (byte)1, (byte)18);
         HoleType = HoleType <= 3 ? HoleType : (byte)0;
-        MaxPlayers = Math.Clamp(MaxPlayers, (byte)1, (byte)4);
+        MaxPlayers = Math.Clamp(MaxPlayers, (byte)1, MassGame.IsMass(Mode) ? (byte)30 : (byte)4);   // torneio/approach: até 30
         ShotTimeMs = Math.Min(ShotTimeMs, 600_000);
         GameTimeMs = Math.Min(GameTimeMs, 7_200_000);
     }
@@ -76,7 +76,9 @@ public sealed class Room
     public uint[] HoleSeeds { get; set; } = [];
     public uint GameSeed { get; set; }
     /// <summary>Partida em andamento (null na espera).</summary>
-    public StrokeGame? Game { get; set; }
+    public RoomGame? Game { get; set; }
+    /// <summary>Moedas/caixas do Wiz City desta partida (null em outros cursos).</summary>
+    public FieldItems? Field { get; set; }
 
     /// <summary>Sessões humanas na sala (chave = sessão).</summary>
     public Dictionary<IGameSession, RoomPlayer>.KeyCollection Humans => bySession.Keys;

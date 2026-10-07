@@ -1,0 +1,46 @@
+namespace Pangya.Domain.Rooms;
+
+/// <summary>
+/// Itens de campo do Wiz City (curso 0x13; SPEC-modes.md "Wiz City"): moedas de pang e caixas. O servidor manda só a
+/// semente e a lista tipo/índice por buraco (no fim do 0x50); as posições cada cliente gera a partir da semente.
+/// Ao pegar, o 0x1C traz {tipo, índice, quantidade, textura}: vale só a cópia de quem tacou, conferida contra a
+/// tabela e nunca duas vezes (jogador, buraco, índice).
+/// </summary>
+public sealed class FieldItems
+{
+    public const byte WizCity = 0x13;
+    public const int Coin = 0, Box = 1;
+    /// <summary>Consumíveis que uma caixa pode dar [suposição do emulador].</summary>
+    public static readonly int[] BoxItems = [0x18000000, 0x18000001, 0x18000002, 0x18000003, 0x18000004, 0x18000005, 0x18000006, 0x18000009];
+
+    readonly HashSet<(uint, byte, uint)> taken = [];
+    public uint Seed { get; }
+    /// <summary>Por buraco (1..18): tipo de cada índice.</summary>
+    public Dictionary<byte, int[]> PerHole { get; } = [];
+
+    FieldItems(uint seed) => Seed = seed;
+
+    /// <summary>Tabela da partida; null fora do Wiz City (o 0x50 manda tudo zerado).</summary>
+    public static FieldItems? For(byte course, Random rng)
+    {
+        if (course != WizCity) return null;
+        var f = new FieldItems((uint)rng.Next());
+        for (byte hole = 1; hole <= 18; hole++)
+        {
+            // quantidades por buraco [suposição: CubeCoinSystem.getAllCoinCubeInHoleWizCity do servidor S9]
+            var (boxes, total) = hole switch { 3 or 12 => (5, 60), 14 => (2, 48), 18 => (3, 33), _ => (0, 20) };
+            var types = new int[total];
+            for (int i = 0; i < total; i++) types[i] = i < boxes ? Box : Coin;
+            f.PerHole[hole] = types;
+        }
+        return f;
+    }
+
+    /// <summary>Um item reportado; devolve o prêmio (pang &gt; 0, ou typeid do item da caixa) ou null se inválido/repetido.</summary>
+    public (int Pang, int ItemTypeId)? Take(uint guid, byte hole, int type, uint index, int texture, Random rng)
+    {
+        if (!PerHole.TryGetValue(hole, out var types) || index >= types.Length || types[index] != type) return null;
+        if (!taken.Add((guid, hole, index))) return null;
+        return type == Coin ? (rng.Next(1, (texture == 1 ? 50 : 200) + 1), 0) : (0, BoxItems[rng.Next(BoxItems.Length)]);
+    }
+}

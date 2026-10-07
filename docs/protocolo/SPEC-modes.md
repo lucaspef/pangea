@@ -46,9 +46,9 @@ every 0x1B after a bot shot carried the human's guid 0x302cb9).
 | 0x11 loaded | to him: 0x59 wind, 0x51 u32 own guid (msg 0x81, mass index 0) |
 | 0x34 | to him: 0x8E (mass DoPlayerPreview does not wait, gr 29714) |
 | 0xE7 | 0x192 (ingame.py) |
-| 0x12 | to him only: 0x53 u32 guid + 46 bytes + trailer |
-| 0x1B | to him only: 0x62; to everybody: 0x6C |
-| 0x1C | not done: to him 0x59 + 0x61 own guid; hole done (holed or strokes >= par+4): to everybody 0x6B, to him 0x63; last hole: 0x6B, 0x6A(guid,2) to everybody, then 0x63 to him |
+| 0x12 | nothing (see 'No echo' below) |
+| 0x1B (sent twice) | to everybody: 0x6C (first copy only); no 0x62 |
+| 0x1C (sent once, twice on the last hole) | not done: **nothing**; hole done (holed or strokes >= par+4): to everybody 0x6B, to him 0x63; last hole: 0x6B, 0x6A(guid,2) to everybody, then 0x63 to him |
 | 0x13/0x14/0x15/0x16/0x42 | dropped (would drive the receivers' own ball) |
 | 0x19 / 0x30 / 0x65 | 0x5E / 0x89 / 0xC5 to the sender only |
 | 0x17 item | 0x58 tid, rand, guid to the sender only |
@@ -65,6 +65,41 @@ Packets [V, decode order]:
 - **0x6C** (gt.c 1412): u32 guid, u8 hole, f32 x, f32 z, [type 10: u32 dist (rival+0x178), u32 time (+0x17C, -1 = out)], u16.
 - 0x8A (gt.c 1631) = time over (all playing rivals +5/hole) — **not sent** (no 30-min time limit implemented).
 
+**No echo (fix after the real-client test 18:18-18:23) [V]:** in a mass game CGolfRule::HitShot starts the flight
+locally (gr 26801-26822: types 4/5/6/9/10 -> ChangeGameMode(0x40) at once + net wait "modeDriveMotion_MassGame"), and
+ChangeGameMode(0x40) applies its own result (gr 23617: offline or IsMassGame -> Player msg 0x77, this[0x264]=1) and
+sends 0x1B (gr 24345) and bumps the shot counters (gr 24355-24375). Our former 0x53 echo reached gt.c 748 (shot copied
+into the local ball + msg 0x7a -> ChangeGameMode(0x40) again): the flight was replayed, a 2nd 0x1B was sent ~5 ms after
+our 0x53 and the HUD stroke/shot counters advanced twice (user: "hit once, counter jumped to 3"; the client's 0x31 hole
+stats reported 6/10 strokes for real 3/4). The 0x62 echo (msg 0x79) re-applied the result too. Now neither is sent,
+like the reference TourneyBase.requestInitShot / requestSyncShot. 0x61 after 0x1C is still needed: it clears
+this[0x3cb] (the HitShot net wait) so DoToDefaultCamera (mode 0x800, gr 28770) can continue to the next shot; the
+client re-enters 0x800 and sends 0x1C again (2nd copy, ignored).
+
+**No 0x61 after 0x1C (fix after the 2nd real-client test 18:41) [V]:** with the echoes gone the client's own hole
+stats were right (0x31 = the 0xEB stat block doc+0x4118: +0 non-putt shots, +4 putts, bumped in ChangeGameMode(0x40)
+gr 24355-24375; 18:43:29 hole 1 = 2+1 = 3 real strokes, 18:44:18 cumulative 3+2 = 5 = 3+2; before the fix 4+2 = 6 for
+3), but the HUD stroke counter still doubled. The HUD counter is sPlayerData stroke[hole] (+(hole+1)*0x10, WCrypticValue),
+incremented when a shot's turn ends in DoToDefaultCamera (mode 0x800, gr 29046-29052, online branch -> ChangeTurn ->
+mode 4). The mass client gets there by itself after the ball stops (DoFlyBall_Stopped -> 0x800); the HitShot net wait
+"modeDriveMotion_MassGame" is already cleared by our 0x192 (golftask 0x192 -> msg 0x24d(0) -> SetNetMsgWait(false)),
+which is why 30 s flights caused no 20 s error. Our 0x61 -> msg 0x7d (gr 30422) -> ChangeGameMode(0x800) re-entered
+DoToDefaultCamera: second 0x1C ~5 ms after the 0x61 (log 18:42:55.398/.405) and stroke[hole] +1 again. Now the shooter
+receives per shot exactly: 0x192 (reply to 0xE7) and 0x6C (rival position, broadcast) -- nothing after 0x1C unless the
+hole ends (0x6B [0x6A] 0x63). Reference TourneyBase: requestInitShot/requestSyncShot/requestFinishShot send no turn
+packet either (only the position 0x6E(=KR 0x6C), cube drops, and hole-end 0x6D(=KR 0x6B)/0x6C(=KR 0x6A)).
+Approach (type 10) likewise no longer sends 0x61.
+
+**Power-shot crash (Alt, hole 4, 18:23:28) [V mechanism / I cause]:** CGolfPlayer::Shot_PowerShot (@004e95f0,
+golfplayer.c 8431-8464) asks GolfRule msg 0x24a for the desktop windows predict_normal/_tomahwak/_cobra/_spike into
+UNINITIALISED locals; HandleMsg 0x24a (gr 31457) only writes them when FrWnd::FindChildByName (non-recursive, desktop
+children = MAIN layout items) finds the window -> IObject::DynamicCast on stack garbage = the access violation at
+DynamicCast+0xa called from Shot_PowerShot+0x309. Nothing in the server packets selects these windows (MAIN is opened
+for every mode, gr 860; the predict buttons' init handlers have no mode check, gr 4769-4820) -> most likely the MAIN
+layout in the installed paks has no predict_* buttons and the same crash happens in stroke (no 0x15 has ever been
+seen in any log, so power shot was never exercised with the real client). Client-side fix needed (zero-init the
+four locals in Shot_PowerShot, or a layout with those buttons); the server cannot avoid it.
+
 **Bot:** does not shoot; simulated: finishes hole i `EMU_BOT_DELAY` s after the first human finished hole i (at least one hole per
 `EMU_TOURNEY_BOT_HOLE`=90 s; quickly when all humans are done), strokes = par + {-1,0,0,0,1,1,2}, reported with 0x6C/0x6B/0x6A.
 
@@ -72,9 +107,9 @@ Packets [V, decode order]:
 Simultaneous: one shot per hole per player from his own random start (client GetRandomStartPos), closest to the pin wins.
 - 0x11 -> to him 0x59, 0x147 u8 0 (no mission), 0x51 own guid (needed every hole).
 - 0x34 -> when all humans sent it (or 12 s after the first) 0x8E to everybody (client 20 s wait, gr 29701).
-- 0x12 -> 0x53 to him only (block +0x1D i32 = remaining ms). 0x1B -> 0x62 to him only; 0x6C with dist/time to everybody.
+- 0x12 -> nothing (block +0x1D i32 = remaining ms is recorded). 0x1B -> 0x6C with dist/time to everybody (no 0x53/0x62).
   dist = floor(hypot(ball-pin) * 0.3125 * 10) (tenths of yard), time = remaining ms; OB/water/no 0x12 (client time-out) = 0xFFFFFFFF.
-- 0x1C (sent twice) -> 0x61 own guid once (clears the 20 s "MassGame" lock, gr 30423).
+- 0x1C -> nothing (the HitShot lock is released by our 0x192; see 'No 0x61' below).
 - All answered (or limit + 15 s): 0x148 (n x sApproachResultData) to everybody, then 0x63 (approach_result dialog -> client
   DoApproachNextHole sends 0x1A). Last hole: 0x148, 0x146 totals, 0x149 -> end dialogs -> GAMEROOM_EXT. 0x64 not used.
 - **sApproachResultData** (globalgamedefine.h:1477, 0x18): u8 bExit, u32 guid, u32 uid, u8 rank (255 none), u32 prizeCount,
@@ -108,3 +143,25 @@ Same as team with every player a side (2 players). C->S 0x52 (u8,u8) ignored. En
 `test/test_modes.py` (part 1 in-process through ingame.HANDLERS; part 2 TCP via `test/run_modes.sh`, ports 41000-41002):
 tournament 1 human + bot, 2 humans + bot (no cross-talk), quit, give-up, stroke unaffected, approach 2 humans + bot,
 team 2v2 alternate shot + concession + 0x8F, match halved hole, pang battle; e2e tournament room (mass 0x46/0x74, 3 holes).
+
+## Wiz City (course 0x13) — fielditems.py
+- Room/game: course 0x13 is accepted as-is by 0x08/0x0A and played as sent (room.start_game only resolves the
+  random course 0x7F to 0..10, so Wiz City is never picked at random). Hole order/pars: as for every course
+  (pars come from the client's 0x1A). [V] nothing else in room/ingame/modes checks the course id.
+- 0x50 tail = CGimmickContainer::LoadFromPacket (contentsdoc.cpp:983) [V]: u32 seed, 18 x {u8 n, n x 0x14
+  GimmickDispositionInformation (globalgamedefine.h:1594): i32 type 0 PANG / 1 BOX, u32 index, u32 flag 0,
+  u32 unknownC 20, u8 hole, 3 pad}. Positions are NOT sent: every client places the items from the seed on
+  "ct_green_b*" (coins, texture type 1) and "ct_booster.dds" (magic carpets, any type, texture type 2)
+  triangles (GroundItemMan::OnInit / DisposeGroundItem, grounditemman.cpp:53/226).
+  Counts [I, CubeCoinSystem.getAllCoinCubeInHoleWizCity]: holes 3/12 5 boxes + 55 coins, 14 2 + 46, 18 3 + 30,
+  other holes 20 coins. Other courses: seed + 18 x 0.
+- Magic carpet boost = client physics (ground type "booster", golfdoc.cpp:2286) [V]: no packet.
+- Pick-up [V]: C->S 0x1C = u8 isMyShot, u8 n, n x {u8 type, u32 index, u8 count, u8 textureType}
+  (CGolfRule::EncodePacket golfrule.c:20003, items from GroundItem::NSC_OnStep grounditem.cpp:420).
+  Credited once, from the shooter's copy only (stroke: turn player's isMyShot=1; tournament/approach: own shot),
+  index/type checked against the table, (player, hole, index) never twice.
+- Rewards [I, community server GameBase.requestInitCubeCoin]: coin 1..50 pang on the green edge (tex 1),
+  1..200 elsewhere (tex 2) -> account pang + S->C 0xC6 u64 pang, u64 0 (golftask.c case 0xc6 [V]);
+  box -> one random consumable (fielditems.BOX_ITEMS) added to the saved inventory (0xA5 count update when the
+  item was already in the bag; a brand-new item shows after re-login [I]).
+- Tests: test/test_wizcity.py (run_wizcity.sh, ports 41100-41102).

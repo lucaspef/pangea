@@ -184,8 +184,11 @@ public sealed partial class GameHandler
             if (r.Find(this) is not { Master: true }) { conn.Send(new PacketWriter(RoomPackets.SStartFailed).U8(1)); return; }
             RoomManager.PrepareStart(r, Random.Shared, Rooms.Courses);
             var cfg = ctx.World.Config;
-            r.Game = new StrokeGame(r, new InGameOutput(r, cfg.BotPasses, new BotGolfer(Random.Shared, cfg.BotAccuracy)), Rooms.Sync,
-                TimeSpan.FromSeconds(cfg.BotDelaySeconds), TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
+            var botDelay = TimeSpan.FromSeconds(cfg.BotDelaySeconds);
+            r.Game = MassGame.IsMass(r.Settings.Mode)
+                ? MassGame.For(r, new MassOutput(r), Rooms.Sync, botDelay)
+                : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, new BotGolfer(Random.Shared, cfg.BotAccuracy)), Rooms.Sync,
+                    botDelay, TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
             InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r));
             InGameOutput.Broadcast(r, RoomPackets.GameInit(r));         // o cliente troca para a tela da partida
             Lobby(RoomPackets.RoomList(3, r));

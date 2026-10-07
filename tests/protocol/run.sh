@@ -21,7 +21,8 @@ cat > "$CFG" <<EOF
   "Database": { "ConnectionString": "$CONN" },
   "Web": { "Port": $BASE },
   "Login": { "Ports": [$((BASE + 1))] },
-  "Game": { "Id": $((BASE + 2)), "Name": "Protocolo", "Port": $((BASE + 2)), "BotDelaySeconds": 0.3 },
+  "Game": { "Id": $((BASE + 2)), "Name": "Protocolo", "Port": $((BASE + 2)), "BotDelaySeconds": 0.3,
+            "Courses": [19, 16, 15, 14, 13, 11, 8, 10, 0, 1, 2, 3, 4, 5, 6, 7, 9] },
   "Logging": { "Level": "Debug", "Dir": "" },
   "Data": { "IffPath": "$ROOT/data/pangya.iff" },
   "NewPlayer": { "Cookie": 1000 }
@@ -39,7 +40,7 @@ run() { # nome, comando...
 DBNAME=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
 su postgres -c "psql -q -d ${DBNAME:-pangya_test} -c \"delete from servers; delete from accounts where login like '%$BASE'\"" 2>/dev/null
 USER=tester$BASE
-for u in tester roomA roomB golf shop; do   # contas dos testes (senha "x", como os scripts mandam); podem já existir
+for u in tester roomA roomB golf shop tour wiz; do   # contas dos testes (senha "x", como os scripts mandam); podem já existir
   dotnet "$DLL" --config "$CFG" account-create "$u$BASE" x "N$u$BASE" > /dev/null 2>&1
 done
 dotnet "$DLL" --config "$CFG" > "$LOG" 2>&1 &
@@ -56,6 +57,12 @@ run "test_room.py: lista de salas, criar/entrar/sair, chat, config, pronto, bot,
 # test_ingame.py: a parte 1 testa o módulo Python em memória; a parte 2 é a partida de ponta a ponta contra o C#
 run "test_ingame.py: partida completa com bot (3 buracos, tacada especial, resultado cifrado, fim de jogo)" \
   env EMU_HTTP=$BASE EMU_LOGIN=$((BASE + 1)) python3 test_ingame.py "$BASE"
+
+# test_modes.py e test_wizcity.py: a parte 1 testa o Python em memória; a parte 2 é de ponta a ponta contra o C#
+run "test_modes.py: torneio (sala em massa, 3 buracos, bot simulado, resultado)" \
+  env EMU_HTTP=$BASE EMU_LOGIN=$((BASE + 1)) python3 test_modes.py "$BASE"
+run "test_wizcity.py: Wiz City (tabela de moedas/caixas no 0x50, crédito pelo 0x1C)" \
+  env EMU_HTTP=$BASE EMU_LOGIN=$((BASE + 1)) python3 test_wizcity.py "$BASE"
 
 # test_player_shop.py gera o usuário pelo horário; aqui ele é fixado na conta pré-criada "shop<base>"
 run "test_player_shop.py: inventário, loja (pang/cookie, erros), equipamento e persistência ao relogar" \

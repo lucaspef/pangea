@@ -107,6 +107,7 @@ public sealed class RoomManager
         room.HoleOrder = order;
         room.HoleSeeds = seeds;
         room.GameSeed = (uint)rng.NextInt64(uint.MaxValue);
+        room.Field = FieldItems.For(room.CoursePlayed, rng);
         room.State = RoomState.Playing;
         foreach (var p in room.Players) p.Ready = p.Master || p.IsBot;
     }

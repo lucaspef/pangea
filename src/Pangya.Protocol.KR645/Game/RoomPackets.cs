@@ -143,8 +143,15 @@ public static class RoomPackets
             if ((int)s.Mode == 14) w.U8(r.CoursePlayed);
             w.U8(r.HoleOrder[i]);
         }
-        w.U32(0);                                   // gimmicks: semente + 18 buracos sem nenhum
-        for (int i = 0; i < 18; i++) w.U8(0);
+        // gimmicks (CGimmickContainer::LoadFromPacket): u32 semente + 18 × {u8 n, n × GimmickDispositionInformation 0x14:
+        // i32 tipo (0 moeda, 1 caixa), u32 índice, u32 0, u32 20, u8 buraco, 3 zeros}. Só o Wiz City tem itens.
+        w.U32(r.Field?.Seed ?? 0);
+        for (byte hole = 1; hole <= 18; hole++)
+        {
+            var types = r.Field != null && r.Field.PerHole.TryGetValue(hole, out var t) ? t : [];
+            w.U8((byte)types.Length);
+            for (int i = 0; i < types.Length; i++) w.I32(types[i]).U32((uint)i).U32(0).U32(20).U8(hole).Zeros(3);
+        }
         return w;
     }
 }
