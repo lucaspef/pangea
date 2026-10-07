@@ -94,7 +94,9 @@ public sealed partial class GameHandler
         if (!g.Shoot(me)) { Log.Warn($"{conn} tacada repetida ignorada"); return; }
         var block = rest.Slice(start, InGameOutput.ShotLength);
         var after = rest.Slice(start + InGameOutput.ShotLength, tail);
-        ((InGameOutput)g.Output).Remember(block, after);
+        var output = (InGameOutput)g.Output;
+        output.LogShot(me, block);
+        output.Remember(block, after);
         // para TODOS, inclusive quem tacou: o voo da própria bola começa com este eco (byte a byte, com as flags especiais)
         InGameOutput.Broadcast(r, new PacketWriter(InGameOutput.SShot).U32(me.Guid).Bytes(block).Bytes(after));
     }
@@ -109,7 +111,9 @@ public sealed partial class GameHandler
         var sr = new ShotResult(BinaryPrimitives.ReadUInt32LittleEndian(res), BinaryPrimitives.ReadSingleLittleEndian(res[4..]),
             BinaryPrimitives.ReadSingleLittleEndian(res[8..]), BinaryPrimitives.ReadSingleLittleEndian(res[12..]), res[0x10],
             BinaryPrimitives.ReadUInt32LittleEndian(res[0x13..]), BinaryPrimitives.ReadUInt32LittleEndian(res[0x17..]));
-        if (g.Result(sr)) InGameOutput.Broadcast(r, new PacketWriter(InGameOutput.SShotResult).Bytes(res));
+        if (!g.Result(sr)) return;
+        ((InGameOutput)g.Output).LogResult(sr);
+        InGameOutput.Broadcast(r, new PacketWriter(InGameOutput.SShotResult).Bytes(res));
     }
 
     readonly record struct PendingSave(Item? Item, bool Equip);

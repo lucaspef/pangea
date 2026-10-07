@@ -58,7 +58,11 @@ public sealed class InGameOutput(Room room, bool botPasses) : IGameOutput
         if (botPasses)
             All(new PacketWriter(STimeOut).U32(bot.Guid));         // estouro de tempo: +1 tacada, os clientes confirmam
         else
-            All(new PacketWriter(SShot).U32(bot.Guid).Bytes(BotShot(bot)).Bytes(trailer));
+        {
+            var shot = BotShot(bot);
+            LogShot(bot, shot);
+            All(new PacketWriter(SShot).U32(bot.Guid).Bytes(shot).Bytes(trailer));
+        }
         Game.BotShoot(bot);
     }
 
@@ -67,6 +71,37 @@ public sealed class InGameOutput(Room room, bool botPasses) : IGameOutput
     {
         template = block.ToArray();
         trailer = after.ToArray();
+    }
+
+    // ---- log de calibração: valores da tacada x deslocamento real da bola (para acertar a mira/força do bot)
+    float shotAim, shotBar, shotStartX, shotStartZ;
+    int shotClub;
+
+    /// <summary>Registra a tacada (humana ou do bot) e de onde a bola saiu.</summary>
+    public void LogShot(GamePlayer p, ReadOnlySpan<byte> block)
+    {
+        shotBar = BinaryPrimitives.ReadSingleLittleEndian(block);
+        shotAim = BinaryPrimitives.ReadSingleLittleEndian(block[0x19..]);
+        shotClub = block[0x25];
+        (shotStartX, shotStartZ) = StartOf(p);
+        Log.Info($"sala {room.Index} tacada {(p.IsBot ? "BOT" : p.Guid.ToString())}: barra={shotBar:F1} impacto={BinaryPrimitives.ReadSingleLittleEndian(block[4..]):F1} " +
+                 $"fase={block[0x10]} especial=0x{BinaryPrimitives.ReadUInt32LittleEndian(block[0x11..]):X} mira={shotAim:F4} taco={shotClub} " +
+                 $"+0x15={BinaryPrimitives.ReadUInt32LittleEndian(block[0x15..])} +0x21={BinaryPrimitives.ReadUInt32LittleEndian(block[0x21..])} " +
+                 $"+0x26={BinaryPrimitives.ReadSingleLittleEndian(block[0x26..]):F3} +0x2A={BinaryPrimitives.ReadSingleLittleEndian(block[0x2A..]):F3} " +
+                 $"de=({shotStartX:F1},{shotStartZ:F1})");
+    }
+
+    (float, float) StartOf(GamePlayer p) =>
+        p.HasPos ? (p.X, p.Z) : Game.Holes.TryGetValue(Game.Hole, out var h) ? (h.TeeX, h.TeeZ) : (0f, 0f);
+
+    /// <summary>Registra para onde a bola foi de fato (direção e distância reais).</summary>
+    public void LogResult(ShotResult r)
+    {
+        float dx = r.X - shotStartX, dz = r.Z - shotStartZ;
+        var pin = Game.Holes.TryGetValue(Game.Hole, out var h) ? $" bandeira=({h.PinX:F1},{h.PinZ:F1})" : "";
+        Log.Info($"sala {room.Index} resultado {r.Guid}: pos=({r.X:F1},{r.Y:F1},{r.Z:F1}) estado={r.State} " +
+                 $"direção real={Math.Atan2(dx, dz):F4} (mira {shotAim:F4}) distância={Math.Sqrt(dx * dx + dz * dz):F1} " +
+                 $"(barra {shotBar:F1}, taco {shotClub}){pin}");
     }
 
     /// <summary>
