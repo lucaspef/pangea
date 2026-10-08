@@ -128,7 +128,7 @@ Se `bItemType == 0 && bDone` o cliente manda **C->S 0x93** (147) ao abrir. O tex
 no lobby, cada 0x6A/0x6B atualiza o ranking; quando ninguém está em estado 0 (lm 24255-24280): Lobby msg 0x2D
   -> FrUniteResultDlg::OnInit (rd @0081F3F0) LÊ Doc+0x415E/0x456C/0x456E NESSE MOMENTO
 servidor (GB Tourney.finish: requestMakeMedal, requestMakeTrofel, por jogador sendDropItem 0xCE + sendPlacar 0x79):
-  0xCC  meus itens (JP 0xCE)      } os dois têm de chegar ANTES do 0x6A que fecha o torneio
+  0xCC  meus itens (JP 0xCE)      } os dois vêm DEPOIS do 0x6A(2) de todos (SPEC-torneio-fim.md; GB)
   0x77  EXP/troféu/medalhas (JP 0x79) }
 cliente no OnInit (se Doc[0x90]==0 e não observador): C->S 0x06 com os stats 0xEB  -> servidor: 0x43, 0xC6 (GB finish_game)
 ```

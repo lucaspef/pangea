@@ -209,13 +209,13 @@ public class MassModeTests
         Assert.True(g.Over);
         Assert.Contains(o.Events, e => e.StartsWith($"hole {0x7F000001u}"));
         Assert.Contains($"state {0x7F000001u} 2", o.Events);
-        // o resultado (0x77) sai antes do último 0x6A: é ele que abre a tela de resultado do torneio
-        Assert.True(o.Events.IndexOf("over") < o.Events.IndexOf($"state {0x7F000001u} 2"));
+        // ordem do GB (SPEC-torneio-fim.md): todos os 0x6A(2) antes do resultado; no lobby o 0x77 abre a tela
+        Assert.True(o.Events.IndexOf($"state {0x7F000001u} 2") < o.Events.IndexOf("over"));
         Assert.True(o.Events.IndexOf("state 100 2") < o.Events.IndexOf("over"));
     }
 
     [Fact]
-    public void LastHumanToFinishGetsResultBeforeClosingState()
+    public void LastHumanToFinishGetsClosingStateBeforeResult()
     {
         var (_, g, o, _) = Setup(GameMode.Tournament, 1, false, 1);
         var a = g.Players[0];
@@ -224,8 +224,9 @@ public class MassModeTests
         g.Result(a, new ShotResult(a.Guid, 0, 0, 320, ShotResult.StateHoled, 9, 1));
         g.ShotFinished(a);
         Assert.True(g.Over);
+        // ordem do GB: o próprio 0x6A(2) antes do resultado (no campo o 0x77 só grava; o placar aparece)
         Assert.Single(o.Events.FindAll(e => e == "state 100 2"));
-        Assert.True(o.Events.IndexOf("over") < o.Events.IndexOf("state 100 2"));
+        Assert.True(o.Events.IndexOf("state 100 2") < o.Events.IndexOf("over"));
     }
 
     [Fact]

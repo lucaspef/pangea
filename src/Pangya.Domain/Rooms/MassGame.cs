@@ -96,13 +96,17 @@ public interface IMassOutput
     void RivalHole(MassPlayer p, byte hole);
     void RivalState(MassPlayer p, byte state);           // 2 terminou, 3 saiu
     void NextHole(MassPlayer? to);                       // null = todos
+    /// <summary>0x8B: tempo decorrido da partida (acerta o relógio do torneio no cliente).</summary>
+    void Elapsed(MassPlayer to, uint ms) { }
+    /// <summary>0x8A a todos: acabou o tempo do torneio.</summary>
+    void TimeOver() { }
     /// <summary>Torneio: o jogador terminou um buraco (sem 0x63; só o que acompanha, como os pontos do Treasure Hunter).</summary>
     void HoleDone(MassPlayer p) { }
     void ApproachHole(List<ApproachEntry> entries);
     void ApproachEnd(List<ApproachEntry> totals);
     /// <summary>
-    /// Fim do jogo: recompensa e tela de resultado (0xCC/0x77) de cada um que terminou. Vem ANTES do último 0x6A
-    /// (closing), porque é ele que abre a tela de resultado do torneio, e ela lê o 0x77 nesse momento.
+    /// Fim do jogo: recompensa e tela de resultado (0xCC/0x77) de cada um que terminou. Vem DEPOIS do 0x6A(estado 2)
+    /// de todos (SPEC-torneio-fim.md): no campo o 0x77 só grava; no lobby abre a tela de resultado.
     /// </summary>
     void GameOver(List<MassPlayer> players, TourneyResult result);
     /// <summary>GuildMatch: placar depois de um buraco decidido no par de p (0xC0 a todos da sala).</summary>
@@ -165,8 +169,13 @@ public abstract class MassGame : RoomGame
     public abstract void ShotFinished(MassPlayer p);
     public bool CanUseItem(MassPlayer p) => !p.Finished && !p.ShotOpen && !Over;
 
-    /// <summary>closing = quem terminou por último: o 0x6A dele (estado 2) só sai depois do resultado.</summary>
-    protected void EndGame(MassPlayer? closing = null)
+    /// <summary>
+    /// Fim (SPEC-torneio-fim.md, ordem do GB): o 0x6A(estado 2) de cada um já saiu no FinishHole, inclusive o do último;
+    /// aqui vão 0xCC/0x77 a cada humano. Para quem ainda está no campo o 0x77 só grava (o próprio 0x6A zerou a marca que
+    /// o faria voltar na hora): ele vê o placar e, de volta ao lobby, com todos em estado 2, abre a tela de resultado.
+    /// Quem já está no lobby abre a tela com o 0x77. timeOver: fim do tempo, e depois 0x8A a todos.
+    /// </summary>
+    protected void EndGame(bool timeOver = false)
     {
         if (Over) return;
         Cancel();
@@ -174,7 +183,7 @@ public abstract class MassGame : RoomGame
         foreach (var p in Players)
             if (!p.Left) done.Add(p);
         Output.GameOver(done, Results());
-        if (closing != null) Output.RivalState(closing, 2);
+        if (timeOver) Output.TimeOver();
         RoomManager.FinishGame(Room);
     }
 }
@@ -193,13 +202,42 @@ public sealed class TourneyGame : MassGame
     /// <summary>Prêmio de cada troféu: item comum sorteado entre 0x18000000..0x1800000E (GB: ITEM &lt;&lt; 26 + 0..14).</summary>
     public const int AwardItemBase = 0x18000000, AwardItemCount = 15;
 
+    readonly long startedAt = Stopwatch.GetTimestamp();
+    /// <summary>Tempo desde o início (o 0x50 sai logo depois do construtor): o relógio do torneio.</summary>
+    public uint ElapsedMs => (uint)Math.Min(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds, uint.MaxValue);
+
     public TourneyGame(Room room, IMassOutput output, object sync, TimeSpan botDelay) : base(room, output, sync, botDelay)
     {
+        if (room.Settings.GameTimeMs > 0)                                 // fim do tempo (o cliente não encerra sozinho)
+            Later(TimeSpan.FromMilliseconds(room.Settings.GameTimeMs), TimeIsOver);
         if (room.Settings.Mode == GameMode.GuildMatch) MakePairs();
         if (room.Settings.Mode != GameMode.Tournament) return;
         var levels = new List<int>(Players.Count);
         foreach (var p in Players) levels.Add(p.RoomPlayer.Player.Level);
         MatchTid = Trophy.RoomTid(levels);                               // fixo na partida: quem sai não muda o troféu
+    }
+
+    /// <summary>
+    /// Acabou o tempo (SPEC-intrusao-tempo.md §2.3, como o cliente conta): quem não terminou fica com par + 5 em cada
+    /// buraco que faltou (+5 no placar cada, sem pang), termina, e o resultado sai com 0x8A a todos.
+    /// </summary>
+    void TimeIsOver()
+    {
+        foreach (var p in Players)
+        {
+            if (p.Finished || p.Left) continue;
+            for (int i = p.HoleIndex; i < HoleCount; i++)
+            {
+                int par = ParOf(HoleAt(i));
+                p.Strokes[i] = par + 5;
+                p.Total += par + 5;
+                p.Score += 5;
+            }
+            p.HoleIndex = HoleCount;
+            p.Finished = true;
+            p.FinishedAt = Stopwatch.GetTimestamp();
+        }
+        EndGame(timeOver: true);
     }
 
     /// <summary>GuildMatch: pares (grupo, vermelho, azul), na ordem dos slots (SPEC-guildmatch.md §2.1).</summary>
@@ -425,10 +463,10 @@ public sealed class TourneyGame : MassGame
             p.Finished = true;
             p.FinishedAt = Stopwatch.GetTimestamp();
             last = AllDone();
-            if (!last) Output.RivalState(p, 2);                     // o último sai no EndGame, depois do resultado
+            Output.RivalState(p, 2);                                // sempre antes do resultado (SPEC-torneio-fim.md)
         }
         if (!p.IsBot) { Output.HoleDone(p); Output.NextHole(p); }
-        if (last) EndGame(p); else CheckEnd();
+        if (last) EndGame(); else CheckEnd();
     }
 
     bool AllDone()

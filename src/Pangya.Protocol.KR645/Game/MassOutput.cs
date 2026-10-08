@@ -13,7 +13,7 @@ public sealed class MassOutput(Room room, Core.Config.TreasureHunterConfig? trea
 {
     const ushort SWind = 0x59, SHoleStart = 0x51, STeeReady = 0x8E, SNextHole = 0x63, SNoMission = 0x147,
         SRivalPos = 0x6C, SRivalHole = 0x6B, SRivalState = 0x6A, SApproachHole = 0x148, SApproachTotals = 0x146, SApproachEnd = 0x149,
-        SGuildPairs = 0xBD, SGuildScore = 0xC0;
+        SGuildPairs = 0xBD, SGuildScore = 0xC0, STimeOver = 0x8A, STimeElapsed = 0x8B;
 
     MassGame Game => (MassGame)room.Game!;
 
@@ -30,7 +30,14 @@ public sealed class MassOutput(Room room, Core.Config.TreasureHunterConfig? trea
         To(to, new PacketWriter(SWind).U8(wind).U8(0).U16(direction).U8(1));
         if (approach) To(to, new PacketWriter(SNoMission).U8(0));      // approach sem missão
         To(to, new PacketWriter(SHoleStart).U32(to.Guid));              // em massa: índice 0 = a própria bola
+        if (Game is TourneyGame tg) Elapsed(to, tg.ElapsedMs);          // acerta o relógio do torneio (não no approach)
     }
+
+    /// <summary>0x8B u32: ms desde o início da partida (o cliente recalcula o relógio MM:SS).</summary>
+    public void Elapsed(MassPlayer to, uint ms) => To(to, new PacketWriter(STimeElapsed).U32(ms));
+
+    /// <summary>0x8A (vazio) a todos: fim do tempo; no lobby, com todos em estado 2, abre a tela de resultado.</summary>
+    public void TimeOver() => All(new PacketWriter(STimeOver));
 
     public void TeeReady(MassPlayer? to)
     {
