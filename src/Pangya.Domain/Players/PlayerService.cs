@@ -81,7 +81,8 @@ public sealed class PlayerService(IPlayerStore store, IGameData data, NewPlayerC
     }
 
     /// <summary>
-    /// Veste o bot com o kit do nível (só em memória: o bot não é gravado). Itens que não existem nos dados ficam de fora.
+    /// Veste o bot com o kit do nível (só em memória: o bot não é gravado) e ajusta os upgrades do club set até os stats
+    /// (fórmula do cliente) baterem os alvos do kit: força, controle e spin. Itens que não existem nos dados ficam de fora.
     /// </summary>
     public void EquipBot(Player bot, Rooms.BotLevel level)
     {
@@ -89,14 +90,13 @@ public sealed class PlayerService(IPlayerStore store, IGameData data, NewPlayerC
         bot.Level = kit.Level;
         if (bot.Find(bot.Equip.CharacterId) is { } ch)
         {
-            ch.Set("pcl", kit.CharPcl);
-            var aux = new System.Text.Json.Nodes.JsonArray();
+            ch.Set("pcl", [kit.CharPower, 0, 0, 0, 0]);
+            var aux = new JsonArray();
             foreach (var r in kit.Rings) if (data.Exists(r)) aux.Add(r);
             ch.Attrs["aux"] = aux;
         }
         int clubId = bot.Equip.ClubSetId;
         var club = new Item { Id = clubId, TypeId = data.Exists(kit.ClubSet) ? kit.ClubSet : start.ClubSet };
-        club.Set("pcl", kit.ClubPcl);
         bot.Items[clubId] = club;
         int caddieSlot = 0;
         foreach (var it in bot.Items.Values)
@@ -107,6 +107,19 @@ public sealed class PlayerService(IPlayerStore store, IGameData data, NewPlayerC
             bot.Items[caddieSlot] = new Item { Id = caddieSlot, TypeId = has ? kit.Caddie : 0, Location = has ? ItemLocation.Inventory : ItemLocation.Locker };
             bot.Equip.CaddieId = has ? caddieSlot : 0;
         }
+        // upgrades do club até os alvos; a penalidade de controle depende da força, então repete até estabilizar
+        var pcl = new int[5];
+        for (int pass = 0; pass < 4; pass++)
+        {
+            club.Set("pcl", pcl);
+            var (st, _) = data.PlayStats(bot);
+            int dp = kit.Power - st[0], dc = kit.Control - st[1], ds = kit.Spin - st[3];
+            if (dp == 0 && dc <= 0 && ds == 0) break;
+            pcl[0] += dp;
+            pcl[1] += Math.Max(dc, 0);                                      // controle: 30 é o teto do cliente
+            pcl[3] += ds;
+        }
+        club.Set("pcl", pcl);
     }
 
     /// <summary>Cria o jogador; null se o personagem/cores são inválidos ou o jogador já existe.</summary>

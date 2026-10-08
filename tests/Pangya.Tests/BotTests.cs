@@ -330,13 +330,21 @@ public class BotKitTests(DbFixture fx)
         env.Players.EquipBot(bot, BotLevel.VeryHard);
         var (stats, driveUp) = env.Data.PlayStats(bot);
         Assert.Equal(70, bot.Level);
-        Assert.Equal(25, stats[0]);                                          // 9 + 13 + 16 + 2 − 15
+        Assert.Equal(23, stats[0]);                                          // alvo do very hard
         Assert.Equal(4, driveUp);                                            // Midnight Ring
         Assert.Equal(BotKit.RubyAirKnight, bot.Find(bot.Equip.ClubSetId)!.TypeId);
         Assert.Equal(BotKit.Pippin, bot.Find(bot.Equip.CaddieId)!.TypeId);
-        env.Players.EquipBot(bot, BotLevel.Easy);                            // volta ao kit básico, sem caddie
+        env.Players.EquipBot(bot, BotLevel.Easy);                            // kit básico, sem caddie
         Assert.Equal(0, bot.Equip.CaddieId);
-        Assert.Equal(0, env.Data.PlayStats(bot).Stats[0]);
+        // alcance do driver de cada nível, calculado com a fórmula do cliente
+        foreach (var level in Enum.GetValues<BotLevel>())
+        {
+            env.Players.EquipBot(bot, level);
+            var (s, up) = env.Data.PlayStats(bot);
+            Assert.Equal(BotKit.DriverYards[(int)level], ShotModel.RangeYards(ShotModel.Driver, s[0], driveUp: up));
+            Assert.Equal(30, s[1]);                                          // controle sempre no máximo
+            Assert.Equal(new[] { 7, 9, 11, 15, 30 }[(int)level], s[3]);      // spin por nível
+        }
         Assert.Equal(284f, ShotModel.RangeYards(ShotModel.Driver, 25, driveUp: 4));   // 1W: 230 + 2×25 + 4
         Assert.Equal(184f, ShotModel.RangeYards(3, 25, driveUp: 4));                  // 2I: ferro não usa a força
         Assert.Equal(20f, ShotModel.RangeYards(ShotModel.Putter1, 25, driveUp: 4));   // putter: nada
