@@ -47,6 +47,43 @@ public static class WebServer
             return Xml(LoginXml.Success(key, acc.Id));
         });
 
+        // emblema da guilda (SPEC-guilda.md §4): upload do cliente (multipart) e download por nome
+        string markDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(cfg.Data.IffPath)) ?? ".", "GuildMark");
+        app.MapPost("/Guild/upload.asp", async (HttpContext ctx) =>
+        {
+            var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "?";
+            var form = ctx.Request.HasFormContentType ? await ctx.Request.ReadFormAsync() : null;
+            var file = form?.Files.GetFile("FILENAME");
+            int.TryParse(form?["EMBLEM_IDX"].ToString(), out int idx);
+            int.TryParse(form?["GUILD_IDX"].ToString(), out int guild);
+            long.TryParse(form?["UID"].ToString(), out long uid);
+            string mark = form?["EMBLEM"].ToString() ?? "";
+            var t = idx > 0 ? await services.Guilds.EmblemTicketAsync(idx) : null;
+            bool ok = file != null && t is { } tk && tk.GuildId == guild && tk.AccountId == uid && tk.Mark == mark && !tk.Uploaded
+                && Pangya.Domain.Guilds.GuildService.ValidMarkName(mark);
+            byte[] png = [];
+            if (ok)
+            {
+                using var ms = new MemoryStream();
+                await file!.CopyToAsync(ms);
+                png = ms.ToArray();
+                ok = Pangya.Domain.Guilds.GuildService.ValidEmblemPng(png);
+            }
+            Log.Info($"WEB emblema idx={idx} guilda={guild} uid={uid} '{mark}' ip={ip}: {(ok ? "ok" : "recusado")}");
+            if (!ok) return Results.Content("PANGYA_UPDATE_FAIL", "text/plain");
+            Directory.CreateDirectory(markDir);
+            await File.WriteAllBytesAsync(Path.Combine(markDir, mark + ".png"), png);
+            await services.Guilds.MarkEmblemUploadedAsync(idx);
+            return Results.Content("PANGYA_UPDATE_OK", "text/plain");
+        });
+        app.MapGet("/_Files/GuildMark/{name}", (string name) =>
+        {
+            string mark = name.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
+            string path = Path.Combine(markDir, mark + ".png");
+            return Pangya.Domain.Guilds.GuildService.ValidMarkName(mark) && File.Exists(path)
+                ? Results.File(path, "image/png") : Results.NotFound();
+        });
+
         app.MapGet("/register", () => Html(RegisterPage.Render(null, false)));
         app.MapPost("/register", async (HttpContext ctx) =>
         {

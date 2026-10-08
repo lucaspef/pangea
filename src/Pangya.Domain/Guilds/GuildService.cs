@@ -285,6 +285,53 @@ public sealed class GuildService(IGuildStore store)
         return GuildCode.Ok;
     }
 
+    /// <summary>0x112: gestor com o kit 0x1A000130 abre um upload (o kit só é gasto quando o emblema é aplicado).</summary>
+    public async Task<(GuildCode Code, EmblemTicket Ticket)> StartEmblemAsync(Player p, int guildId)
+    {
+        var m = await store.MembershipAsync(p.AccountId);
+        if (m == null || m.GuildId != guildId) return (GuildCode.NotInGuild, default);
+        if (!GuildClass.IsManager(m.Class)) return (GuildCode.NotManager, default);
+        if (await store.GetAsync(guildId) == null) return (GuildCode.NoGuild, default);
+        if (p.FindType(MarkKit) is not { Quantity: > 0 }) return (GuildCode.NoKit, default);
+        return (GuildCode.Ok, await store.NewEmblemTicketAsync(guildId, p.AccountId));
+    }
+
+    /// <summary>0x113 (o POST HTTP deu certo): aplica a marca enviada, gasta o kit. Devolve a guilda atualizada.</summary>
+    public async Task<(GuildCode Code, Guild? Guild)> FinishEmblemAsync(Player p)
+    {
+        if (await store.UploadedEmblemAsync(p.AccountId) is not { } t) return (GuildCode.Failed, null);
+        var m = await store.MembershipAsync(p.AccountId);
+        if (m == null || m.GuildId != t.GuildId || !GuildClass.IsManager(m.Class)) return (GuildCode.NotManager, null);
+        var g = await store.GetAsync(t.GuildId);
+        if (g == null) return (GuildCode.NoGuild, null);
+        var kit = p.FindType(MarkKit);
+        if (kit is not { Quantity: > 0 }) return (GuildCode.NoKit, null);
+        g.Mark = t.Mark;
+        await store.ApplyAsync(new GuildChange { Update = g, Kit = (kit.Id, p.AccountId, kit.Quantity - 1), EmblemApplied = t.Id });
+        UseKit(p, kit);
+        return (GuildCode.Ok, g);
+    }
+
+    public const int EmblemMaxWidth = 22, EmblemMaxHeight = 20, EmblemMaxBytes = 8 * 1024;
+
+    /// <summary>PNG de 32 bits (RGBA 8 bits por canal) até 22×20, como o cliente exige (FrRegisterGuildMark).</summary>
+    public static bool ValidEmblemPng(ReadOnlySpan<byte> png)
+    {
+        ReadOnlySpan<byte> sig = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        if (png.Length < 33 || png.Length > EmblemMaxBytes || !png[..8].SequenceEqual(sig) || !png.Slice(12, 4).SequenceEqual("IHDR"u8)) return false;
+        int w = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png[16..]);
+        int h = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png[20..]);
+        return w is > 0 and <= EmblemMaxWidth && h is > 0 and <= EmblemMaxHeight && png[24] == 8 && png[25] == 6;
+    }
+
+    /// <summary>Nome de marca seguro para arquivo ('g' + hex).</summary>
+    public static bool ValidMarkName(string mark)
+    {
+        if (mark.Length is < 2 or > 11 || mark[0] != 'g') return false;
+        foreach (char ch in mark[1..]) if (!char.IsAsciiHexDigitLower(ch)) return false;
+        return true;
+    }
+
     static string Trim(string s, int maxBytes)
     {
         while (Bytes(s) > maxBytes && s.Length > 0) s = s[..^1];

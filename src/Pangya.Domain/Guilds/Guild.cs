@@ -66,7 +66,12 @@ public sealed class GuildChange
     public bool Close { get; set; }
     /// <summary>Kit gasto: objeto, dono e quantidade que sobra (0 = apaga).</summary>
     public (int ItemId, long Account, int Left)? Kit { get; set; }
+    /// <summary>Upload de emblema aplicado (marca a linha em guild_emblem_uploads).</summary>
+    public int? EmblemApplied { get; set; }
 }
+
+/// <summary>Upload de emblema pendente (0x112 -> POST HTTP -> 0x113).</summary>
+public readonly record struct EmblemTicket(int Id, int GuildId, long AccountId, string Mark, bool Uploaded);
 
 public interface IGuildStore
 {
@@ -83,4 +88,10 @@ public interface IGuildStore
     /// <summary>Cria a guilda com o mestre (e o resto de <paramref name="change"/>) numa transação; devolve o id.</summary>
     Task<int> CreateAsync(string name, string nameKey, string introduce, long masterId, GuildChange change);
     Task ApplyAsync(GuildChange change);
+    /// <summary>Novo upload de emblema: devolve o id (EMBLEM_IDX) e o nome da marca ('g' + id em hex).</summary>
+    Task<EmblemTicket> NewEmblemTicketAsync(int guildId, long accountId);
+    Task<EmblemTicket?> EmblemTicketAsync(int id);
+    Task MarkEmblemUploadedAsync(int id);
+    /// <summary>Último upload já enviado e ainda não aplicado desta conta.</summary>
+    Task<EmblemTicket?> UploadedEmblemAsync(long accountId);
 }

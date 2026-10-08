@@ -129,6 +129,44 @@ public sealed class GuildRepository(Db db) : IGuildStore
         await tx.CommitAsync();
     }
 
+    sealed record TicketRow(int Id, int GuildId, long AccountId, string Mark, DateTime? UploadedAt);
+    static EmblemTicket ToTicket(TicketRow r) => new(r.Id, r.GuildId, r.AccountId, r.Mark, r.UploadedAt != null);
+    const string TicketCols = "id, guild_id, account_id, mark, uploaded_at";
+
+    public async Task<EmblemTicket> NewEmblemTicketAsync(int guildId, long accountId)
+    {
+        await using var c = await db.OpenAsync();
+        var r = await c.QuerySingleAsync<TicketRow>($"""
+            insert into guild_emblem_uploads(guild_id, account_id) values (@guildId, @accountId) returning {TicketCols}
+            """, new { guildId, accountId });
+        string mark = "g" + r.Id.ToString("x");
+        await c.ExecuteAsync("update guild_emblem_uploads set mark = @mark where id = @Id", new { mark, r.Id });
+        return new EmblemTicket(r.Id, guildId, accountId, mark, false);
+    }
+
+    public async Task<EmblemTicket?> EmblemTicketAsync(int id)
+    {
+        await using var c = await db.OpenAsync();
+        var r = await c.QuerySingleOrDefaultAsync<TicketRow>($"select {TicketCols} from guild_emblem_uploads where id = @id and applied_at is null", new { id });
+        return r == null ? null : ToTicket(r);
+    }
+
+    public async Task MarkEmblemUploadedAsync(int id)
+    {
+        await using var c = await db.OpenAsync();
+        await c.ExecuteAsync("update guild_emblem_uploads set uploaded_at = now() where id = @id", new { id });
+    }
+
+    public async Task<EmblemTicket?> UploadedEmblemAsync(long accountId)
+    {
+        await using var c = await db.OpenAsync();
+        var r = await c.QuerySingleOrDefaultAsync<TicketRow>($"""
+            select {TicketCols} from guild_emblem_uploads
+            where account_id = @accountId and uploaded_at is not null and applied_at is null order by id desc limit 1
+            """, new { accountId });
+        return r == null ? null : ToTicket(r);
+    }
+
     static async Task ApplyInAsync(System.Data.Common.DbConnection c, System.Data.Common.DbTransaction tx, GuildChange ch)
     {
         foreach (var id in ch.Removes)
@@ -150,6 +188,8 @@ public sealed class GuildRepository(Db db) : IGuildStore
         foreach (var (account, guild, name, state) in ch.History)
             await c.ExecuteAsync("insert into guild_history(account_id, guild_id, guild_name, state) values (@account, @guild, @name, @state)",
                 new { account, guild, name, state = (short)state }, tx);
+        if (ch.EmblemApplied is { } ticket)
+            await c.ExecuteAsync("update guild_emblem_uploads set applied_at = now() where id = @ticket", new { ticket }, tx);
         foreach (var account in ch.Cooldowns)
             await c.ExecuteAsync("update players set guild_cooldown_until = now() + interval '24 hours' where account_id = @account",
                 new { account }, tx);

@@ -17,7 +17,7 @@ public sealed partial class GameHandler
         CGuildJoin = 0x109, CGuildWithdraw = 0x10A, CGuildApprove = 0x10B, CGuildReject = 0x10C, CGuildClass = 0x10D,
         CGuildMessage = 0x10E, CGuildMembers = 0x10F, CGuildLeave = 0x110, CGuildKick = 0x111, CGuildMark = 0x112,
         CGuildMarkDone = 0x113;
-    const ushort SGuildState = 0x1BD, SGuildRenamed = 0x3C;
+    const ushort SGuildState = 0x1BD, SGuildRenamed = 0x3C, SGuildEmblem = 0x3B;
     /// <summary>Resposta de cada pedido = id do pedido + 0xB5.</summary>
     const ushort GuildReplyOffset = 0xB5;
 
@@ -164,10 +164,24 @@ public sealed partial class GameHandler
                 conn.Send(Code(reply, await g.SetMessageAsync(me, gid, target, p.Str(64))));
                 return true;
             }
-            case CGuildMark or CGuildMarkDone:                                  // emblema (upload HTTP) ainda não
-                p.Skip(p.Remaining);
-                conn.Send(Code(reply, GuildCode.Failed));
+            case CGuildMark:                                                    // -> 0x1C7 u32 1, u32 EMBLEM_IDX, str nome da marca
+            {
+                var (code, t) = await g.StartEmblemAsync(Player, (int)p.U32());
+                conn.Send(code == GuildCode.Ok ? new PacketWriter(reply).U32(1).U32((uint)t.Id).Str(t.Mark) : Code(reply, code));
                 return true;
+            }
+            case CGuildMarkDone:                                                // o POST deu certo: aplica, 0x1C8 e 0x3B aos membros
+            {
+                p.Skip(p.Remaining);
+                int kitId = Player.FindType(GuildService.MarkKit)?.Id ?? 0;
+                var (code, guild) = await g.FinishEmblemAsync(Player);
+                conn.Send(Code(reply, code));
+                if (code != GuildCode.Ok) return true;
+                conn.Send(new PacketWriter(SItemCounts).U8(1).U32(GuildService.MarkKit).U32((uint)kitId).U16((ushort)(Player.Find(kitId)?.Quantity ?? 0)));
+                await BroadcastGuildAsync(guild!, SGuildEmblem);
+                Log.Info($"{conn} emblema da guilda {guild!.Id} -> {guild.Mark}");
+                return true;
+            }
             default: p.Skip(p.Remaining); return true;
         }
     }

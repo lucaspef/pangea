@@ -11,6 +11,8 @@ Patches (só dados, sem mexer em código):
   - URL do login web  -> http://<ip>:<porta_web>/Secure/Login/LoginForGame.aspx
   - URL de cadastro   -> http://<ip>:<porta_web>/register   (botão "cadastrar" do login)
   - LOGIN_PORT_LIST[0] (loginunit.cpp:8, VA 0x00AA2538 no .map) 10101 -> <porta_login>
+  - emblema da guilda: upload  -> http://<ip>:<porta_web>/Guild/upload.asp
+                       download -> http://<ip>:<porta_web>/_Files/GuildMark/   (SPEC-guilda.md §4.4)
 """
 import hashlib
 import os
@@ -77,6 +79,10 @@ def main():
     replace_slot(data, b'http://qa.www.gametree.co.kr/SignUp/Join.aspx?rsn=9',
                  len(b'http://qa.www.gametree.co.kr/SignUp/Join.aspx?rsn=9') + 1,
                  ('http://%s/register' % host).encode())
+    up = b'http://qa.contents.pangya.gametree.co.kr:50006/Guild/upload.asp'
+    down = b'http://qa.contents.pangya.gametree.co.kr:50006/_Files/GuildMark/'
+    replace_slot(data, up, len(up) + 1, ('http://%s/Guild/upload.asp' % host).encode())
+    replace_slot(data, down, len(down) + 1, ('http://%s/_Files/GuildMark/' % host).encode())
     off = va_to_offset(data, LOGIN_PORT_VA)
     old = struct.unpack_from('<i', data, off)[0]
     if old != 10101:
