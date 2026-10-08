@@ -19,7 +19,7 @@ public class GbExpFormulaTests
         Assert.Equal(72, Rewards.Exp(e, 3, true, 50, Cfg));                        // geleia branca +50%
         Assert.Equal(96, Rewards.Exp(e, 3, true, 0, new RewardConfig { ExpRate = 200 }));   // servidor 2×
         Assert.Equal(48, Rewards.Exp(e with { Position = 3, PositionPenalty = false }, 3, true, 0, Cfg));   // torneio
-        Assert.Equal(0, Rewards.Exp(e with { Level = 70 }, 9, true, 0, Cfg));       // nível máximo
+        Assert.Equal(48, Rewards.Exp(e with { Level = 70 }, 3, true, 0, Cfg));      // nível 70 também ganha (barra de 1,6 M)
         Assert.Equal(0, Rewards.Exp(e, 9, false, 0, Cfg));                         // saiu
     }
 

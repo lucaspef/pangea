@@ -13,17 +13,17 @@ public static class Rewards
     /// <summary>
     /// Entrada da fórmula de EXP (Versus.requestFinishExpGame / Tourney do GB): jogadores na partida, estrelas do
     /// curso (dificuldade 1..5 do Course.iff), posição final (0 = 1º), se a posição desconta 10% por lugar (VS sim,
-    /// torneio não) e o nível do jogador (70 = máximo: não ganha EXP).
+    /// torneio não) e o nível do jogador (informativo: no 70 a barra ainda enche até o máximo, ver Levels.AddExp).
     /// </summary>
     public readonly record struct ExpInput(int Players, float Stars, int Position, bool PositionPenalty, int Level);
 
     /// <summary>
     /// EXP = estrelas × buracos × jogadores × (1 + EXP% dos cards/itens) × taxa do servidor, × (1 − 0,1 × posição) no VS;
-    /// 0 para quem saiu ou está no nível máximo. Truncado a cada passo, como o GB.
+    /// 0 para quem saiu. Truncado a cada passo, como o GB (que dava 0 no nível 70; aqui não: a barra do 70 tem 1,6 M).
     /// </summary>
     public static int Exp(ExpInput e, int holes, bool finished, int expRate, RewardConfig cfg)
     {
-        if (!finished || holes <= 0 || e.Level >= Levels.Max) return 0;
+        if (!finished || holes <= 0) return 0;
         double exp = Math.Floor(Math.Max(e.Players, 1) * holes * Math.Max(e.Stars, 1));
         exp = Math.Floor(exp * (1 + Math.Max(expRate, 0) / 100.0) * (Math.Max(cfg.ExpRate, 0) / 100.0));
         if (e.PositionPenalty) exp = Math.Floor(exp * Math.Max(0, 1 - 0.1 * e.Position));
