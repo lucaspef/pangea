@@ -4,6 +4,7 @@
 //   Pangya.Server [--config ...] server-add <id> <tipo> <nome> <endereço> <porta> [máx]   servidor fixo na lista
 //   Pangya.Server [--config ...] server-remove <id>
 //   Pangya.Server [--config ...] account-create <login> <senha> <nickname>              conta pronta para jogar
+//   Pangya.Server [--config ...] account-password <login> <senha>                       troca a senha
 //   Pangya.Server [--config ...] player-set <login> [pang=N] [cookie=N] [level=N] [identity=N]   ajusta um jogador (desconectado)
 //   Pangya.Server [--config ...] item-give <login> <typeid> [qtd] [dias]   entrega um item sem cobrar (desconectado)
 //   Pangya.Server [--config ...] give-all <login>   tudo o que está ativo no IFF, menos roupas (teste; desconectado)
@@ -30,11 +31,11 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
     if (applied.Count > 0) Log.Info("migrações aplicadas: " + string.Join(", ", applied));
 
     var command = rest.Count > 0 ? rest[0] : "";
-    if (command is "server-add" or "server-remove" or "account-create" or "player-set" or "item-give" or "give-all")
+    if (command is "server-add" or "server-remove" or "account-create" or "account-password" or "player-set" or "item-give" or "give-all")
     {
         // auditoria: a linha de comando inteira (a senha do account-create não é gravada)
         var args2 = rest.Count > 2 ? rest.GetRange(2, rest.Count - 2) : [];
-        if (command == "account-create" && args2.Count > 0) args2[0] = "***";
+        if (command is "account-create" or "account-password" && args2.Count > 0) args2[0] = "***";
         await s.Audit.WriteAsync(null, "console", command, rest.Count > 1 ? rest[1] : "", string.Join(' ', args2));
     }
     if (command == "server-add" && rest.Count >= 6)
@@ -61,6 +62,15 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
             Pangya.Protocol.KR645.Kr645GameData.Load(cfg.Data.IffPath), cfg.NewPlayer);
         await players.CreateAsync(acc.Id, 0x04000000, 0, 0);
         Log.Info($"conta criada: {rest[1]} uid={acc.Id} nick={rest[3]}");
+        return;
+    }
+
+    if (command == "account-password" && rest.Count == 3)
+    {
+        // administração: nova senha (sem as regras do cadastro; a senha não vai para o log nem para a auditoria)
+        var acc = await s.Accounts.FindByLoginAsync(rest[1]) ?? throw new InvalidOperationException($"login {rest[1]} não existe");
+        await s.Accounts.UpdatePasswordHashAsync(acc.Id, Pangya.Domain.Accounts.PasswordHasher.Hash(rest[2]));
+        Log.Info($"senha trocada: {rest[1]}");
         return;
     }
 
