@@ -12,5 +12,5 @@ Se o emulador ganhar descobertas novas, copie de novo os `SPEC-*.md` de lá.
   ("Challenges") saiu em 20/11/2012. A camada `Protocol.KR645` continua como está; uma camada futura deve mirar um
   cliente S6+ real.
 - Referência para essa camada futura: cliente oficial **KR 839** (julho de 2016) em
-  `C:\Users\Lucas\Downloads\PangYa_Client_KR_839` — ProjectG.exe sem empacotamento (analisável) e paks com a mesma chave KR.
+  (cópia local, fora do repositório) — ProjectG.exe sem empacotamento (analisável) e paks com a mesma chave KR.
 - Correções que o cliente de teste 645 precisa com os dados 642: `SPEC-client-data.md` do emulador.

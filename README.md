@@ -12,6 +12,7 @@ como a Pangeia, um único continente que une todos.
 ![Cliente](https://img.shields.io/badge/cliente-KR%20645%20QA-2E8B57)
 ![Testes](https://img.shields.io/badge/testes-xUnit%20%2B%20protocolo-success)
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-orange)
+![Licença](https://img.shields.io/badge/licen%C3%A7a-AGPL--3.0-blue)
 
 </div>
 
@@ -151,3 +152,8 @@ Toda ação de administração fica registrada na auditoria (`audit_log`).
 - Servidores de referência da comunidade, usados para comparar fluxos e ordens de pacotes.
 - PangYa é marca de seus respectivos donos. Este é um projeto de fãs, sem fins comerciais e sem vínculo com os
   detentores do jogo; nenhum arquivo do jogo faz parte deste repositório.
+
+## Licença
+
+[AGPL-3.0](LICENSE): livre para usar, estudar e modificar. Quem rodar uma versão modificada como servidor para outras
+pessoas tem de publicar o código dessas mudanças, para que as melhorias voltem para a comunidade.
