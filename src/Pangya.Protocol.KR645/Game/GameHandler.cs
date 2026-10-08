@@ -29,6 +29,9 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
 
     public (GameHandler From, GameHandler To, int Room)? TakeInvite(uint id) => invites.TryRemove(id, out var v) ? v : null;
 
+    /// <summary>Mensageiro do mesmo processo (lista de amigos pelo game, status "jogando"); null sem mensageiro.</summary>
+    public Messenger.MessengerContext? Messenger { get; set; }
+
     /// <summary>Registro de servidores (lista de servidores no jogo, 0x43); null nos testes que não usam.</summary>
     public Domain.Servers.IServerRegistry? Registry { get; } = registry;
     public GameWorld World { get; } = world;
@@ -93,6 +96,18 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
 
     public void Kick(string reason) => conn.Close(reason);
 
+    public System.Net.IPAddress RemoteAddress => conn.Remote.Address;
+
+    public PlayerWhere Where
+    {
+        get
+        {
+            var ch = channel;
+            var r = room;
+            return new PlayerWhere(ch?.Id ?? -1, ch?.Name ?? "", r?.Index ?? -1, r == null ? -1 : (int)r.Settings.Mode);
+        }
+    }
+
     public async ValueTask OnPacketAsync(PacketReader p)
     {
         if (player == null && p.Id != CLogin)
@@ -100,7 +115,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
-        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p) || await HandleGuildAsync(p) || await HandleMailAsync(p)) return;
+        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p) || await HandleGuildAsync(p) || await HandleMailAsync(p) || await HandleMessengerAsync(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;

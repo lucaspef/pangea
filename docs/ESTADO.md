@@ -14,7 +14,12 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - ✅ Lista de jogadores do lobby (0x44) atualizada ao entrar/sair de salas.
 - ✅ Sussurro (0x2A→0x82), convite (0xB2/0x29→0x127/0x81), ir até a sala do amigo (0xAC).
 - 🟡 Partida rápida: responde "sem alvo".
-- ⬜ Mensageiro (amigos; fase 7), ranking (fase 8).
+- 🟡 Mensageiro (fase 7, SPEC-messenger.md), porta 30303, no mesmo processo do game (que confirma quem está jogando;
+  o login do MSN só tem uid e nick): lista de amigos, procurar/pedir/aceitar/apagar/bloquear/apelido, online/offline,
+  posição (canal/sala vinda do game, não do cliente), status ocupado/ausente/jogando, conversa entre amigos;
+  game 0x88 → 0xFA e lista de amigos pelo game (0x3C/0x11F). Falta: bilhetes (0x3C/0x111 responde "falha"),
+  guilda no mensageiro (aba e chat 0x25), convites entre servidores. Vários processos exigiriam Redis (PLANO).
+- ⬜ Ranking (fase 8).
 
 ## Salas e partida
 - ✅ Stroke, dupla, match, pang battle, torneio, approach, Wiz City (moedas, caixas → Spin Cube).

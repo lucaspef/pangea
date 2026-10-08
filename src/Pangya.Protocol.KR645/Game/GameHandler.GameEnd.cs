@@ -33,6 +33,7 @@ public sealed partial class GameHandler
     {
         var p = player!;
         var now = DateTime.UtcNow;
+        MessengerPlaying(false);
         int pangRate = CardService.ActiveRate(p, ctx.Data.Cards, CardInfo.AbilityPangRate, now);
         int expRate = CardService.ActiveRate(p, ctx.Data.Cards, CardInfo.AbilityExpRate, now);
         var expIn = new Rewards.ExpInput(players, ctx.Data.CourseStars(coursePlayed), position, positionPenalty, p.Level);

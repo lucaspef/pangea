@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Mensageiro: amigos, online, conversa. Roda no processo do game server (presença em memória). -->
+  <ItemGroup>
+    <ProjectReference Include="..\Pangya.Data\Pangya.Data.csproj" />
+    <ProjectReference Include="..\Pangya.Protocol.KR645\Pangya.Protocol.KR645.csproj" />
+  </ItemGroup>
+</Project>

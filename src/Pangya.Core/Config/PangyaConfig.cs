@@ -10,7 +10,7 @@ namespace Pangya.Core.Config;
 /// </summary>
 public sealed class PangyaConfig
 {
-    /// <summary>Servidores que este processo roda (se a linha de comando não disser): web, login, game.</summary>
+    /// <summary>Servidores que este processo roda (se a linha de comando não disser): web, login, game, messenger.</summary>
     public string[] Run { get; set; } = ["web", "login", "game"];
     public NetworkConfig Network { get; set; } = new();
     public WebConfig Web { get; set; } = new();
@@ -22,6 +22,7 @@ public sealed class PangyaConfig
     public DataConfig Data { get; set; } = new();
     public NewPlayerConfig NewPlayer { get; set; } = new();
     public LotteryConfig Lottery { get; set; } = new();
+    public MessengerConfig Messenger { get; set; } = new();
 
     static readonly JsonSerializerOptions Json = new()
     {
@@ -103,6 +104,19 @@ public sealed class GameConfig
     /// <summary>Precisão do bot, 0..1 (1 = sem erro aleatório de mira/força).</summary>
     public float BotAccuracy { get; set; } = 0.85f;
     public RewardConfig Rewards { get; set; } = new();
+}
+
+/// <summary>
+/// Mensageiro (amigos, online, conversa; docs/protocolo/SPEC-messenger.md). Roda no mesmo processo do game server, que
+/// confirma quem está logado. O cliente descarta servidores com usuários ≥ máximo − 150: MaxUsers alto.
+/// </summary>
+public sealed class MessengerConfig
+{
+    public int Id { get; set; } = 30303;
+    public string Name { get; set; } = "Messenger";
+    public int Port { get; set; } = 30303;
+    public int MaxUsers { get; set; } = 3000;
+    public int MaxFriends { get; set; } = 50;
 }
 
 /// <summary>Recompensa de fim de partida (o pang informado pelo cliente é limitado por buraco).</summary>

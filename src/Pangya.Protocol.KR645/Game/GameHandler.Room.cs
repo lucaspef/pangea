@@ -126,6 +126,7 @@ public sealed partial class GameHandler
         CloseMyShopLocked();                                                // a loja fecha com quem sai do lounge
         LeaveVisitedShopLocked();
         room = null;
+        MessengerPlaying(false);
         var rp = r.Find(this);
         if (rp != null)
         {
@@ -226,6 +227,8 @@ public sealed partial class GameHandler
                     botDelay, TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
             InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r, ctx.Data.Cards));
             InGameOutput.Broadcast(r, RoomPackets.GameInit(r));         // o cliente troca para a tela da partida
+            foreach (var rp in r.Players)                               // amigos do mensageiro: "jogando"
+                if (rp.Session is GameHandler gh) gh.MessengerPlaying(true);
             Lobby(RoomPackets.RoomList(3, r));
             Log.Info($"sala {r.Index}: início mapa={r.CoursePlayed} buracos={r.Settings.Holes} jogadores={r.Players.Count}");
         }

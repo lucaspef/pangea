@@ -10,6 +10,16 @@ public interface IGameSession
     Player Player { get; }
     /// <summary>Derruba a sessão (ex.: a mesma conta entrou de novo).</summary>
     void Kick(string reason);
+    /// <summary>IP do jogador (o mensageiro só aceita o login vindo do mesmo IP da sessão de jogo).</summary>
+    System.Net.IPAddress? RemoteAddress => null;
+    /// <summary>Onde o jogador está agora (canal e sala), para os amigos do mensageiro.</summary>
+    PlayerWhere Where => PlayerWhere.Nowhere;
+}
+
+/// <summary>Canal (−1 = nenhum) e sala (−1 = fora de sala, tipo = modo da sala).</summary>
+public readonly record struct PlayerWhere(int Channel, string ChannelName, int Room, int RoomType)
+{
+    public static readonly PlayerWhere Nowhere = new(-1, "", -1, -1);
 }
 
 public enum ChannelJoinResult { Ok = 1, Full = 2, NotFound = 3 }

@@ -146,7 +146,7 @@ public sealed class LoginHandler(Connection conn, LoginContext ctx) : IConnectio
     }
 
     /// <summary>u8 quantidade + n × sGameServerInfo (92 bytes).</summary>
-    static PacketWriter ServerList(ushort id, IReadOnlyList<ServerInfo> servers)
+    internal static PacketWriter ServerList(ushort id, IReadOnlyList<ServerInfo> servers)
     {
         int n = Math.Min(servers.Count, 255);
         var w = new PacketWriter(id).U8((byte)n);
