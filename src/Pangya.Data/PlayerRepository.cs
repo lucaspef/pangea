@@ -30,6 +30,9 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
         };
         var stats = JsonNode.Parse(p.Stats);
         if (stats?["totals"] is JsonObject totals && totals.Deserialize<PlayerStats>(Json) is { } t) player.Stats = t;
+        if (stats?["school"] is JsonValue school && school.TryGetValue<int>(out var sc)) player.School = sc;
+        if (stats?["tutorial"] is JsonArray tut)
+            for (int i = 0; i < Math.Min(tut.Count, player.Tutorial.Length); i++) player.Tutorial[i] = tut[i]?.GetValue<int>() ?? 0;
         if (stats?["courses"] is JsonObject courses)
             foreach (var (k, v) in courses)
                 if (int.TryParse(k, out var course) && v != null && v.Deserialize<CourseRecord>(Json) is { } rec) player.Courses[course] = rec;
@@ -91,7 +94,8 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
             update players set pang = coalesce(@Pang, pang), cookie = coalesce(@Cookie, cookie),
                 locker_pang = coalesce(@LockerPang, locker_pang), level = coalesce(@Level::smallint, level),
                 exp = coalesce(@Exp, exp), flags = coalesce(@Flags, flags), equip = coalesce(@equip::jsonb, equip),
-                stats = stats || jsonb_strip_nulls(jsonb_build_object('courses', @courses::jsonb, 'totals', @totals::jsonb))
+                stats = stats || jsonb_strip_nulls(jsonb_build_object('courses', @courses::jsonb, 'totals', @totals::jsonb,
+                    'school', @school::int, 'tutorial', @tutorial::jsonb))
             where account_id = @accountId
             """, new
         {
@@ -99,6 +103,8 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
             equip = ch.Equip == null ? null : JsonSerializer.Serialize(ch.Equip, Json),
             courses = ch.Courses == null ? null : JsonSerializer.Serialize(ch.Courses, Json),
             totals = ch.Stats == null ? null : JsonSerializer.Serialize(ch.Stats, Json),
+            school = ch.School,
+            tutorial = ch.Tutorial == null ? null : JsonSerializer.Serialize(ch.Tutorial, Json),
         }, tx);
     }
 

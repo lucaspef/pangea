@@ -9,8 +9,10 @@ namespace Pangya.Protocol.KR645.Game;
 
 /// <summary>Serviços do game server (um por processo).</summary>
 public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players, IGameData data,
-    Core.Config.LotteryConfig? lottery = null)
+    Core.Config.LotteryConfig? lottery = null, Domain.Servers.IServerRegistry? registry = null)
 {
+    /// <summary>Registro de servidores (lista de servidores no jogo, 0x43); null nos testes que não usam.</summary>
+    public Domain.Servers.IServerRegistry? Registry { get; } = registry;
     public GameWorld World { get; } = world;
     public SessionService Sessions { get; } = sessions;
     public PlayerService Players { get; } = players;
@@ -80,7 +82,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
-        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p)) return;
+        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;
@@ -188,6 +190,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
 
         conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0));   // caixa de presentes vazia (modo 1)
         SendCards();
+        conn.Send(TutorialPacket(p.Tutorial));                             // missões do tutorial feitas
         conn.Send(new PacketWriter(SCookie).U64((ulong)p.Cookie));
     }
 

@@ -178,6 +178,7 @@ public static class PlayerStructs
         u.info.dwGuid = (uint)p.AccountId;          // MyGuid(): chave do jogador nas salas, não pode ser 0
         u.info.dwUID = (uint)p.AccountId;
         u.info.DoTutorial = 1;
+        u.info.school = (uint)p.School;
         u.stat = Statistics(p);
         for (int i = 0; i < MapStatCount; i++) { u.mapStat[i] = MapStat(p, i); u.classicMapStat[i] = MapStat(null, i); }
         u.userEquip = Equip(p);

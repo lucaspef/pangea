@@ -86,6 +86,10 @@ public sealed class Player
     public Dictionary<int, CourseRecord> Courses { get; } = [];
     /// <summary>Totais de estatística (perfil).</summary>
     public PlayerStats Stats { get; set; } = new();
+    /// <summary>Escola escolhida nas opções (sUserInfo.info.school).</summary>
+    public int School { get; set; }
+    /// <summary>Missões do tutorial feitas, por categoria (iniciante, básico, avançado; bits do cliente).</summary>
+    public int[] Tutorial { get; set; } = new int[3];
 
     public const int FlagTutorialDone = 1;
 
@@ -165,6 +169,8 @@ public sealed class PlayerChanges
     /// <summary>Todas as estatísticas por curso (substitui as gravadas).</summary>
     public Dictionary<int, CourseRecord>? Courses { get; set; }
     public PlayerStats? Stats { get; set; }
+    public int? School { get; set; }
+    public int[]? Tutorial { get; set; }
     public bool IsEmpty => Added.Count == 0 && Updated.Count == 0 && Removed.Count == 0 && Pang == null && Cookie == null
-        && LockerPang == null && Level == null && Exp == null && Flags == null && Equip == null && Courses == null && Stats == null;
+        && LockerPang == null && Level == null && Exp == null && Flags == null && Equip == null && Courses == null && Stats == null && School == null && Tutorial == null;
 }
