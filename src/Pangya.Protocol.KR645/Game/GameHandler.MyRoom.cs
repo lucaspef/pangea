@@ -46,7 +46,7 @@ public sealed partial class GameHandler
             case CLockerSetPw: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x17B).U32(0)); return true;
             case CLockerChangePw: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x179).U32(0)); return true;
             case CLockerLock: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x178).U32(0).U8(0)); return true;
-            case CGiftPage: p.Skip(p.Remaining); conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0)); return true;
+            case CGiftPage or CGiftList: p.Skip(p.Remaining); conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0)); return true;
             case CMailList: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x140).U32(1).U32(1).U32(0)); return true;
             case CMailRead: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x143).U8(1)); return true;
             case CMailDelete: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x15C)); return true;

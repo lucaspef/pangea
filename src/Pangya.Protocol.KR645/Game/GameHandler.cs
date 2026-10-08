@@ -64,6 +64,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             LeaveRoom(notifySelf: false);
         }
         ctx.World.Leave(this);
+        FinishGameEnd();                                                  // grava a recompensa de quem fechou o jogo cedo
         GameWorld.LeaveChannel(channel);
         channel = null;
         return ValueTask.CompletedTask;
@@ -206,35 +207,6 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
     }
 
     /// <summary>Fim de partida: credita pang (limitado) e EXP e atualiza o pang mostrado. Chamado sob o lock da sala.</summary>
-    /// <summary>Fim de partida: recompensa e, nos modos com placar contra o par, a estatística do curso (mapa, placar).</summary>
-    public void OnGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished, (int Course, int Score)? course = null)
-    {
-        var p = player!;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var now = DateTime.UtcNow;
-                int pangRate = Domain.Shop.CardService.ActiveRate(p, ctx.Data.Cards, Domain.Shop.CardInfo.AbilityPangRate, now);
-                int expRate = Domain.Shop.CardService.ActiveRate(p, ctx.Data.Cards, Domain.Shop.CardInfo.AbilityExpRate, now);
-                var stats = lastGameStats;
-                lastGameStats = null;
-                var r = await Rewards.ApplyAsync(ctx.Players.Store, p, reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards,
-                    course, pangRate, expRate, stats);
-                if (finished && holes > 0)                                   // 0x43: totais e o registro do curso no cliente
-                {
-                    var w = new PacketWriter(SStatsUpdate, 0x160).Struct(PlayerStructs.Statistics(p)).Zeros(0x4E);
-                    if (course is { } c) w.U8((byte)c.Course).Struct(PlayerStructs.MapStat(p, c.Course)); else w.U8(0xFF);
-                    conn.Send(w.U8(0xFF));
-                }
-                if (r.Pang == 0 && r.Exp == 0) return;
-                Log.Info($"{conn} recompensa: +{r.Pang} pang, +{r.Exp} EXP{(r.LevelsUp > 0 ? $", subiu {r.LevelsUp} nível(is) -> {p.Level}" : "")}");
-                conn.Send(new PacketWriter(SPang).U64((ulong)p.Pang).U64(0));
-            }
-            catch (Exception e) { Log.Error($"{conn} falha ao gravar a recompensa", e); }
-        });
-    }
-
     void EnterChannel(byte id)
     {
         var r = ctx.World.JoinChannel(id, channel, out var joined);

@@ -202,6 +202,23 @@ public class MassModeTests
         Assert.True(g.Over);
         Assert.Contains(o.Events, e => e.StartsWith($"hole {0x7F000001u}"));
         Assert.Contains($"state {0x7F000001u} 2", o.Events);
+        // o resultado (0x77) sai antes do último 0x6A: é ele que abre a tela de resultado do torneio
+        Assert.True(o.Events.IndexOf("over") < o.Events.IndexOf($"state {0x7F000001u} 2"));
+        Assert.True(o.Events.IndexOf("state 100 2") < o.Events.IndexOf("over"));
+    }
+
+    [Fact]
+    public void LastHumanToFinishGetsResultBeforeClosingState()
+    {
+        var (_, g, o, _) = Setup(GameMode.Tournament, 1, false, 1);
+        var a = g.Players[0];
+        g.Loaded(a);
+        g.Shoot(a, 0);
+        g.Result(a, new ShotResult(a.Guid, 0, 0, 320, ShotResult.StateHoled, 9, 1));
+        g.ShotFinished(a);
+        Assert.True(g.Over);
+        Assert.Single(o.Events.FindAll(e => e == "state 100 2"));
+        Assert.True(o.Events.IndexOf("over") < o.Events.IndexOf("state 100 2"));
     }
 
     [Fact]

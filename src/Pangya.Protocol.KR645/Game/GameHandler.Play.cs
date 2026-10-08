@@ -53,6 +53,7 @@ public sealed partial class GameHandler
                 // estatística acumulada da partida (0x31 a cada buraco, 0x06 no fim): a última vale no fim do jogo
                 if (p.Remaining >= 0xEB) lastGameStats = PlayerStructs.GameStats(p.Struct<sPangYaUserStatistics>());
                 p.Skip(p.Remaining);
+                if (p.Id == CGameStats) FinishGameEnd();                       // a tela de resultado já abriu: 0x43/0xC6 agora
                 return true;
             case CTurnClock or CTeamHoleIn or CMatchHoleIn:                // relógio / pose: sem resposta
                 p.Skip(p.Remaining);

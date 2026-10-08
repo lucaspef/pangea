@@ -14,6 +14,10 @@ public sealed class FieldItems
     public const int BoxPrize = Shop.SpinCubeService.SpinCube;
 
     readonly HashSet<(uint, byte, uint)> taken = [];
+    readonly Dictionary<uint, List<int>> won = [];
+
+    /// <summary>Itens que o jogador ganhou nas caixas (para a lista de itens da tela de resultado: 0xF8/0xCC).</summary>
+    public IReadOnlyList<int> WonBy(uint guid) => won.TryGetValue(guid, out var l) ? l : [];
     public uint Seed { get; }
     /// <summary>Por buraco (1..18): tipo de cada índice.</summary>
     public Dictionary<byte, int[]> PerHole { get; } = [];
@@ -41,6 +45,9 @@ public sealed class FieldItems
     {
         if (!PerHole.TryGetValue(hole, out var types) || index >= types.Length || types[index] != type) return null;
         if (!taken.Add((guid, hole, index))) return null;
-        return type == Coin ? (rng.Next(1, (texture == 1 ? 50 : 200) + 1), 0) : (0, BoxPrize);
+        if (type == Coin) return (rng.Next(1, (texture == 1 ? 50 : 200) + 1), 0);
+        if (!won.TryGetValue(guid, out var list)) won[guid] = list = [];
+        list.Add(BoxPrize);
+        return (0, BoxPrize);
     }
 }

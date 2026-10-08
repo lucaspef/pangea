@@ -19,6 +19,25 @@ public static class Levels
         50988, 101978, 203952, 407904, 815808, 1631616, 1631616, 1631616, 1631616, 1631616, 1631616,
     ];
 
+    /// <summary>"Bolsa de pang": nos presentes, quantidade = pang.</summary>
+    public const int PangPouch = 0x1A000010;
+
+    /// <summary>
+    /// Presente de subida de nível que o cliente mostra (s_levelUpGift, levelupitemdlg.cpp; docs/protocolo/
+    /// SPEC-resultado-fim-de-jogo.md §2.6), pelo nível alcançado; 21 em diante = 1 cartão de raspadinha (evento).
+    /// </summary>
+    public static (int TypeId, int Qty)[] Gifts(int level) => level == 1 ? [(0x18000008, 1), (0x18000007, 1)]
+        : level <= 0 ? [] : [Gift(level)];
+
+    static (int TypeId, int Qty) Gift(int level) => level switch
+    {
+        2 => (0x18000005, 10), 3 => (0x1A000011, 20), 4 => (0x18000004, 10), 5 => (0x1A00000F, 5),
+        6 => (PangPouch, 3000), 7 => (0x18000010, 5), 8 => (0x70000002, 18), 9 => (0x1A000028, 5), 10 => (0x1A000002, 5),
+        11 => (PangPouch, 5000), 12 => (0x18000011, 10), 13 => (0x70000003, 18), 14 => (0x18000025, 10), 15 => (0x1A000002, 5),
+        16 => (PangPouch, 10000), 17 => (0x7CC00003, 1), 18 => (0x1A00003D, 3), 19 => (0x18000025, 20), 20 => (0x1A000002, 5),
+        _ => (0x1A000033, 1),
+    };
+
     public static int Need(int level) => ExpNeed[Math.Clamp(level, 0, Max)];
 
     /// <summary>Soma EXP subindo de nível quando passa do necessário; devolve quantos níveis subiu.</summary>

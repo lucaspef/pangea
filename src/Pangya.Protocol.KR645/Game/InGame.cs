@@ -62,18 +62,29 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
     /// </summary>
     public void GameEnd(GameEnd end)
     {
+        // recompensa de cada humano (calculada agora, gravada quando o cliente mandar o 0x06): o EXP vai no registro
+        var exp = new Dictionary<uint, int>();
+        foreach (var r in end.Results)
+            if (room.Find(r.Guid)?.Session is GameHandler h)
+                exp[r.Guid] = h.BeginGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false },
+                    end.Kind == GameEndKind.Stroke ? (room.CoursePlayed, r.Score) : null);   // match/skins/team: placar não é vs par
+
+        var won = new List<(uint, IReadOnlyList<int>)>(end.Results.Count);     // 0xF8 antes do placar: itens ganhos
+        foreach (var r in end.Results) won.Add((r.Guid, room.Field?.WonBy(r.Guid) ?? []));
+        All(GameHandler.ItemsWon(won));
+
+        // registro de 33 B: +7 i16 = EXP ganho (barra animada / subida de nível); no match é ponto de ladder (0)
         var w = new PacketWriter(end.Kind == GameEndKind.Team ? STeamEnd : SGameEnd).U8((byte)end.Results.Count);
         if (end.Kind == GameEndKind.PangBattle) w.U32(end.LastHoleWinner).U32(end.OverallWinner);
         foreach (var r in end.Results)
-            w.U32(r.Guid).U8((byte)r.Rank).U8((byte)(sbyte)Math.Clamp(r.Score, -128, 127)).U8((byte)Math.Min(r.TotalStrokes, 255)).U16(0)
-             .I64(r.Pang).I64(r.BonusPang).I64(r.Net);
+        {
+            int shown = end.Kind == GameEndKind.Match ? 0 : exp.GetValueOrDefault(r.Guid);
+            w.U32(r.Guid).U8((byte)r.Rank).U8((byte)(sbyte)Math.Clamp(r.Score, -128, 127)).U8((byte)Math.Min(r.TotalStrokes, 255))
+             .I16((short)Math.Clamp(shown, 0, short.MaxValue)).I64(r.Pang).I64(r.BonusPang).I64(r.Net);
+        }
         if (end.Kind == GameEndKind.Team) w.U8((byte)end.SideWins[0]).U8((byte)end.SideWins[1]).U8((byte)end.Winner);
         All(w);
         Log.Info($"sala {room.Index}: fim de jogo ({end.Kind})");
-        foreach (var r in end.Results)                               // recompensa de quem terminou (humanos)
-            if (room.Find(r.Guid)?.Session is GameHandler h)
-                h.OnGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false },
-                    end.Kind == GameEndKind.Stroke ? (room.CoursePlayed, r.Score) : null);   // match/skins/team: placar não é vs par
     }
 
     public void BotTurn(GamePlayer bot)

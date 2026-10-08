@@ -44,7 +44,10 @@ public interface IMassOutput
     void NextHole(MassPlayer? to);                       // null = todos
     void ApproachHole(List<ApproachEntry> entries);
     void ApproachEnd(List<ApproachEntry> totals);
-    /// <summary>Fim do jogo: recompensa de cada um que terminou.</summary>
+    /// <summary>
+    /// Fim do jogo: recompensa e tela de resultado (0xCC/0x77) de cada um que terminou. Vem ANTES do último 0x6A
+    /// (closing), porque é ele que abre a tela de resultado do torneio, e ela lê o 0x77 nesse momento.
+    /// </summary>
     void GameOver(List<MassPlayer> players);
 }
 
@@ -99,7 +102,8 @@ public abstract class MassGame : RoomGame
     public abstract void ShotFinished(MassPlayer p);
     public bool CanUseItem(MassPlayer p) => !p.Finished && !p.ShotOpen && !Over;
 
-    protected void EndGame()
+    /// <summary>closing = quem terminou por último: o 0x6A dele (estado 2) só sai depois do resultado.</summary>
+    protected void EndGame(MassPlayer? closing = null)
     {
         if (Over) return;
         Cancel();
@@ -107,6 +111,7 @@ public abstract class MassGame : RoomGame
         foreach (var p in Players)
             if (!p.Left) done.Add(p);
         Output.GameOver(done);
+        if (closing != null) Output.RivalState(closing, 2);
         RoomManager.FinishGame(Room);
     }
 }
@@ -176,20 +181,27 @@ public sealed class TourneyGame : MassGame
         p.LastProgress = Stopwatch.GetTimestamp();
         Output.RivalHole(p, hole);
         p.HoleIndex++;
+        bool last = false;
         if (p.HoleIndex >= HoleCount)
         {
             p.Finished = true;
-            Output.RivalState(p, 2);
+            last = AllDone();
+            if (!last) Output.RivalState(p, 2);                     // o último sai no EndGame, depois do resultado
         }
         if (!p.IsBot) Output.NextHole(p);
-        CheckEnd();
+        if (last) EndGame(p); else CheckEnd();
+    }
+
+    bool AllDone()
+    {
+        foreach (var p in Players)
+            if (!p.Finished && !p.Left) return false;
+        return true;
     }
 
     void CheckEnd()
     {
-        foreach (var p in Players)
-            if (!p.Finished && !p.Left) return;
-        EndGame();
+        if (AllDone()) EndGame();
     }
 
     public override void PlayerLeft(RoomPlayer rp)
