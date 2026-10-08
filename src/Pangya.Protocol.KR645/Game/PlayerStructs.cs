@@ -60,7 +60,7 @@ public static class PlayerStructs
     {
         Cp949.Write(s.UccIndex, Ucc.Index(it));
         s.status = (byte)Ucc.Status(it);
-        s.Seq = (ushort)Ucc.Seq(it);
+        s.Seq = (ushort)Math.Max(Ucc.Seq(it), 1);                           // o upload procura o item com Seq != 0 (GetMyItemInfo)
         Cp949.Write(s.ItemName, Ucc.Name(it));
         Cp949.Write(s.CopierNick, Ucc.Copier(it));
         if (Ucc.Date(it) is { } d) s.ItemDate = SystemTime(d.ToLocalTime());
