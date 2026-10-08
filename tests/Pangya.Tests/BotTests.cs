@@ -4,6 +4,62 @@ using Pangya.Protocol.KR645.Game;
 
 namespace Pangya.Tests;
 
+public class BotHoleMemoryTests
+{
+    const float Y = ShotModel.UnitsPerYard;
+    static BotGolfer Perfect() => new(new Random(1), accuracy: 1);
+
+    /// <summary>Ponto onde o plano manda a bola (sem vento): mira × distância do modelo.</summary>
+    static (float X, float Z) Target(BotShot s, float x, float z)
+    {
+        float d = ShotModel.Distance(ShotModel.RangeYards(s.Club), s.Bar);
+        var (ux, uz) = ShotModel.Direction(s.Aim);
+        return (x + ux * d, z + uz * d);
+    }
+
+    static float Dist((float X, float Z) a, (float X, float Z) b) => MathF.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Z - b.Z) * (a.Z - b.Z));
+
+    [Fact]
+    public void AfterWaterTheSameShotIsNotRepeated()
+    {
+        var g = Perfect();
+        var first = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
+        var t1 = Target(first, 0, 0);
+        g.Observe(0, 0, 0, t1.X, t1.Z, 0, 0, ShotResult.StateWaterOrOut, putt: false);   // água: a bola volta ao início
+        Assert.Single(g.Hazards);
+        var second = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
+        Assert.True(Dist(Target(second, 0, 0), t1) >= BotGolfer.HazardYards * Y);  // cai longe da água
+        g.Observe(0, 0, 0, Target(second, 0, 0).X, Target(second, 0, 0).Z, 0, 0, ShotResult.StateWaterOrOut, putt: false);
+        var third = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
+        Assert.True(Dist(Target(third, 0, 0), t1) >= BotGolfer.HazardYards * Y);
+        Assert.True(Dist(Target(third, 0, 0), Target(second, 0, 0)) >= BotGolfer.HazardYards * Y);
+    }
+
+    [Fact]
+    public void FollowsTheSafeSpotOfAnotherPlayerAroundADogleg()
+    {
+        var g = Perfect();
+        var direct = Target(g.Plan(0, 0, 0, 300 * Y, 0, 0, hole: 2), 0, 0);
+        g.Observe(2, 0, 0, direct.X, direct.Z, 0, 0, ShotResult.StateWaterOrOut, putt: false);
+        g.Observe(2, 0, 0, -80 * Y, 150 * Y, -80 * Y, 150 * Y, 2, putt: false);        // humano: bola boa à esquerda
+        var t = Target(g.Plan(0, 0, 0, 300 * Y, 0, 0, hole: 2), 0, 0);
+        Assert.True(Dist(t, (-80 * Y, 150 * Y)) < 3 * Y);
+    }
+
+    [Fact]
+    public void ShortStopMeansObstacleAndNewHoleForgets()
+    {
+        var g = Perfect();
+        g.Observe(0, 0, 0, 0, 200 * Y, 0, 30 * Y, 2, putt: false);                    // parou a 15%: árvore no caminho
+        Assert.Single(g.Hazards);
+        g.Observe(0, 0, 0, 0, 5 * Y, 0, 4 * Y, 2, putt: true);                        // putt não conta
+        Assert.Single(g.Hazards);
+        g.Plan(0, 0, 0, 100 * Y, 0, 0, hole: 1);
+        Assert.Empty(g.Hazards);
+        Assert.Empty(g.SafeSpots);
+    }
+}
+
 public class BotGolferTests
 {
     const float Y = ShotModel.UnitsPerYard;

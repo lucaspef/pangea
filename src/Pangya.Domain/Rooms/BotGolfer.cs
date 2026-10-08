@@ -104,6 +104,10 @@ public sealed class ShotCalibration
 /// - putter quando está a até <see cref="PuttYards"/> da bandeira (supõe green; o lie real não chega ao servidor);
 /// - de 'PuttYards' a 110 jardas usa o ferro 9 (PW/SW têm alcances especiais perto da bandeira);
 /// - depois de cair na água/OB no buraco, joga com 2 tacos mais curtos (como o CRival faz);
+/// - memória do buraco (<see cref="Observe"/>): onde as bolas de todos pararam bem (rota segura, ex.: dogleg) e onde
+///   tacadas caíram na água/OB ou pararam muito antes do previsto (obstáculo). O alvo direto só é usado se não cai perto
+///   de um perigo conhecido; senão vai pelo lugar seguro que mais aproxima da bandeira, ou faz lay-up curto/desviado.
+///   Assim nunca repete a tacada que já falhou;
 /// - erro aleatório de mira e força conforme <see cref="Accuracy"/> (1 = perfeito).
 /// </summary>
 public sealed class BotGolfer(Random rng, float accuracy = 0.85f)
@@ -118,11 +122,98 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f)
     /// <summary>Stat de força do bot (alcance das madeiras); o bot tem o kit de um jogador novo.</summary>
     public int PowerStat { get; init; }
 
-    /// <summary>Planeja a tacada da bola (x, z) para a bandeira (pinX, pinZ) com o vento atual.</summary>
-    public BotShot Plan(float x, float z, float pinX, float pinZ, byte windStrength, byte windDirection, bool cautious = false)
+    /// <summary>Raio (jardas) em volta de um perigo conhecido em que o bot não mira.</summary>
+    public const float HazardYards = 15;
+    /// <summary>Tacada que parou antes desta fração do previsto bateu em algo (árvore, parede): o caminho é perigo.</summary>
+    const float BlockedFraction = 0.4f;
+    int memoryHole = -1;
+    readonly List<(float X, float Z)> safe = [], hazards = [];
+
+    /// <summary>Perigos e lugares seguros conhecidos no buraco atual (para testes e log).</summary>
+    public IReadOnlyList<(float X, float Z)> Hazards => hazards;
+    public IReadOnlyList<(float X, float Z)> SafeSpots => safe;
+
+    void UseHole(int hole)
     {
+        if (hole == memoryHole) return;
+        memoryHole = hole;
+        safe.Clear();
+        hazards.Clear();
+    }
+
+    /// <summary>
+    /// Resultado de uma tacada de qualquer jogador no buraco: (sx, sz) saída, (tx, tz) onde a tacada deveria cair
+    /// (mira × distância prevista), (ex, ez) onde parou. Água/OB (a bola volta ao ponto de saída) e tacada barrada
+    /// marcam o ponto previsto como perigo; bola parada em jogo marca um lugar seguro. Putts não contam.
+    /// </summary>
+    public void Observe(int hole, float sx, float sz, float tx, float tz, float ex, float ez, byte state, bool putt)
+    {
+        UseHole(hole);
+        if (putt || state == ShotResult.StateHoled) return;
+        float planned = Dist(sx, sz, tx, tz), moved = Dist(sx, sz, ex, ez);
+        if (state == ShotResult.StateWaterOrOut || (planned > 30 * ShotModel.UnitsPerYard && moved < planned * BlockedFraction))
+            hazards.Add((tx, tz));
+        else if (moved > 10 * ShotModel.UnitsPerYard)
+            safe.Add((ex, ez));
+    }
+
+    static float Dist(float ax, float az, float bx, float bz) => MathF.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));
+
+    bool NearHazard(float x, float z)
+    {
+        foreach (var (hx, hz) in hazards)
+            if (Dist(x, z, hx, hz) < HazardYards * ShotModel.UnitsPerYard) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Alvo da tacada longa: direto (bandeira ou o mais longe que o maior taco alcança na linha dela) se não cai perto
+    /// de um perigo; senão o lugar seguro que mais aproxima da bandeira; senão lay-ups (mais curto e/ou desviado).
+    /// </summary>
+    (float X, float Z) Target(float x, float z, float pinX, float pinZ)
+    {
+        float reach = ShotModel.RangeYards(ShotModel.Driver, PowerStat) * Calibration.DistanceFactor * ShotModel.UnitsPerYard;
+        float dist = Dist(x, z, pinX, pinZ);
+        var direct = dist <= reach ? (pinX, pinZ) : (x + (pinX - x) * reach / dist, z + (pinZ - z) * reach / dist);
+        if (hazards.Count == 0 || !NearHazard(direct.Item1, direct.Item2)) return direct;
+
+        (float X, float Z)? best = null;
+        float bestLeft = dist - 20 * ShotModel.UnitsPerYard;                  // tem de avançar pelo menos 20 jardas
+        foreach (var (sx, sz) in safe)
+        {
+            float left = Dist(sx, sz, pinX, pinZ);
+            if (left < bestLeft && Dist(x, z, sx, sz) <= reach && !NearHazard(sx, sz)) (best, bestLeft) = ((sx, sz), left);
+        }
+        if (best is { } b) return b;
+
+        float baseAim = ShotModel.AimTo(pinX - x, pinZ - z), len = MathF.Min(dist, reach);
+        foreach (var (turn, frac) in LayUps)
+        {
+            var (ux, uz) = ShotModel.Direction(baseAim + turn);
+            float tx = x + ux * len * frac, tz = z + uz * len * frac;
+            if (!NearHazard(tx, tz)) return (tx, tz);
+        }
+        var (fx, fz) = ShotModel.Direction(baseAim);                          // tudo marcado: bem curto na linha
+        return (x + fx * len * 0.3f, z + fz * len * 0.3f);
+    }
+
+    /// <summary>Lay-ups em ordem de preferência: (desvio da linha da bandeira em rad, fração da distância).</summary>
+    static readonly (float Turn, float Frac)[] LayUps =
+        [(0, 0.7f), (0.3f, 0.8f), (-0.3f, 0.8f), (0, 0.5f), (0.6f, 0.7f), (-0.6f, 0.7f), (0.3f, 0.5f), (-0.3f, 0.5f)];
+
+    /// <summary>Planeja a tacada da bola (x, z) para a bandeira (pinX, pinZ) com o vento atual. hole = índice do buraco (memória).</summary>
+    public BotShot Plan(float x, float z, float pinX, float pinZ, byte windStrength, byte windDirection, bool cautious = false, int hole = -1)
+    {
+        if (hole >= 0) UseHole(hole);
         float dx = pinX - x, dz = pinZ - z;
         float yards = MathF.Sqrt(dx * dx + dz * dz) / ShotModel.UnitsPerYard;
+        if (yards > PuttYards)
+        {
+            var (tx, tz) = Target(x, z, pinX, pinZ);
+            (dx, dz) = (tx - x, tz - z);
+            yards = MathF.Sqrt(dx * dx + dz * dz) / ShotModel.UnitsPerYard;
+            if (yards <= PuttYards) yards = PuttYards + 1;                    // lay-up curto ainda é tacada, não putt
+        }
         float power, aim;
         int club;
         if (yards <= PuttYards)

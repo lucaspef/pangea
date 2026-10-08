@@ -106,7 +106,8 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         if (!Game.Holes.TryGetValue(Game.Hole, out var h))
             return new BotShot(ShotModel.Driver, 0.9f, template != null ? BinaryPrimitives.ReadSingleLittleEndian(template.AsSpan(0x19)) : 0);
         var (x, z) = StartOf(bot);
-        return golfer.Plan(x, z, h.PinX, h.PinZ, Game.WindStrength, Game.WindDirection, cautious: botOutHole == Game.HoleIndex);
+        // depois de água/OB a memória do buraco (perigos) já muda o alvo; o "taco mais curto" do CRival não é usado
+        return golfer.Plan(x, z, h.PinX, h.PinZ, Game.WindStrength, Game.WindDirection, hole: Game.HoleIndex);
     }
 
     /// <summary>
@@ -150,8 +151,6 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
     int shotClub;
     byte shotWind, shotWindDir;
     bool shotClean, shotByBot;
-    /// <summary>Buraco (índice) em que a bola do bot foi para a água/OB: joga com cautela até o fim dele.</summary>
-    int botOutHole = -1;
 
     /// <summary>Registra a tacada (humana ou do bot), de onde a bola saiu e o vento.</summary>
     public void OnShot(GamePlayer p, ReadOnlySpan<byte> block)
@@ -183,7 +182,11 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         var pin = Game.Holes.TryGetValue(Game.Hole, out var h) ? $" bandeira=({h.PinX:F1},{h.PinZ:F1})" : "";
         bool learned = shotClean && golfer.Calibration.Observe(shotClub, shotBar, shotAim, shotStartX, shotStartZ, r.X, r.Z,
             shotWind, shotWindDir, r.State, learnDistance: shotByBot || shotClub > 2);
-        if (shotByBot && r.State == ShotResult.StateWaterOrOut) botOutHole = Game.HoleIndex;
+        // memória do buraco para o bot: onde a tacada devia cair (mira × distância prevista) e onde parou
+        float planned = ShotModel.Distance(ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor;
+        var (ux, uz) = ShotModel.Direction(shotAim);
+        golfer.Observe(Game.HoleIndex, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
+            r.State, putt: shotClub >= ShotModel.Putter1);
         var cal = golfer.Calibration;
         Log.Info($"sala {room.Index} resultado {r.Guid}: pos=({r.X:F1},{r.Y:F1},{r.Z:F1}) estado={r.State} " +
                  $"direção real={ShotModel.AimTo(dx, dz):F4} (mira {shotAim:F4}) distância={MathF.Sqrt(dx * dx + dz * dz):F1} " +
