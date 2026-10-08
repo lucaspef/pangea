@@ -1,4 +1,6 @@
+using Pangya.Core.Logging;
 using Pangya.Core.Net;
+using Pangya.Domain.Game;
 using Pangya.Domain.Rooms;
 
 namespace Pangya.Protocol.KR645.Game;
@@ -7,7 +9,7 @@ namespace Pangya.Protocol.KR645.Game;
 /// Saída dos modos em massa para o cliente 645 (docs/protocolo/SPEC-modes.md §1-2). Os pacotes que falam de uma
 /// bola (0x51/0x8E/0x63) vão só para o dono; posição e resultado de buraco dos rivais (0x6C/0x6B/0x6A) para todos.
 /// </summary>
-public sealed class MassOutput(Room room) : IMassOutput
+public sealed class MassOutput(Room room, Core.Config.TreasureHunterConfig? treasure = null) : IMassOutput
 {
     const ushort SWind = 0x59, SHoleStart = 0x51, STeeReady = 0x8E, SNextHole = 0x63, SNoMission = 0x147,
         SRivalPos = 0x6C, SRivalHole = 0x6B, SRivalState = 0x6A, SApproachHole = 0x148, SApproachTotals = 0x146, SApproachEnd = 0x149,
@@ -54,7 +56,47 @@ public sealed class MassOutput(Room room) : IMassOutput
     public void NextHole(MassPlayer? to)
     {
         if (to == null) All(new PacketWriter(SNextHole));
-        else To(to, new PacketWriter(SNextHole));
+        else
+        {
+            if (TreasureOn) To(to, new PacketWriter(InGameOutput.STreasurePoints).U32((uint)TreasurePoints(to)));
+            To(to, new PacketWriter(SNextHole));
+        }
+    }
+
+    // ---- Treasure Hunter no torneio (tipos 4/5): pontos de cada jogador, caixas só dele (SPEC-treasure-hunter.md §3/§4)
+
+    bool TreasureOn => treasure is { Enabled: true } && room.Settings.Mode is GameMode.Tournament or GameMode.Team30s;
+
+    /// <summary>Pontos do jogador nos buracos que ele já terminou (teto 1000).</summary>
+    int TreasurePoints(MassPlayer p)
+    {
+        int total = 0;
+        for (int i = 0; i < Math.Min(p.HoleIndex, Game.HoleCount); i++)
+            if (p.Strokes[i] > 0) total += TreasureHunter.HolePoints(p.Strokes[i], Game.ParOf(Game.HoleAt(i)));
+        return Math.Min(total, TreasureHunter.MaxPoints);
+    }
+
+    /// <summary>
+    /// Caixas do jogador que terminou: 0x12A (total) e 0x12B (u8 n, n × {u32 uid, u32 tid, u16 qtd, u8 0}) só para ele,
+    /// antes do 0xCC/0x77 (a tela de resultado do torneio abre as caixas se a marca do 0x12B estiver ligada).
+    /// </summary>
+    List<(int TypeId, int Count)> TreasureDraw(MassPlayer p, out byte[]? boxes)
+    {
+        boxes = null;
+        if (!TreasureOn || !p.Finished || p.Left) return [];
+        int points = TreasurePoints(p);
+        To(p, new PacketWriter(InGameOutput.STreasurePoints).U32((uint)points));
+        var data = PlayerStructs.Data;
+        int n = TreasureHunter.BoxCount(points, treasure!.RatePercent, Random.Shared);
+        var prizes = TreasureHunter.Draw(n, treasure.Prizes,
+            tid => ((uint)tid >> 26) == 6 && (data == null || data.Exists(tid)), Random.Shared);
+        if (prizes.Count == 0) return prizes;
+        var w = new PacketWriter(InGameOutput.STreasureBoxes).U8((byte)prizes.Count);
+        foreach (var (tid, count) in prizes) w.U32(p.Guid).U32((uint)tid).U16((ushort)count).U8(0);
+        boxes = w.Body.ToArray();
+        To(p, w);
+        Log.Info($"sala {room.Index}: treasure hunter de {p.Guid}: {points} pontos, {prizes.Count} caixa(s)");
+        return prizes;
     }
 
     static PacketWriter Entries(ushort id, List<ApproachEntry> list)
@@ -96,9 +138,11 @@ public sealed class MassOutput(Room room) : IMassOutput
             if (p.RoomPlayer.Session is GameHandler h)
             {
                 int trophy = result.TrophyOf(p);
+                var treasureWon = TreasureDraw(p, out var boxes);
                 int exp = h.BeginGameEnd(p.Pang, p.Bonus, Game.HoleCount, p.Finished, Game is ApproachGame ? null : (room.CoursePlayed, p.Score),
                     players: Game.Players.Count, positionPenalty: false, coursePlayed: room.CoursePlayed,   // torneio: sem desconto por posição
-                    trophy: result.MatchTid != 0 ? (result.MatchTid, trophy) : null, awardItems: result.ItemsOf(p));
+                    trophy: result.MatchTid != 0 ? (result.MatchTid, trophy) : null, awardItems: result.ItemsOf(p),
+                    treasure: treasureWon, treasureBoxes: boxes);
                 (int Winner, uint PangWin, uint Points, uint PangRed, uint PangBlue)? g = result.Guild is { } go
                     ? (go.Winner, (uint)go.PangWin.GetValueOrDefault(p), (uint)p.GuildPoints, (uint)go.Pang[0], (uint)go.Pang[1]) : null;
                 h.SendMassResult(exp, room.Field?.WonBy(p.Guid) ?? [], room.Settings.Mode == GameMode.GuildMatch,

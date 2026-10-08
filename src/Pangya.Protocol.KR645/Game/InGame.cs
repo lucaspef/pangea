@@ -18,7 +18,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
         SNextTurn = 0x61, SNextHole = 0x63, SGameEnd = 0x64, STimeOut = 0x5A, SPlayerLeft = 0x5F, SCutIn = 0x192,
         SAim = 0x54, SGauge = 0x55, SPowerShot = 0x56, SClub = 0x57, SUseItem = 0x58, SDrop = 0x5E, SPause = 0x89,
         STimeBooster = 0xC5, SShotCommand = 0x9A, STeamEnd = 0x8F,
-        STreasurePoints = 0x12A, STreasureBoxes = 0x12B;
+        STreasurePoints = 0x12A, STreasureBoxes = 0x12B;   // Treasure Hunter (também no MassOutput)
 
     public const int ShotLength = 0x2E;     // bloco da tacada (CGolfRule::HitShot)
     public const int ResultLength = 0x25;   // sShotResult

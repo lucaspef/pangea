@@ -253,7 +253,7 @@ public sealed partial class GameHandler
                 Log.Info($"sala {r.Index}: bot {r.BotLevel} nível={bot.Player.Level} stats={string.Join('/', stats)} anéis=+{driveUp}jd");
             }
             r.Game = MassGame.IsMass(r.Settings.Mode)
-                ? MassGame.For(r, new MassOutput(r), Rooms.Sync, botDelay, cfg.Rewards.TrophiesCountBots)
+                ? MassGame.For(r, new MassOutput(r, cfg.TreasureHunter), Rooms.Sync, botDelay, cfg.Rewards.TrophiesCountBots)
                 : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, golfer, cfg.BotFastForward, TimeSpan.FromSeconds(cfg.BotFastForwardDelaySeconds), cfg.TreasureHunter), Rooms.Sync,
                     botDelay, TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
             InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r, ctx.Data.Cards));
