@@ -15,7 +15,7 @@ public sealed partial class GameHandler
     const ushort CTradeOpen = 0x74, CTradeClose = 0x75, CTradeEdit = 0x76, CTradeEnter = 0x77, CTradeExit = 0x78, CTradeTitle = 0x79,
         CTradeVisitors = 0x7A, CTradeIncome = 0x7B, CTradeFinishEdit = 0x7C, CTradeBuy = 0x7D, CTradeBuyPackage = 0x11A;
     const ushort STradeOpened = 0xE1, STradeClosed = 0xE2, STradeEditing = 0xE3, STradeEntered = 0xE4, STradeExited = 0xE5,
-        STradeTitle = 0xE6, STradeVisitors = 0xE7, STradeIncome = 0xE8, STradePublished = 0xE9, STradeSold = 0xEA, STradeItemLeft = 0xEB;
+        STradeTitle = 0xE6, STradeVisitors = 0xE7, STradeIncome = 0xE8, STradePublished = 0xE9, STradeSold = 0xEA, STradeItemLeft = 0xEB, STradePackageBought = 0x1D7;
     const int NickField = 22;
 
     async ValueTask<bool> HandleTradeAsync(PacketReader p)
@@ -42,7 +42,7 @@ public sealed partial class GameHandler
             case CTradeBuy: await ShopBuyAsync(p); return true;
             case CTradeBuyPackage:                                                   // venda em pacote não é aberta aqui
                 p.Skip(p.Remaining);
-                conn.Send(new PacketWriter(STradeSold).U32((uint)TradeCode.NoPackage));
+                conn.Send(new PacketWriter(STradePackageBought).U32((uint)TradeCode.NoPackage));   // 0x1D7: erro ≠ 0
                 return true;
             default: return false;
         }
@@ -104,7 +104,10 @@ public sealed partial class GameHandler
         }
     }
 
-    /// <summary>0x79 str: título (1..31 bytes, único na sala). 0xE6 u32 1, str título, u32 uid, str login para todos.</summary>
+    /// <summary>
+    /// 0x79 str: título (1..31 bytes, único na sala). 0xE6 u32 1, str título, u32 uid, str "ID" para todos. O avatar do
+    /// lounge só conhece o nick (o sSlotInfo não tem login), e mandar o login exporia as contas: vai o nick.
+    /// </summary>
     void ShopTitle(string title)
     {
         lock (Rooms.Sync)
@@ -119,7 +122,7 @@ public sealed partial class GameHandler
             if (code != TradeCode.Ok) { conn.Send(new PacketWriter(STradeTitle).U32((uint)code)); return; }
             shop!.Title = title;
             me.TradeTitle = title;
-            InGameOutput.Broadcast(r, new PacketWriter(STradeTitle).U32((uint)TradeCode.Ok).Str(title).U32(me.Guid).Str(Player.Login));
+            InGameOutput.Broadcast(r, new PacketWriter(STradeTitle).U32((uint)TradeCode.Ok).Str(title).U32(me.Guid).Str(Player.Nickname));
         }
     }
 

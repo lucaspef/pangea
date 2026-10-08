@@ -91,8 +91,12 @@ public class GameEndFlowTests(DbFixture fx)
         Assert.True(seen.IndexOf(0x10D) < seen.IndexOf(0x43));
         var p = (await env.Players.LoadAsync(id))!;
         Assert.Equal(1, p.Level);
-        Assert.NotNull(p.FindType(0x18000008));                            // presentes do nível 1
-        Assert.NotNull(p.FindType(0x18000007));
+        var mail = await env.S.Mail.UnreadAsync(id, 5);                      // presentes do nível 1: numa carta
+        Assert.Single(mail);
+        var tids = new List<int>();
+        foreach (var it in mail[0].Items) tids.Add(it.TypeId);
+        Assert.Equal([0x18000008, 0x18000007], tids);
+        Assert.Null(p.FindType(0x18000008));                               // não foi direto para o inventário
     }
 
     [Fact]

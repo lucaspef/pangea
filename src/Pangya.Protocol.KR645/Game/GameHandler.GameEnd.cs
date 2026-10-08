@@ -74,14 +74,22 @@ public sealed partial class GameHandler
     }
 
     /// <summary>
-    /// Presentes da tabela do cliente para cada nível alcançado (o 0x10D abre a janela com o do nível novo). Entregues
-    /// direto no inventário (não há caixa de presentes); peças de anel (grupo 0x1C) ainda não existem e ficam de fora.
+    /// Presentes da tabela do cliente para cada nível alcançado (o 0x10D abre a janela com o do nível novo; o cliente diz
+    /// que o presente vai para o correio). Uma carta do sistema por nível; sem correio, direto no inventário.
     /// </summary>
     async Task LevelUpGiftsAsync(int from, int to)
     {
         var p = Player;
         for (int lv = from + 1; lv <= to; lv++)
-            foreach (var (tid, qty) in Levels.Gifts(lv))
+        {
+            var gifts = Levels.Gifts(lv);
+            if (gifts.Length == 0) continue;
+            if (ctx.Mail != null)
+            {
+                await ctx.Mail.SendSystemAsync(p.AccountId, "@Pangya", $"Presente do nível {lv}", gifts);
+                continue;
+            }
+            foreach (var (tid, qty) in gifts)
             {
                 if (tid == Levels.PangPouch)
                 {
@@ -100,8 +108,10 @@ public sealed partial class GameHandler
                     ? new PacketWriter(SItemCounts).U8(1).U32((uint)it.TypeId).U32((uint)it.Id).U16((ushort)it.Quantity)
                     : new PacketWriter(SItems).U16(1).U16(1).Struct(PlayerStructs.ItemInfo(it)));
             }
+        }
         conn.Send(new PacketWriter(SLevelUp).U8(1).U8((byte)to).U8(0));       // sLevelUpDone {feito, nível, tipo}
-        Log.Info($"{conn} presentes de nível {from + 1}..{to} entregues");
+        if (ctx.Mail != null) conn.Send(new PacketWriter(SNewMail));           // carta nova: o cliente pede a lista
+        Log.Info($"{conn} presentes de nível {from + 1}..{to} enviados{(ctx.Mail != null ? " pelo correio" : "")}");
     }
 
     /// <summary>0xF8 (não-mass, antes do 0x64): u16 n, n × {u32 guid, u8 dobro 0, u16 k, k × u32 tid} — itens ganhos na partida.</summary>
