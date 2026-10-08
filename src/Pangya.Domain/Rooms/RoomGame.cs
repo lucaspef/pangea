@@ -54,7 +54,7 @@ public abstract class RoomGame(Room room, object sync)
     }
 
     /// <summary>Roda a ação depois do atraso, sob o lock da sala, se a partida ainda não acabou.</summary>
-    protected void Later(TimeSpan delay, Action action)
+    public void Later(TimeSpan delay, Action action)
     {
         var token = cts.Token;
         _ = Task.Run(async () =>

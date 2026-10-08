@@ -108,6 +108,12 @@ public sealed class GameConfig
     public int[] Courses { get; set; } = [];
     /// <summary>Precisão do bot, 0..1 (1 = sem erro aleatório de mira/força).</summary>
     public float BotAccuracy { get; set; } = 0.85f;
+    /// <summary>
+    /// Velocidade da bola do bot no VS, como o Time Booster (S->C 0xC5 para todos; o item do cliente usa 3). 0 ou 1 = normal.
+    /// </summary>
+    public float BotFastForward { get; set; } = 2;
+    /// <summary>Espera depois da tacada do bot até acelerar (a bola já em voo; antes disso o cliente volta para 1×).</summary>
+    public double BotFastForwardDelaySeconds { get; set; } = 1.5;
     public RewardConfig Rewards { get; set; } = new();
 }
 

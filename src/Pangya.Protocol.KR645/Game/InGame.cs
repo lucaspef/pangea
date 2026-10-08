@@ -9,7 +9,8 @@ namespace Pangya.Protocol.KR645.Game;
 /// Saída da partida para o cliente 645 (docs/protocolo/SPEC-ingame.md): transforma os eventos do
 /// <see cref="StrokeGame"/> em pacotes para os humanos da sala, e monta a tacada do bot.
 /// </summary>
-public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : IGameOutput
+public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, float botFastForward = 0, TimeSpan botFastForwardDelay = default)
+    : IGameOutput
 {
     // ids S->C
     public const ushort SLoading = 0xA1, SWind = 0x59, SHoleStart = 0x51, STeeReady = 0x8E, SShot = 0x53, SShotResult = 0x62,
@@ -127,8 +128,28 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
             OnShot(bot, block);
             All(new PacketWriter(SShot).U32(bot.Guid).Bytes(block).Bytes(trailer));
             golfer.ShotDone(shot);
+            FastForwardLater(bot.Guid);
         }
         Game.BotShoot(bot);
+    }
+
+    /// <summary>Tacada do bot em andamento (muda a cada tacada e quando chega o resultado).</summary>
+    int botFlight;
+
+    /// <summary>
+    /// Acelera a bola do bot como o Time Booster (CGolfRule::OnProcess: FASTFORWARD manda 0x65 f32 3.0): S->C 0xC5 f32
+    /// velocidade + u32 guid a todos. Cada cliente põe a velocidade do jogo (CProjectG+0xC) e volta a 1× sozinho no fim da
+    /// tacada (DoToDefaultCamera); o item só é gasto por quem tem o guid (o bot não tem). Sai depois de uma espera para
+    /// pegar a bola já em voo; se o resultado já chegou, não manda.
+    /// </summary>
+    void FastForwardLater(uint guid)
+    {
+        if (botFastForward <= 1) return;
+        int flight = ++botFlight;
+        Game.Later(botFastForwardDelay, () =>
+        {
+            if (botFlight == flight) All(new PacketWriter(STimeBooster).F32(botFastForward).U32(guid));
+        });
     }
 
     /// <summary>Tacada do bot (BotGolfer); sem os dados do buraco (0x1A), um drive reto na mira da última tacada.</summary>
@@ -213,6 +234,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
     /// <summary>Registra para onde a bola foi de fato (direção e distância reais) e alimenta a calibração do bot.</summary>
     public void OnResult(ShotResult r)
     {
+        botFlight++;                                                        // bola parou: não acelera mais
         float dx = r.X - shotStartX, dz = r.Z - shotStartZ;
         var pin = Game.Holes.TryGetValue(Game.Hole, out var h) ? $" bandeira=({h.PinX:F1},{h.PinZ:F1})" : "";
         bool learned = shotClean && golfer.Calibration.Observe(shotClub, shotBar, shotAim, shotStartX, shotStartZ, r.X, r.Z,
