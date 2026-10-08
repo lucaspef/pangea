@@ -68,8 +68,11 @@ public enum BotLevel { Easy, Normal, Hard, VeryHard, Impossible }
 /// Tacada escolhida pelo bot: taco (+0x25), força 0..1 (barra = 140 + 360 × força), mira (+0x19), power shot (0x56) e
 /// tacada especial (+0x11: <see cref="Special"/>).
 /// </summary>
-public readonly record struct BotShot(int Club, float Power, float Aim, byte PowerShot = 0, byte Special = 0)
+public readonly record struct BotShot(int Club, float Power, float Aim, byte PowerShot = 0, byte Special = 0, byte Phase = 4,
+    float Impact = 0)
 {
+    /// <summary>Fase da tacada (+0x10): 4 PangYa, 3 boa, 2 normal, 1 ruim. Impact = desvio do centro do impacto (+0x04).</summary>
+    public const byte PhasePangya = 4;
     public float Bar => ShotModel.BarOf(Power);
 }
 
@@ -161,8 +164,26 @@ public sealed class ShotCalibration
 /// - erro aleatório de mira e força conforme <see cref="Accuracy"/> (1 = perfeito).
 /// </summary>
 public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind = true, bool remembers = true, int maxPowerShot = 0,
-    byte specials = Special.None)
+    byte specials = Special.None, int impactRange = 0)
 {
+    /// <summary>
+    /// Erro natural como o oponente do cliente (CRival, SPEC-bot-especiais.md §3): impacto = centro ± ImpactRange; fase 4 se
+    /// |desvio| &lt; 2, 3 se &lt; N, 2 se &lt; W, senão 1 (N = max(2, precisão), W = min(N + 10, 35)). Todos os clientes aplicam o
+    /// mesmo desvio da fase, de forma idêntica.
+    /// </summary>
+    public int ImpactRange { get; } = Math.Max(impactRange, 0);
+    /// <summary>Stat de precisão do bot (fórmula do cliente), para as faixas N/W.</summary>
+    public int AccuracyStat { get; set; } = 10;
+
+    /// <summary>Sorteia o impacto e devolve (fase, desvio).</summary>
+    public (byte Phase, float Impact) DrawImpact()
+    {
+        if (ImpactRange == 0) return (BotShot.PhasePangya, 0);
+        int x = rng.Next(-ImpactRange, ImpactRange + 1), ax = Math.Abs(x);
+        int n = Math.Max(2, AccuracyStat), w = Math.Min(n + 10, 35);
+        byte phase = ax < 2 ? (byte)4 : ax < n ? (byte)3 : ax < w ? (byte)2 : (byte)1;
+        return (phase, x);
+    }
     /// <summary>Tacadas especiais que o nível permite (flags de <see cref="Special"/>).</summary>
     public byte Specials { get; } = specials;
 
@@ -178,7 +199,8 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// <summary>Depois que a tacada do bot saiu (ou ele estourou o tempo): atualiza o gauge.</summary>
     public void ShotDone(BotShot shot, bool timeOut = false)
     {
-        float g = Gauge + (timeOut ? -GaugeTimeOut : shot.PowerShot switch { 1 => -33, 2 => -66, _ => GaugePerPangya });
+        float g = Gauge + (timeOut ? -GaugeTimeOut
+            : shot.PowerShot switch { 1 => -33, 2 => -66, _ => shot.Phase == BotShot.PhasePangya ? GaugePerPangya : 0 });
         Gauge = Math.Clamp(g, 0, GaugeMax);
     }
 
@@ -191,11 +213,11 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// </summary>
     public static BotGolfer For(BotLevel level, Random rng, float normalAccuracy = 0.85f) => level switch
     {
-        BotLevel.Easy => new(rng, 0.55f, readsWind: false, remembers: false),
-        BotLevel.Hard => new(rng, 0.93f, maxPowerShot: 2, specials: Special.Tomahawk),
-        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra),
+        BotLevel.Easy => new(rng, 0.55f, readsWind: false, remembers: false, impactRange: 25),
+        BotLevel.Hard => new(rng, 0.93f, maxPowerShot: 2, specials: Special.Tomahawk, impactRange: 6),
+        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra, impactRange: 3),
         BotLevel.Impossible => new(rng, 1f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra),
-        _ => new(rng, normalAccuracy, maxPowerShot: 1),
+        _ => new(rng, normalAccuracy, maxPowerShot: 1, impactRange: 10),
     };
 
     /// <summary>Nível pelo nome do chat (pt/en, sem acento); null = desconhecido.</summary>
@@ -410,7 +432,9 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         float miss = 1 - Accuracy;
         aim += (float)(rng.NextDouble() * 2 - 1) * miss * MaxAimError;
         power *= 1 + (float)(rng.NextDouble() * 2 - 1) * miss * MaxPowerError;
-        return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps, special);
+        // putt e tacada especial saem limpos (fase 4); o resto com o erro natural do impacto
+        var (phase, impact) = club >= ShotModel.Putter1 || special != Special.None ? (BotShot.PhasePangya, 0f) : DrawImpact();
+        return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps, special, phase, impact);
     }
 
     /// <summary>O taco mais curto que alcança (1W..9I); longe demais = driver.</summary>

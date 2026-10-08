@@ -143,8 +143,9 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
 
     /// <summary>
     /// Bloco de 46 bytes de uma tacada reta (docs/protocolo/SPEC-ingame.md, "Bot"): barra, mira e taco do plano;
-    /// impacto (+0x04) = centro do impacto (+0x21); sem efeito (+0x08/+0x0C), fase 4, tacada especial (+0x11) só com power
-    /// shot (Tomahawk/Spike exigem o PS armado pelo 0x56; Spike só com madeira), +0x26 e +0x2A zerados (o +0x2A soma na
+    /// impacto (+0x04) = centro do impacto (+0x21) + o desvio sorteado, fase (+0x10) coerente com ele (o erro natural que
+    /// todos os clientes aplicam igual); sem efeito (+0x08/+0x0C), tacada especial (+0x11) só com power shot
+    /// (Tomahawk/Spike exigem o PS armado pelo 0x56; Spike e Cobra só com madeira), +0x26 e +0x2A zerados (o +0x2A soma na
     /// mira). +0x15, +0x1D e +0x21 vêm da última tacada humana, se houver.
     /// </summary>
     public static byte[] BotBlock(byte[]? template, BotShot shot)
@@ -159,10 +160,10 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         }
         if (template == null) BinaryPrimitives.WriteInt32LittleEndian(s[0x1D..], 3000);
         BinaryPrimitives.WriteSingleLittleEndian(s, shot.Bar);
-        BinaryPrimitives.WriteSingleLittleEndian(s[0x04..], center);
+        BinaryPrimitives.WriteSingleLittleEndian(s[0x04..], center + shot.Impact);   // desvio do impacto -> fase
         BinaryPrimitives.WriteSingleLittleEndian(s[0x08..], 0f);
         BinaryPrimitives.WriteSingleLittleEndian(s[0x0C..], 0f);
-        b[0x10] = 4;
+        b[0x10] = shot.Phase is >= 1 and <= 4 ? shot.Phase : (byte)4;
         BinaryPrimitives.WriteUInt32LittleEndian(s[0x11..], 0);
         if (shot.PowerShot > 0 && (shot.Special == Special.Tomahawk || (shot.Special is Special.Spike or Special.Cobra && shot.Club <= 2)))
             b[0x11] = shot.Special;

@@ -50,7 +50,9 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - ✅ Tomahawk (hard+) e Spike (very hard+) com power shot quando nem o duplo alcança; alcance aprendido por tipo
   (começa em ×1,25).
 - ✅ Cobra (very hard+): por baixo de um obstáculo que já barrou a bola naquela linha; se o Cobra também bater, desiste.
-- ⬜ Efeito/curva, erro por fase/impacto (SPEC-bot-especiais.md).
+- ✅ Erro natural por fase/impacto como o oponente do cliente (raio por nível: easy 25, normal 10, hard 6, very hard 3,
+  impossible 0; faixas pela precisão real do bot); gauge só sobe em tacada PangYa.
+- ⬜ Efeito/curva e backspin (SPEC-bot-especiais.md §6.5).
 
 ## Itens, loja e economia
 - ✅ Loja (pang/cookie, pacotes), equipamento, armário, upgrades, cards (efeitos que dependem do servidor), mascote.

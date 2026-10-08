@@ -119,6 +119,39 @@ public class BotPowerShotTests
     }
 
     [Fact]
+    public void ImpactErrorFollowsTheLevelAndTheAccuracyStat()
+    {
+        var impossible = BotGolfer.For(BotLevel.Impossible, new Random(1));
+        for (int i = 0; i < 50; i++) Assert.Equal((4, 0f), impossible.DrawImpact());   // sempre PangYa
+
+        var easy = BotGolfer.For(BotLevel.Easy, new Random(1));
+        easy.AccuracyStat = 10;                                              // N = 10, W = 20 (raio 25)
+        var phases = new int[5];
+        for (int i = 0; i < 2000; i++)
+        {
+            var (ph, x) = easy.DrawImpact();
+            float ax = MathF.Abs(x);
+            Assert.Equal(ax < 2 ? 4 : ax < 10 ? 3 : ax < 20 ? 2 : 1, ph);
+            phases[ph]++;
+        }
+        Assert.True(phases[1] > 0 && phases[2] > 0 && phases[3] > 0 && phases[4] > 0);
+        Assert.True(phases[4] < phases[3]);                                  // PangYa é a minoria no easy
+
+        var s = easy.Plan(0, 0, 0, 150 * Y, 0, 0);                           // tacada comum: leva a fase sorteada
+        var block = InGameOutput.BotBlock(null, s);
+        Assert.Equal(s.Phase, block[0x10]);
+        Assert.Equal(ShotModel.BarStart + s.Impact, BitConverter.ToSingle(block, 0x04));
+        var putt = easy.Plan(0, 0, 0, 5 * Y, 0, 0);
+        Assert.Equal((4, 0f), (putt.Phase, putt.Impact));                    // putt sai limpo
+
+        var g = new BotGolfer(new Random(1), 1, maxPowerShot: 2);
+        g.ShotDone(new BotShot(0, 1, 0, Phase: 3));
+        Assert.Equal(0, g.Gauge);                                            // sem PangYa, sem gauge
+        g.ShotDone(new BotShot(0, 1, 0));
+        Assert.Equal(BotGolfer.GaugePerPangya, g.Gauge);
+    }
+
+    [Fact]
     public void CobraGoesUnderAnObstacleThatBlockedTheLine()
     {
         var vh = Charged(BotLevel.VeryHard);
