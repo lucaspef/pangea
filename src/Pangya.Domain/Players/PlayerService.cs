@@ -106,6 +106,10 @@ public sealed class PlayerService(IPlayerStore store, IGameData data, NewPlayerC
             foreach (var r in kit.Rings) if (data.Exists(r)) aux.Add(r);
             ch.Attrs["aux"] = aux;
         }
+        var slots = new int[10];                                            // itens de partida do nível (0x74 tidItemSlot)
+        int n = 0;
+        foreach (var it in kit.Items) if (n < slots.Length && data.Exists(it)) slots[n++] = it;
+        bot.Equip.ItemSlots = slots;
         int clubId = bot.Equip.ClubSetId;
         var club = new Item { Id = clubId, TypeId = data.Exists(kit.ClubSet) ? kit.ClubSet : start.ClubSet };
         bot.Items[clubId] = club;

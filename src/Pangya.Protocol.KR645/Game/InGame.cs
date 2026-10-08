@@ -41,6 +41,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     public void TeeReady() => All(new PacketWriter(STeeReady));
     public void NextTurn(GamePlayer p)
     {
+        ActiveItem = 0;
         botFlight++;                                                        // a bola já parou: não acelera mais
         var w = new PacketWriter(SNextTurn).U32(p.Guid);
         if (room.Settings.Mode == GameMode.PangBattle) w.U16(0);         // pang battle: + u16 mensagem da tacada
@@ -98,19 +99,39 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     static readonly TimeSpan PowerShotCharge = TimeSpan.FromSeconds(1);
 
     /// <summary>
-    /// Planeja a tacada do bot. Com power shot manda S->C 0x56 (u32 guid, u8 tipo) a todos, como faria o 0x15 de um
-    /// jogador: os clientes armam o power shot do bot (sem conferir gauge) antes do 0x53 (SPEC-bot-especiais.md §2.1).
+    /// Item de partida usado na vez atual (0x58, do bot ou de um humano): vale só para a próxima tacada. Silent Wind/Tissue
+    /// deixam o vento em 1 m e Reverse Wind inverte a direção (SPEC-bot-itens.md §2.2), o que muda a calibração.
+    /// </summary>
+    public int ActiveItem { get; set; }
+
+    /// <summary>
+    /// Planeja a tacada do bot. Com item manda S->C 0x58 (u32 tid, u32 aleatório, u32 guid) a todos: os clientes aplicam
+    /// o efeito na tacada do bot (o de power shot já arma o PS, sem gauge). Com power shot de gauge manda S->C 0x56 (u32
+    /// guid, u8 tipo), como faria o 0x15 de um jogador (SPEC-bot-especiais.md §2.1). Os dois antes do 0x53.
     /// </summary>
     public TimeSpan BotPrepare(GamePlayer bot)
     {
         if (botPasses) return TimeSpan.Zero;
         var shot = PlanBot(bot);
         prepared = shot;
-        if (shot.PowerShot == 0) return TimeSpan.Zero;
-        All(new PacketWriter(SPowerShot).U32(bot.Guid).U8(shot.PowerShot));
-        Log.Info($"sala {room.Index}: bot arma power shot {shot.PowerShot} (gauge {golfer.Gauge:F0})" +
-                 (shot.Special != 0 ? $" para {(shot.Special == Special.Spike ? "Spike" : shot.Special == Special.Cobra ? "Cobra" : "Tomahawk")}" : ""));
-        return PowerShotCharge;
+        bool sent = false;
+        if (shot.Item != 0)
+        {
+            All(new PacketWriter(SUseItem).U32((uint)shot.Item).U32((uint)Random.Shared.Next()).U32(bot.Guid));
+            golfer.UseItem(shot.Item);
+            ActiveItem = shot.Item;
+            sent = true;
+            Log.Info($"sala {room.Index}: bot usa o item 0x{shot.Item:X8} (restam {golfer.Items.Count})");
+        }
+        if (shot.PowerShot != 0 && BotItem.PowerShotOf(shot.Item) == 0)
+        {
+            All(new PacketWriter(SPowerShot).U32(bot.Guid).U8(shot.PowerShot));
+            sent = true;
+        }
+        if (shot.PowerShot != 0)
+            Log.Info($"sala {room.Index}: bot arma power shot {shot.PowerShot} {(BotItem.PowerShotOf(shot.Item) != 0 ? "(item)" : $"(gauge {golfer.Gauge:F0})")}" +
+                     (shot.Special != 0 ? $" para {(shot.Special == Special.Spike ? "Spike" : shot.Special == Special.Cobra ? "Cobra" : "Tomahawk")}" : ""));
+        return sent ? PowerShotCharge : TimeSpan.Zero;
     }
 
     public void BotTurn(GamePlayer bot)
@@ -208,6 +229,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     float shotAim, shotBar, shotStartX, shotStartZ;
     int shotClub;
     byte shotWind, shotWindDir;
+    const int SilentWindTissue = 0x18000020, ReverseWind = 0x18000016;
     bool shotClean, shotByBot;
 
     /// <summary>Registra a tacada (humana ou do bot), de onde a bola saiu e o vento.</summary>
@@ -218,6 +240,9 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
         shotClub = block[0x25];
         (shotStartX, shotStartZ) = StartOf(p);
         (shotWind, shotWindDir, shotByBot) = (Game.WindStrength, Game.WindDirection, p.IsBot);
+        if (ActiveItem is BotItem.SilentWind or SilentWindTissue) shotWind = 0;                  // vento 1 m nesta tacada
+        else if (ActiveItem == ReverseWind) shotWindDir = (byte)(shotWindDir + 128);             // direção oposta
+        ActiveItem = 0;
         // limpa = sem efeito, sem tacada especial, fase 4 e sem o ajuste extra de mira (+0x2A)
         shotClean = BinaryPrimitives.ReadUInt32LittleEndian(block[0x11..]) == 0 && block[0x10] == 4
             && MathF.Abs(BinaryPrimitives.ReadSingleLittleEndian(block[0x08..])) < 0.01f

@@ -69,11 +69,25 @@ public enum BotLevel { Easy, Normal, Hard, VeryHard, Impossible }
 /// tacada especial (+0x11: <see cref="Special"/>).
 /// </summary>
 public readonly record struct BotShot(int Club, float Power, float Aim, byte PowerShot = 0, byte Special = 0, byte Phase = 4,
-    float Impact = 0)
+    float Impact = 0, int Item = 0)
 {
     /// <summary>Fase da tacada (+0x10): 4 PangYa, 3 boa, 2 normal, 1 ruim. Impact = desvio do centro do impacto (+0x04).</summary>
     public const byte PhasePangya = 4;
     public float Bar => ShotModel.BarOf(Power);
+}
+
+/// <summary>
+/// Itens de partida que o bot usa (SPEC-bot-itens.md): S->C 0x58 antes do 0x53, um por tacada, tirados do tidItemSlot
+/// que ele mostrou no 0x74. Os de power shot armam o PS sem gastar gauge (e dispensam o 0x56).
+/// </summary>
+public static class BotItem
+{
+    public const int PowerAssist = 0x18000004, SilentWind = 0x18000006, PowerEnhancer = 0x18000027;
+    /// <summary>Tipo de power shot que o item arma (0 = não é de power shot): Power Assist simples, Power Enhancer tipo 3 (+15 jd).</summary>
+    public static byte PowerShotOf(int item) => item switch { PowerAssist => 1, PowerEnhancer => 3, _ => 0 };
+    /// <summary>Vento (m) a partir do qual o bot gasta um Silent Wind numa tacada longa.</summary>
+    public const int SilentWindMeters = 5;
+    public const float SilentWindMinYards = 150;
 }
 
 /// <summary>
@@ -229,24 +243,49 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// <summary>Stat de precisão do bot (fórmula do cliente), para as faixas N/W.</summary>
     public int AccuracyStat { get; set; } = 10;
 
+    /// <summary>Área PangYa do cliente sem bônus (CPowerGauge::GetPangYaArea = 2).</summary>
+    const int PangyaArea = 2;
+
     /// <summary>Sorteia o impacto e devolve (fase, desvio).</summary>
     public (byte Phase, float Impact) DrawImpact()
     {
         if (ImpactRange == 0) return (BotShot.PhasePangya, 0);
         int x = rng.Next(-ImpactRange, ImpactRange + 1), ax = Math.Abs(x);
         int n = Math.Max(2, AccuracyStat), w = Math.Min(n + 10, 35);
-        byte phase = ax < 2 ? (byte)4 : ax < n ? (byte)3 : ax < w ? (byte)2 : (byte)1;
+        byte phase = ax <= PangyaArea ? (byte)4 : ax <= n ? (byte)3 : ax <= w ? (byte)2 : (byte)1;   // |d| < área + 0,5
         return (phase, x);
     }
     /// <summary>Tacadas especiais que o nível permite (flags de <see cref="Special"/>).</summary>
     public byte Specials { get; } = specials;
 
     /// <summary>
-    /// Gauge de power shot do bot, espelhando o que cada cliente calcula (SPEC-ingame "Gauge"): tacada PangYa (fase 4,
-    /// a do bot) sem power shot +12, power shot −33 (simples) / −66 (duplo), estouro de tempo −30; entre 0 e 99.
+    /// Gauge de power shot do bot, espelhando o que cada cliente calcula (SPEC-ingame "Gauge", SPEC-bot-itens §5.3): sem
+    /// power shot, PangYa +12 e boa (fase 3) +4; power shot de gauge −33 (simples) / −66 (duplo), por item não custa;
+    /// estouro de tempo −30; entre 0 e 99.
     /// </summary>
     public float Gauge { get; private set; }
-    public const float GaugeMax = 99, GaugePerPangya = 12, GaugeTimeOut = 30;
+    public const float GaugeMax = 99, GaugePerPangya = 12, GaugePerGood = 4, GaugeTimeOut = 30;
+
+    /// <summary>Itens que o bot ainda tem nos slots (espelho do tidItemSlot do 0x74; cada uso tira uma ocorrência).</summary>
+    public List<int> Items { get; } = [];
+    bool Has(int item) => Items.Contains(item);
+    /// <summary>A tacada usou o item: sai dos slots (o cliente também tira, até quando o item falha).</summary>
+    public void UseItem(int item) => Items.Remove(item);
+
+    /// <summary>
+    /// Power shots que dá para armar agora, do menor ao maior alcance: (tipo, item que arma; 0 = gauge). Simples pelo
+    /// gauge, ou pelo Power Assist se o gauge não dá; tipo 3 (+15) pelo Power Enhancer; duplo pelo gauge.
+    /// </summary>
+    List<(byte Ps, int Item)> PowerOptions()
+    {
+        var o = new List<(byte, int)>(3);
+        int g = AvailablePowerShot();
+        if (g >= 1) o.Add((1, 0));
+        else if (Has(BotItem.PowerAssist)) o.Add((1, BotItem.PowerAssist));
+        if (Has(BotItem.PowerEnhancer)) o.Add((3, BotItem.PowerEnhancer));
+        if (g >= 2) o.Add((2, 0));
+        return o;
+    }
     /// <summary>0 = nunca usa power shot, 1 = só simples, 2 = simples ou duplo.</summary>
     public int MaxPowerShot { get; } = Math.Clamp(maxPowerShot, 0, 2);
 
@@ -254,7 +293,8 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     public void ShotDone(BotShot shot, bool timeOut = false)
     {
         float g = Gauge + (timeOut ? -GaugeTimeOut
-            : shot.PowerShot switch { 1 => -33, 2 => -66, _ => shot.Phase == BotShot.PhasePangya ? GaugePerPangya : 0 });
+            : shot.PowerShot > 0 ? (BotItem.PowerShotOf(shot.Item) != 0 ? 0 : shot.PowerShot == 2 ? -66 : -33)
+            : shot.Phase == BotShot.PhasePangya ? GaugePerPangya : shot.Phase == 3 ? GaugePerGood : 0);
         Gauge = Math.Clamp(g, 0, GaugeMax);
     }
 
@@ -367,7 +407,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         return Near(blocked, x, z) && !Near(cobraBlocked, x, z);
     }
 
-    bool CanCobra => (Specials & Special.Cobra) != 0 && AvailablePowerShot() > 0;
+    bool CanCobra => (Specials & Special.Cobra) != 0 && PowerOptions().Count > 0;
 
     /// <summary>
     /// Alvo da tacada longa: direto (bandeira ou o mais longe que o maior taco alcança na linha dela) se não cai perto
@@ -413,10 +453,11 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     static readonly (float Turn, float Frac)[] LayUps =
         [(0, 0.7f), (0.3f, 0.8f), (-0.3f, 0.8f), (0, 0.5f), (0.6f, 0.7f), (-0.6f, 0.7f), (0.3f, 0.5f), (-0.3f, 0.5f)];
 
-    /// <summary>Alcance do driver com o maior power shot disponível e a melhor especial permitida (calibrado).</summary>
+    /// <summary>Alcance do driver com o maior power shot disponível (gauge ou item) e a melhor especial permitida (calibrado).</summary>
     float MaxReachYards()
     {
-        int ps = AvailablePowerShot();
+        var opts = PowerOptions();
+        int ps = opts.Count > 0 ? opts[^1].Ps : 0;
         float r = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp, powerShot: ps) * Calibration.ClubFactor(ShotModel.Driver);
         return ps > 0 ? r * Calibration.SpecialFactor(BestSpecial()) : r;
     }
@@ -450,6 +491,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         float power, aim;
         int club;
         byte ps = 0, special = Special.None;
+        int item = 0;
         if (yards <= PuttYards)
         {
             club = ShotModel.Putter1;
@@ -458,27 +500,16 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         }
         else
         {
-            var (wx, wz) = ReadsWind ? ShotModel.Wind(windStrength, windDirection) : (0f, 0f);
-            wx *= ShotModel.WindFactor;
-            wz *= ShotModel.WindFactor;
-            float factor = Calibration.ClubFactor(ShotModel.Driver);          // power shot: só no driver
-            float need = MathF.Sqrt((dx - wx) * (dx - wx) + (dz - wz) * (dz - wz)) / ShotModel.UnitsPerYard;   // já com o vento
-            club = ClubFor(need);                                            // pelo alcance aprendido de cada taco
-            if (cautious) club = Math.Min(club + 2, ShotModel.Iron9);
-            if (useCobra && !cautious)                                       // rasante por baixo do obstáculo: driver + PS simples
+            var c = Choose(dx, dz, windStrength, windDirection, cautious, useCobra);
+            // vento forte numa tacada longa: Silent Wind (vento 1 m só nesta tacada), se não precisa de item de power shot
+            if (c.Item == 0 && ReadsWind && windStrength + 1 >= BotItem.SilentWindMeters && yards > BotItem.SilentWindMinYards
+                && Has(BotItem.SilentWind))
             {
-                club = ShotModel.Driver;
-                ps = 1;
-                special = Special.Cobra;
+                var calm = Choose(dx, dz, 0, windDirection, cautious, useCobra);
+                if (calm.Item == 0) c = calm with { Item = BotItem.SilentWind };
             }
-            // power shot só no driver quando nem ele alcança: o menor que resolve (simples antes do duplo); se nem o
-            // maior power shot alcança e o nível permite, Tomahawk/Spike (precisam do power shot armado)
-            if (special == Special.None && club == ShotModel.Driver && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp))
-            {
-                int avail = AvailablePowerShot();
-                ps = avail >= 1 && need / factor <= ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: 1) ? (byte)1 : (byte)avail;
-                if (ps > 0 && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps)) special = BestSpecial();
-            }
+            (club, ps, special, item) = (c.Club, c.Ps, c.Special, c.Item);
+            var (wx, wz) = (c.Wx, c.Wz);
             float reach = ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps) * Calibration.ClubFactor(club)
                 * Calibration.SpecialFactor(special);                                                        // alcance real (calibrado)
             if (yards > reach) { dx *= reach / yards; dz *= reach / yards; }    // alvo: até onde o taco alcança
@@ -492,7 +523,38 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         power *= 1 + (float)(rng.NextDouble() * 2 - 1) * miss * MaxPowerError;
         // putt e tacada especial saem limpos (fase 4); o resto com o erro natural do impacto
         var (phase, impact) = club >= ShotModel.Putter1 || special != Special.None ? (BotShot.PhasePangya, 0f) : DrawImpact();
-        return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps, special, phase, impact);
+        return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps, special, phase, impact, item);
+    }
+
+    /// <summary>
+    /// Taco, power shot, especial e item para o deslocamento (dx, dz) com aquele vento. Power shot só no driver quando
+    /// nem ele alcança: o menor que resolve (gauge simples ou Power Assist, Power Enhancer, gauge duplo); se nem o maior
+    /// alcança e o nível permite, o maior com Tomahawk/Spike (precisam do power shot armado).
+    /// </summary>
+    (int Club, byte Ps, byte Special, int Item, float Wx, float Wz) Choose(float dx, float dz, byte windStrength, byte windDirection,
+        bool cautious, bool useCobra)
+    {
+        var (wx, wz) = ReadsWind ? ShotModel.Wind(windStrength, windDirection) : (0f, 0f);
+        wx *= ShotModel.WindFactor;
+        wz *= ShotModel.WindFactor;
+        float factor = Calibration.ClubFactor(ShotModel.Driver);
+        float need = MathF.Sqrt((dx - wx) * (dx - wx) + (dz - wz) * (dz - wz)) / ShotModel.UnitsPerYard;   // já com o vento
+        int club = ClubFor(need);                                            // pelo alcance aprendido de cada taco
+        if (cautious) club = Math.Min(club + 2, ShotModel.Iron9);
+        byte ps = 0, special = Special.None;
+        int item = 0;
+        var opts = PowerOptions();
+        if (useCobra && !cautious && opts.Count > 0)                         // rasante por baixo do obstáculo: driver + PS
+            return (ShotModel.Driver, opts[0].Ps, Special.Cobra, opts[0].Item, wx, wz);
+        if (club == ShotModel.Driver && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp) && opts.Count > 0)
+        {
+            (ps, item) = opts[^1];
+            bool fits = false;
+            foreach (var (p, it) in opts)
+                if (need / factor <= ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: p)) { (ps, item, fits) = (p, it, true); break; }
+            if (!fits) special = BestSpecial();
+        }
+        return (club, ps, special, item, wx, wz);
     }
 
     /// <summary>O taco mais curto que alcança (1W..9I, com o alcance aprendido de cada um); longe demais = driver.</summary>

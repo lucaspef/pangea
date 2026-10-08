@@ -259,6 +259,7 @@ public sealed partial class GameHandler
         var rnd = (uint)Random.Shared.Next();                       // o cliente falha o item se rnd % 100 < COM[1]
         var w = new PacketWriter(InGameOutput.SUseItem).U32(tid).U32(rnd).U32(guid);
         if (toAll) InGameOutput.Broadcast(r, w); else conn.Send(w);
+        if (r.Game is StrokeGame { Output: InGameOutput o }) o.ActiveItem = (int)tid;      // vento da calibração
         conn.Send(new PacketWriter(SItemCounts).U8(1).U32(tid).U32((uint)item.Id).U16((ushort)item.Quantity));
         conn.Send(new PacketWriter(SEquip).Struct(PlayerStructs.Equip(Player)));
         return new PendingSave { Item = item, Equip = true };

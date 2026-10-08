@@ -131,7 +131,7 @@ public class BotPowerShotTests
         {
             var (ph, x) = easy.DrawImpact();
             float ax = MathF.Abs(x);
-            Assert.Equal(ax < 2 ? 4 : ax < 10 ? 3 : ax < 20 ? 2 : 1, ph);
+            Assert.Equal(ax <= 2 ? 4 : ax <= 10 ? 3 : ax <= 20 ? 2 : 1, ph);   // como o cliente: |d| < área + 0,5
             phases[ph]++;
         }
         Assert.True(phases[1] > 0 && phases[2] > 0 && phases[3] > 0 && phases[4] > 0);
@@ -146,9 +146,47 @@ public class BotPowerShotTests
 
         var g = new BotGolfer(new Random(1), 1, maxPowerShot: 2);
         g.ShotDone(new BotShot(0, 1, 0, Phase: 3));
-        Assert.Equal(0, g.Gauge);                                            // sem PangYa, sem gauge
+        Assert.Equal(BotGolfer.GaugePerGood, g.Gauge);                       // boa: +4
+        g.ShotDone(new BotShot(0, 1, 0, Phase: 2));
+        Assert.Equal(BotGolfer.GaugePerGood, g.Gauge);                       // normal: nada
         g.ShotDone(new BotShot(0, 1, 0));
-        Assert.Equal(BotGolfer.GaugePerPangya, g.Gauge);
+        Assert.Equal(BotGolfer.GaugePerGood + BotGolfer.GaugePerPangya, g.Gauge);
+    }
+
+    [Fact]
+    public void PowerShotItemsReachWhenTheGaugeIsEmpty()
+    {
+        var g = new BotGolfer(new Random(1), 1, maxPowerShot: 2, specials: Special.Tomahawk);
+        float driver = ShotModel.RangeYards(ShotModel.Driver);
+        var none = g.Plan(0, 0, 0, (driver + 8) * Y, 0, 0);
+        Assert.Equal((0, 0), ((int)none.PowerShot, none.Item));             // sem gauge e sem item: sem PS
+
+        g.Items.AddRange([BotItem.PowerAssist, BotItem.PowerEnhancer]);
+        var pa = g.Plan(0, 0, 0, (driver + 8) * Y, 0, 0);
+        Assert.Equal((1, BotItem.PowerAssist), ((int)pa.PowerShot, pa.Item));   // +10 resolve
+        var pe = g.Plan(0, 0, 0, (driver + 14) * Y, 0, 0);
+        Assert.Equal((3, BotItem.PowerEnhancer), ((int)pe.PowerShot, pe.Item)); // +15
+        var far = g.Plan(0, 0, 0, (driver + 40) * Y, 0, 0);
+        Assert.Equal((3, BotItem.PowerEnhancer, Special.Tomahawk), ((int)far.PowerShot, far.Item, far.Special));
+
+        g.UseItem(BotItem.PowerEnhancer);
+        g.ShotDone(pe);
+        Assert.Equal(0, g.Gauge);                                            // PS por item não mexe no gauge
+        Assert.Equal([BotItem.PowerAssist], g.Items);
+    }
+
+    [Fact]
+    public void SilentWindOnLongShotsWithStrongWind()
+    {
+        var g = new BotGolfer(new Random(1), 1);
+        g.Items.Add(BotItem.SilentWind);
+        var calm = g.Plan(0, 0, 0, 200 * Y, 2, 64);                          // vento 3 m: não gasta
+        Assert.Equal(0, calm.Item);
+        var windy = g.Plan(0, 0, 0, 200 * Y, 8, 64);                         // 9 m de lado
+        Assert.Equal(BotItem.SilentWind, windy.Item);
+        var expected = g.Plan(0, 0, 0, 200 * Y, 0, 64);                      // planejada com 1 m
+        Assert.Equal(expected.Aim, windy.Aim, 4);
+        Assert.Equal(0, g.Plan(0, 0, 0, 100 * Y, 8, 64).Item);               // curta: não gasta
     }
 
     [Fact]

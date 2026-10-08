@@ -249,6 +249,7 @@ public sealed partial class GameHandler
                 ctx.Players.EquipBot(bot.Player, r.BotLevel);
                 var (stats, driveUp) = ctx.Data.PlayStats(bot.Player);
                 (golfer.PowerStat, golfer.DriveUp, golfer.AccuracyStat) = (stats[0], driveUp, stats[2]);
+                foreach (var it in bot.Player.Equip.ItemSlots) if (it != 0) golfer.Items.Add(it);
                 Log.Info($"sala {r.Index}: bot {r.BotLevel} nível={bot.Player.Level} stats={string.Join('/', stats)} anéis=+{driveUp}jd");
             }
             r.Game = MassGame.IsMass(r.Settings.Mode)
