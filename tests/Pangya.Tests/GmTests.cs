@@ -46,6 +46,17 @@ public class GmTests(DbFixture fx)
         for (int i = 0; i < 50 && env.Game.World.Find(userId) != null; i++) await Task.Delay(20);
         Assert.Null(env.Game.World.Find(userId));
         Assert.NotNull(env.Game.World.Find(gmId));
+
+        // auditoria (gravada sem esperar): o aviso e a expulsão, com o GM como autor
+        var actions = new HashSet<string>();
+        for (int i = 0; i < 50 && actions.Count < 2; i++)
+        {
+            actions.Clear();
+            foreach (var e in await env.S.Audit.Store.RecentAsync(200))
+                if (e.ActorId == gmId) actions.Add(e.Action);
+            await Task.Delay(20);
+        }
+        Assert.Superset(new HashSet<string> { "gm:notice", "gm:kick" }, actions);
     }
 
     [Fact]

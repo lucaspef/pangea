@@ -64,6 +64,12 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - ✅ Chat azul, `/notice`, `/kick`, `/disconnect`, `/identity` (só na própria tela).
 - ⬜ `/visible`, vento/clima, `/giveitem`, observar.
 
+## Administração (fase 9)
+- ✅ Auditoria (`audit_log`): ações de GM no jogo (`gm:*`), do painel (`admin:*`) e da linha de comando (`console`).
+- ✅ Painel web em `http://127.0.0.1:30080/admin` (só com `Web.AdminEnabled`, só dos IPs de `Web.AdminAllowedIps`,
+  só contas GM): procurar conta, bloquear/desbloquear (expulsa se online), expulsar, ajustar pang/cookie/nível e
+  entregar item (com o jogador desconectado), auditoria com filtro. Cookie HttpOnly/SameSite=Strict + token anti-CSRF.
+
 ## Correio (SPEC-correio-presentes.md)
 - ✅ Listar, ler, pegar anexos, apagar, enviar (com item/pang), aviso de carta nova (0x15E), presente da loja.
 - ✅ Presentes de subida de nível chegam como carta do sistema (uma por nível).

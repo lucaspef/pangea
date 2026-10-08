@@ -59,6 +59,18 @@ public sealed class AccountRepository(Db db) : IAccountStore
         await c.ExecuteAsync("update accounts set identity_flags = @flags where id = @id", new { id, flags });
     }
 
+    public async Task<Account?> FindByNicknameAsync(string nickname)
+    {
+        await using var c = await db.OpenAsync();
+        return await c.QuerySingleOrDefaultAsync<Account>($"select {Columns} from accounts where lower(nickname) = lower(@nickname)", new { nickname });
+    }
+
+    public async Task SetBlockAsync(long id, DateTime? until, string? reason)
+    {
+        await using var c = await db.OpenAsync();
+        await c.ExecuteAsync("update accounts set blocked_until = @until, block_reason = @reason where id = @id", new { id, until, reason });
+    }
+
     public async Task RecordLoginAsync(long id, string ip)
     {
         await using var c = await db.OpenAsync();

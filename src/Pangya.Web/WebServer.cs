@@ -13,13 +13,14 @@ namespace Pangya.Web;
 /// <summary>
 /// Servidor HTTP:
 /// - POST /Secure/Login/LoginForGame.aspx: login do cliente KR (multipart id/pwd/gamecode), responde XML com o AuthKey;
-/// - GET/POST /register: página de cadastro de conta.
+/// - GET/POST /register: página de cadastro de conta;
+/// - /admin: painel de administração (AdminPanel).
 /// </summary>
 public static class WebServer
 {
     public const string LoginPath = "/Secure/Login/LoginForGame.aspx";
 
-    public static WebApplication Build(ServerServices services, int? portOverride = null)
+    public static WebApplication Build(ServerServices services, int? portOverride = null, Pangya.Domain.Game.GameWorld? world = null)
     {
         var cfg = services.Config;
         var builder = WebApplication.CreateSlimBuilder();
@@ -84,6 +85,8 @@ public static class WebServer
                 ? Results.File(path, "image/png") : Results.NotFound();
         });
 
+        new AdminPanel(services, world).Map(app);                          // /admin (só com Web.AdminEnabled)
+
         app.MapGet("/register", () => Html(RegisterPage.Render(null, false)));
         app.MapPost("/register", async (HttpContext ctx) =>
         {
@@ -109,9 +112,9 @@ public static class WebServer
     static IResult Xml(string xml) => Results.Content(xml, "text/xml");
     static IResult Html(string html) => Results.Content(html, "text/html; charset=utf-8");
 
-    public static async Task RunAsync(ServerServices services, CancellationToken ct)
+    public static async Task RunAsync(ServerServices services, CancellationToken ct, Pangya.Domain.Game.GameWorld? world = null)
     {
-        await using var app = Build(services);
+        await using var app = Build(services, null, world);
         Log.Info($"WEB: escutando em {services.Config.Network.BindIp}:{services.Config.Web.Port}" +
                  (services.Config.Web.AutoRegister ? " (AUTO-CADASTRO LIGADO: só para testes!)" : ""));
         await app.StartAsync(ct);

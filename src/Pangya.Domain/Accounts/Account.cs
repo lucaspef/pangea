@@ -35,4 +35,7 @@ public interface IAccountStore
     /// <summary>Bits de identidade do cliente: 0x04 GM, 0x10 GM visível, 0x0E admin/desenvolvedor.</summary>
     Task SetIdentityFlagsAsync(long id, int flags);
     Task RecordLoginAsync(long id, string ip);
+    Task<Account?> FindByNicknameAsync(string nickname);
+    /// <summary>Bloqueia até <paramref name="until"/> (null = desbloqueia).</summary>
+    Task SetBlockAsync(long id, DateTime? until, string? reason);
 }

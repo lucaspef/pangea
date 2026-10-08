@@ -31,6 +31,9 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
 
     public (GameHandler From, GameHandler To, int Room)? TakeInvite(uint id) => invites.TryRemove(id, out var v) ? v : null;
 
+    /// <summary>Auditoria das ações de GM (null nos testes que não usam).</summary>
+    public Domain.Admin.AuditLog? Audit { get; set; }
+
     /// <summary>Mensageiro do mesmo processo (lista de amigos pelo game, status "jogando"); null sem mensageiro.</summary>
     public Messenger.MessengerContext? Messenger { get; set; }
 

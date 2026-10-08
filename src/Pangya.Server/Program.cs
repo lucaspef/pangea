@@ -30,6 +30,13 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
     if (applied.Count > 0) Log.Info("migrações aplicadas: " + string.Join(", ", applied));
 
     var command = rest.Count > 0 ? rest[0] : "";
+    if (command is "server-add" or "server-remove" or "account-create" or "player-set" or "item-give" or "give-all")
+    {
+        // auditoria: a linha de comando inteira (a senha do account-create não é gravada)
+        var args2 = rest.Count > 2 ? rest.GetRange(2, rest.Count - 2) : [];
+        if (command == "account-create" && args2.Count > 0) args2[0] = "***";
+        await s.Audit.WriteAsync(null, "console", command, rest.Count > 1 ? rest[1] : "", string.Join(' ', args2));
+    }
     if (command == "server-add" && rest.Count >= 6)
     {
         var info = new ServerInfo(int.Parse(rest[1]), rest[2], rest[3], rest[4], int.Parse(rest[5]), rest.Count > 6 ? int.Parse(rest[6]) : 3000, 0, 0);
@@ -153,7 +160,7 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
     for (int i = 0; i < names.Length; i++)
         tasks[i] = names[i] switch
         {
-            "web" => WebServer.RunAsync(s, ct),
+            "web" => WebServer.RunAsync(s, ct, game?.World),
             "login" => LoginServer.RunAsync(s, ct),
             "game" => game!.RunAsync(ct),
             "messenger" => messenger!.RunAsync(ct),

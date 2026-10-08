@@ -19,6 +19,10 @@ public sealed partial class GameHandler
 
     bool IsGm => (Player.IdentityFlags & IdentityGm) != 0;
 
+    /// <summary>Registra a ação de GM na auditoria (sem esperar; falha só vira log).</summary>
+    void Audit(string action, string target, string details = "") =>
+        _ = ctx.Audit?.WriteAsync(Player.AccountId, Player.Nickname, "gm:" + action, target, details);
+
     bool HandleGm(PacketReader p)
     {
         switch (p.Id)
@@ -49,6 +53,7 @@ public sealed partial class GameHandler
         }
         uint shown = value == 0xFFFFFFFF ? (uint)Player.IdentityFlags : value;
         conn.Send(new PacketWriter(SIdentity).U32(shown));
+        Audit("identity", Player.Nickname, $"0x{shown:X} (só na tela)");
         Log.Info($"{conn} /identity -> 0x{shown:X} (só na tela; conta continua 0x{Player.IdentityFlags:X})");
     }
 
@@ -58,6 +63,7 @@ public sealed partial class GameHandler
         text = text.Trim();
         if (!IsGm || text.Length == 0) { Log.Warn($"{conn} 0x57 aviso recusado (não é GM)"); return; }
         Log.Info($"{conn} aviso de GM: {text}");
+        Audit("notice", "", text);
         var board = new PacketWriter(SNoticeBoard).Str(text);
         var chat = RoomPackets.Chat("", text, ChatNotice);
         foreach (var s in ctx.World.Online)
@@ -85,6 +91,7 @@ public sealed partial class GameHandler
                 if ((target.Player.IdentityFlags & IdentityGm) != 0) { conn.Send(new PacketWriter(0x3F).Str("nao pode expulsar um GM")); return; }
                 Log.Info($"{conn} GM {Player.Login} expulsou {target.Player.Login}");
                 target.Kick($"expulso pelo GM {Player.Login}");
+                Audit(tag == GmKick ? "kick" : "disconnect", target.Player.Nickname);
                 return;
             }
             default:

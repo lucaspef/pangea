@@ -73,6 +73,10 @@ public sealed class WebConfig
     public int Port { get; set; } = 80;
     /// <summary>Login com conta inexistente cria a conta. SÓ PARA TESTES: nunca ligue num servidor aberto.</summary>
     public bool AutoRegister { get; set; }
+    /// <summary>Painel de administração em /admin (só contas GM). Desligado por padrão.</summary>
+    public bool AdminEnabled { get; set; }
+    /// <summary>IPs que podem abrir o painel (padrão: só a própria máquina).</summary>
+    public string[] AdminAllowedIps { get; set; } = ["127.0.0.1", "::1"];
 }
 
 public sealed class LoginConfig
