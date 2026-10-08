@@ -241,7 +241,9 @@ public sealed partial class GameHandler
             RoomManager.PrepareStart(r, Random.Shared, Rooms.Courses);
             var cfg = ctx.World.Config;
             var botDelay = TimeSpan.FromSeconds(cfg.BotDelaySeconds);
-            var golfer = BotGolfer.For(r.BotLevel, Random.Shared, cfg.BotAccuracy);
+            // aprendizado guardado do nível (memória dos buracos deste mapa + calibração); cresce a cada partida
+            var golfer = BotGolfer.For(r.BotLevel, Random.Shared, cfg.BotAccuracy, ctx.BotKnowledge.For(r.BotLevel));
+            golfer.Course = r.CoursePlayed;
             if (r.Bot is { } bot)                                       // kit do nível: vai no 0x74 e muda a física nos clientes
             {
                 ctx.Players.EquipBot(bot.Player, r.BotLevel);

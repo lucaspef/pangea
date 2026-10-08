@@ -30,6 +30,7 @@ public sealed class GameServer
         World.Rooms.Courses = cfg.Game.Courses.Length > 0 ? Bytes(cfg.Game.Courses) : data.Courses;
         var ctx = Context = new GameContext(World, s.Sessions, new PlayerService(s.Players, data, cfg.NewPlayer), data, cfg.Lottery, s.Registry, s.Guilds, s.Mail, s.Notes, s.Friends);
         ctx.Audit = s.Audit;
+        ctx.BotKnowledge = new Pangya.Domain.Rooms.BotKnowledge(s.BotKnowledge);
         Tcp = new TcpServer("GAME", new IPEndPoint(IPAddress.Parse(cfg.Network.BindIp), portOverride ?? cfg.Game.Port), cfg.Limits,
             c => new GameHandler(c, ctx));
     }
@@ -41,11 +42,24 @@ public sealed class GameServer
         return b;
     }
 
+    /// <summary>Grava o que o bot aprendeu desde a última vez (falha = tenta de novo no próximo ciclo).</summary>
+    async Task FlushBotKnowledgeAsync()
+    {
+        try { await Context.BotKnowledge.FlushAsync(World.Rooms.Sync); }
+        catch (Exception e) { Log.Warn($"GAME: falha ao gravar o aprendizado do bot: {e.Message}"); }
+    }
+
     ServerInfo Info => new(services.Config.Game.Id, "game", services.Config.Game.Name, services.Config.Network.PublicIp,
         Tcp.Port, services.Config.Game.MaxUsers, World.OnlineCount, 0);
 
     public async Task RunAsync(CancellationToken ct)
     {
+        try
+        {
+            var (holes, cals) = await Context.BotKnowledge.LoadAsync();
+            Log.Info($"GAME: aprendizado do bot carregado ({holes} buracos, {cals} calibrações)");
+        }
+        catch (Exception e) { Log.Warn($"GAME: falha ao carregar o aprendizado do bot: {e.Message}"); }
         var accept = Tcp.StartAsync(ct);
         try
         {
@@ -53,12 +67,14 @@ public sealed class GameServer
             {
                 try { await services.Registry.HeartbeatAsync(Info, HeartbeatInterval * 3); }
                 catch (Exception e) { Log.Warn($"GAME: falha ao renovar registro: {e.Message}"); }
+                await FlushBotKnowledgeAsync();
                 await Task.Delay(HeartbeatInterval, ct);
             }
         }
         catch (OperationCanceledException) { }
         finally
         {
+            await FlushBotKnowledgeAsync();
             try { await services.Registry.RemoveAsync(services.Config.Game.Id); } catch { /* banco fora: o registro expira sozinho */ }
             await accept;
         }

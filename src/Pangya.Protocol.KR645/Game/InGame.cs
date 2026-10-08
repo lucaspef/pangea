@@ -138,7 +138,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
             return new BotShot(ShotModel.Driver, 0.9f, template != null ? BinaryPrimitives.ReadSingleLittleEndian(template.AsSpan(0x19)) : 0);
         var (x, z) = StartOf(bot);
         // depois de água/OB a memória do buraco (perigos) já muda o alvo; o "taco mais curto" do CRival não é usado
-        return golfer.Plan(x, z, h.PinX, h.PinZ, Game.WindStrength, Game.WindDirection, hole: Game.HoleIndex);
+        return golfer.Plan(x, z, h.PinX, h.PinZ, Game.WindStrength, Game.WindDirection, hole: Game.Hole);
     }
 
     /// <summary>
@@ -227,7 +227,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         float planned = ShotModel.Distance(shotByBot ? ShotModel.RangeYards(shotClub, golfer.PowerStat, driveUp: golfer.DriveUp, powerShot: lastBotPowerShot)
             : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor * golfer.Calibration.SpecialFactor(special);
         var (ux, uz) = ShotModel.Direction(shotAim);
-        golfer.Observe(Game.HoleIndex, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
+        golfer.Observe(Game.Hole, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
             r.State, putt: shotClub >= ShotModel.Putter1, cobra: special == Special.Cobra);
         var cal = golfer.Calibration;
         Log.Info($"sala {room.Index} resultado {r.Guid}: pos=({r.X:F1},{r.Y:F1},{r.Z:F1}) estado={r.State} " +

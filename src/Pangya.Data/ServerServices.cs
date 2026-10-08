@@ -22,6 +22,7 @@ public sealed class ServerServices : IAsyncDisposable
     public Pangya.Domain.Messenger.INoteStore Notes { get; }
     public Pangya.Domain.Ranking.IRankingStore Ranking { get; }
     public Pangya.Domain.Admin.AuditLog Audit { get; }
+    public Pangya.Domain.Rooms.IBotKnowledgeStore BotKnowledge { get; }
 
     public ServerServices(PangyaConfig config)
     {
@@ -38,6 +39,7 @@ public sealed class ServerServices : IAsyncDisposable
         Notes = new NoteRepository(Db);
         Ranking = new RankingRepository(Db);
         Audit = new Pangya.Domain.Admin.AuditLog(new AuditRepository(Db));
+        BotKnowledge = new BotKnowledgeRepository(Db);
     }
 
     public ValueTask DisposeAsync() => Db.DisposeAsync();

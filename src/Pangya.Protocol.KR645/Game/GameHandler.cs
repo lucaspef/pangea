@@ -40,6 +40,9 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
     /// <summary>Mensageiro do mesmo processo (lista de amigos pelo game, status "jogando"); null sem mensageiro.</summary>
     public Messenger.MessengerContext? Messenger { get; set; }
 
+    /// <summary>Aprendizado do bot por nível (o game server liga ao banco; sem banco fica só em memória).</summary>
+    public Domain.Rooms.BotKnowledge BotKnowledge { get; set; } = new();
+
     /// <summary>Registro de servidores (lista de servidores no jogo, 0x43); null nos testes que não usam.</summary>
     public Domain.Servers.IServerRegistry? Registry { get; } = registry;
     public GameWorld World { get; } = world;

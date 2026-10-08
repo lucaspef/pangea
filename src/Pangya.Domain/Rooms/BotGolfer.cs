@@ -106,7 +106,31 @@ public sealed class ShotCalibration
     public float DistanceFactor { get; private set; } = 1;
     public float AimOffset { get; private set; }
     public int Samples { get; private set; }
+    /// <summary>Muda a cada ajuste (para gravar só o que mudou).</summary>
+    public int Version { get; private set; }
     readonly Dictionary<byte, float> special = [];
+
+    public System.Text.Json.Nodes.JsonObject ToJson()
+    {
+        var sp = new System.Text.Json.Nodes.JsonObject();
+        foreach (var (k, f) in special) sp[k.ToString(System.Globalization.CultureInfo.InvariantCulture)] = f;
+        return new() { ["distance"] = DistanceFactor, ["aim"] = AimOffset, ["samples"] = Samples, ["special"] = sp };
+    }
+
+    /// <summary>Calibração gravada (valores fora das faixas voltam para dentro).</summary>
+    public static ShotCalibration FromJson(System.Text.Json.Nodes.JsonObject o)
+    {
+        var c = new ShotCalibration
+        {
+            DistanceFactor = Math.Clamp(JsonNum.F(o["distance"], 1), 0.8f, 1.25f),
+            AimOffset = Math.Clamp(JsonNum.F(o["aim"], 0), -0.15f, 0.15f),
+            Samples = (int)Math.Max(JsonNum.F(o["samples"], 0), 0),
+        };
+        if (o["special"] is System.Text.Json.Nodes.JsonObject sp)
+            foreach (var (k, v) in sp)
+                if (byte.TryParse(k, out var kind) && kind != Special.None) c.special[kind] = Math.Clamp(JsonNum.F(v, Special.Initial(kind)), 0.9f, 1.8f);
+        return c;
+    }
 
     /// <summary>Alcance de uma tacada especial do bot em relação à normal (aprendido; começa em Special.InitialFactor).</summary>
     public float SpecialFactor(byte kind) => kind == Special.None ? 1 : special.GetValueOrDefault(kind, Special.Initial(kind));
@@ -127,6 +151,7 @@ public sealed class ShotCalibration
         float ratio = aLen / d, f = SpecialFactor(kind);
         if (ratio is < 0.6f or > 2.2f) return false;
         special[kind] = Math.Clamp(f + Alpha * (ratio - f), 0.9f, 1.8f);
+        Version++;
         return true;
     }
 
@@ -145,6 +170,7 @@ public sealed class ShotCalibration
         AimOffset = Math.Clamp(AimOffset + Alpha * (err - AimOffset), -0.15f, 0.15f);
         if (learnDistance) DistanceFactor = Math.Clamp(DistanceFactor + Alpha * (ratio - DistanceFactor), 0.8f, 1.25f);
         Samples++;
+        Version++;
         return true;
     }
 }
@@ -164,8 +190,16 @@ public sealed class ShotCalibration
 /// - erro aleatório de mira e força conforme <see cref="Accuracy"/> (1 = perfeito).
 /// </summary>
 public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind = true, bool remembers = true, int maxPowerShot = 0,
-    byte specials = Special.None, int impactRange = 0)
+    byte specials = Special.None, int impactRange = 0, BotLevelKnowledge? knowledge = null)
 {
+    /// <summary>
+    /// O que o nível já aprendeu (calibração + memória dos buracos), compartilhado entre as partidas e gravado no banco.
+    /// Sem ele (testes), um aprendizado só deste bot.
+    /// </summary>
+    readonly BotLevelKnowledge mem = knowledge ?? new BotLevelKnowledge(BotLevel.Normal);
+    /// <summary>Mapa da partida (chave da memória dos buracos junto com o número do buraco).</summary>
+    public byte Course { get; set; }
+
     /// <summary>
     /// Erro natural como o oponente do cliente (CRival, SPEC-bot-especiais.md §3): impacto = centro ± ImpactRange; fase 4 se
     /// |desvio| &lt; 2, 3 se &lt; N, 2 se &lt; W, senão 1 (N = max(2, precisão), W = min(N + 10, 35)). Todos os clientes aplicam o
@@ -211,13 +245,14 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// Bot de um nível: precisão (erro de mira/força), se compensa o vento e se usa a memória do buraco.
     /// Normal usa a precisão da configuração (Game.BotAccuracy).
     /// </summary>
-    public static BotGolfer For(BotLevel level, Random rng, float normalAccuracy = 0.85f) => level switch
+    /// knowledge = o aprendizado guardado daquele nível (BotKnowledge.For(level)); null = começa do zero.
+    public static BotGolfer For(BotLevel level, Random rng, float normalAccuracy = 0.85f, BotLevelKnowledge? knowledge = null) => level switch
     {
-        BotLevel.Easy => new(rng, 0.55f, readsWind: false, remembers: false, impactRange: 25),
-        BotLevel.Hard => new(rng, 0.93f, maxPowerShot: 2, specials: Special.Tomahawk, impactRange: 6),
-        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra, impactRange: 3),
-        BotLevel.Impossible => new(rng, 1f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra),
-        _ => new(rng, normalAccuracy, maxPowerShot: 1, impactRange: 10),
+        BotLevel.Easy => new(rng, 0.55f, readsWind: false, remembers: false, impactRange: 25, knowledge: knowledge),
+        BotLevel.Hard => new(rng, 0.93f, maxPowerShot: 2, specials: Special.Tomahawk, impactRange: 6, knowledge: knowledge),
+        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra, impactRange: 3, knowledge: knowledge),
+        BotLevel.Impossible => new(rng, 1f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra, knowledge: knowledge),
+        _ => new(rng, normalAccuracy, maxPowerShot: 1, impactRange: 10, knowledge: knowledge),
     };
 
     /// <summary>Nível pelo nome do chat (pt/en, sem acento); null = desconhecido.</summary>
@@ -240,7 +275,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     const float MaxAimError = 0.15f, MaxPowerError = 0.3f;
 
     public float Accuracy { get; } = Math.Clamp(accuracy, 0f, 1f);
-    public ShotCalibration Calibration { get; } = new();
+    public ShotCalibration Calibration => mem.Calibration;
     /// <summary>Stat de força do bot (alcance das madeiras); o bot tem o kit de um jogador novo.</summary>
     public int PowerStat { get; set; }
     /// <summary>Jardas a mais dos anéis do bot (DriveUp).</summary>
@@ -251,20 +286,22 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// <summary>Tacada que parou antes desta fração do previsto bateu em algo (árvore, parede): o caminho é perigo.</summary>
     const float BlockedFraction = 0.4f;
     int memoryHole = -1;
-    readonly List<(float X, float Z)> safe = [], hazards = [], blocked = [], cobraBlocked = [];
+    HoleMemory cur = new();
+    List<(float X, float Z)> safe => cur.Safe;
+    List<(float X, float Z)> hazards => cur.Hazards;
+    List<(float X, float Z)> blocked => cur.Blocked;
+    List<(float X, float Z)> cobraBlocked => cur.CobraBlocked;
 
     /// <summary>Perigos e lugares seguros conhecidos no buraco atual (para testes e log).</summary>
     public IReadOnlyList<(float X, float Z)> Hazards => hazards;
     public IReadOnlyList<(float X, float Z)> SafeSpots => safe;
 
+    /// <summary>Passa a usar a memória do buraco (número do buraco no mapa <see cref="Course"/>).</summary>
     void UseHole(int hole)
     {
         if (hole == memoryHole) return;
         memoryHole = hole;
-        safe.Clear();
-        hazards.Clear();
-        blocked.Clear();
-        cobraBlocked.Clear();
+        cur = mem.Hole(Course, (byte)hole);
     }
 
     /// <summary>
@@ -281,13 +318,15 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         if (putt || state == ShotResult.StateHoled) return;
         float planned = Dist(sx, sz, tx, tz), moved = Dist(sx, sz, ex, ez);
         bool wasBlocked = planned > 30 * ShotModel.UnitsPerYard && moved < planned * BlockedFraction;
+        bool changed = false;
         if (state == ShotResult.StateWaterOrOut || wasBlocked)
         {
-            hazards.Add((tx, tz));
-            if (state != ShotResult.StateWaterOrOut) (cobra ? cobraBlocked : blocked).Add((tx, tz));
+            changed = HoleMemory.Add(hazards, tx, tz);
+            if (state != ShotResult.StateWaterOrOut) changed |= HoleMemory.Add(cobra ? cobraBlocked : blocked, tx, tz);
         }
         else if (moved > 10 * ShotModel.UnitsPerYard)
-            safe.Add((ex, ez));
+            changed = HoleMemory.Add(safe, ex, ez);
+        if (changed) mem.MarkDirty(Course, (byte)hole);
     }
 
     static float Dist(float ax, float az, float bx, float bz) => MathF.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));
@@ -375,7 +414,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
 
     static readonly byte[] SpecialOrder = [Special.Tomahawk, Special.Spike];
 
-    /// <summary>Planeja a tacada da bola (x, z) para a bandeira (pinX, pinZ) com o vento atual. hole = índice do buraco (memória).</summary>
+    /// <summary>Planeja a tacada da bola (x, z) para a bandeira (pinX, pinZ) com o vento atual. hole = número do buraco (memória).</summary>
     public BotShot Plan(float x, float z, float pinX, float pinZ, byte windStrength, byte windDirection, bool cautious = false, int hole = -1)
     {
         if (hole >= 0) UseHole(hole);
