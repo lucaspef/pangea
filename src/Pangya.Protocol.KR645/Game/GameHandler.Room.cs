@@ -23,10 +23,12 @@ public sealed partial class GameHandler
             case CEnterRoomList:
                 lock (Rooms.Sync)
                 {
+                    bool already = Rooms.Lobby.Contains(this);
+                    if (!already) LobbyUser(LobbyUserAdd);                      // os outros me veem
                     Rooms.Lobby.Add(this);
                     conn.Send(new PacketWriter(RoomPackets.SRoomListOn));
                     conn.Send(RoomPackets.RoomListAll(Rooms));
-                    conn.Send(new PacketWriter(RoomPackets.SLobbyUsers).U8(1).U8(1).Struct(RoomPackets.BriefUser(Player)));
+                    SendLobbyUsers();
                 }
                 return true;
             case CLeaveRoomList:
@@ -45,6 +47,25 @@ public sealed partial class GameHandler
             case CRoomAction: ResendSlotsOnce(); return true;
             default: return false;
         }
+    }
+
+    /// <summary>0x44 sub: 1 entrou na lista, 2 saiu, 3 atualiza (sala em que está; 0xFFFF = no lobby).</summary>
+    const byte LobbyUserAdd = 1, LobbyUserRemove = 2, LobbyUserUpdate = 3;
+    const int MaxLobbyUsers = 250;                                         // 0xC4 cada: cabe num pacote
+
+    /// <summary>Minha entrada na lista de usuários de quem está na lista de salas (eu inclusive, se estiver).</summary>
+    void LobbyUser(byte sub) =>
+        Lobby(new PacketWriter(RoomPackets.SLobbyUsers).U8(sub).U8(1).Struct(RoomPackets.BriefUser(Player, (ushort)(room?.Index ?? 0xFFFF))));
+
+    /// <summary>Lista completa do meu canal (no lobby e em salas), com a sala de cada um.</summary>
+    void SendLobbyUsers()
+    {
+        var list = new List<GameHandler>();
+        foreach (var s in ctx.World.Online)
+            if (s is GameHandler h && h.player != null && h.channel == channel && list.Count < MaxLobbyUsers) list.Add(h);
+        var w = new PacketWriter(RoomPackets.SLobbyUsers, 8 + list.Count * 0xC4).U8(LobbyUserAdd).U8((byte)list.Count);
+        foreach (var h in list) w.Struct(RoomPackets.BriefUser(h.Player, (ushort)(h.room?.Index ?? 0xFFFF)));
+        conn.Send(w);
     }
 
     void Lobby(PacketWriter w)
@@ -87,6 +108,7 @@ public sealed partial class GameHandler
         room = r;
         slotsResent = false;
         Rooms.Lobby.Remove(this);
+        LobbyUser(LobbyUserUpdate);                                         // a lista do lobby mostra a sala
         InGameOutput.Broadcast(r, RoomPackets.SlotAdd(r, rp), except: this);
         conn.Send(RoomPackets.EnterRoom(r));
         conn.Send(RoomPackets.Settings(r));
@@ -120,6 +142,7 @@ public sealed partial class GameHandler
         conn.Send(new PacketWriter(RoomPackets.SLeftRoom).U16(0xFFFF));     // volta para ROOMLIST (ou TOPPAGE)
         Rooms.Lobby.Add(this);
         conn.Send(RoomPackets.RoomListAll(Rooms));
+        LobbyUser(LobbyUserUpdate);                                         // fora da sala, para todos e para mim
     }
 
     /// <summary>0x0A: u16 0xFFFF, u8 n, n × (u8 chave, valor). Só o dono muda a sala.</summary>

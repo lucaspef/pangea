@@ -62,6 +62,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         {
             ctx.World.Rooms.Lobby.Remove(this);
             LeaveRoom(notifySelf: false);
+            LobbyUser(LobbyUserRemove);                                         // sai da lista dos outros
         }
         ctx.World.Leave(this);
         FinishGameEnd();                                                  // grava a recompensa de quem fechou o jogo cedo
