@@ -8,6 +8,8 @@ public sealed record CardInfo(int TypeId, bool Final, int Rarity, int Ability, i
     public const int SubCharacter = 0, SubCaddie = 1, SubSpecial = 2, SubPack = 3, SubBox = 4;
     /// <summary>Habilidades instantâneas dos cards especiais: EXP, pang, pang aleatório.</summary>
     public const int AbilityExp = 1, AbilityPang = 4, AbilityRandomPang = 17;
+    /// <summary>Especiais com prazo: pang +% (geleia preta) e EXP +% (geleia branca), aplicados pelo servidor no fim do jogo.</summary>
+    public const int AbilityPangRate = 2, AbilityExpRate = 3;
 
     public int SubType => (TypeId >> 22) & 0xF;
 }

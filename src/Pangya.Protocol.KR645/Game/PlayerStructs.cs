@@ -103,6 +103,28 @@ public static class PlayerStructs
         return s;
     }
 
+    /// <summary>
+    /// Cards em vigor como o cliente guarda (sSCardAvilityPeriodInfo 0x41): 0x12F do próprio jogador e, no 0x74, os de
+    /// cada jogador da sala, onde o cliente usa cardType/Avility como vêm (docs/protocolo/SPEC-cards-efeitos.md).
+    /// </summary>
+    public static List<sSCardAvilityPeriodInfo> ActiveCards(Player p, IReadOnlyDictionary<int, Domain.Shop.CardInfo> cards)
+    {
+        var list = new List<sSCardAvilityPeriodInfo>();
+        foreach (var it in Domain.Shop.CardService.Active(p, DateTime.UtcNow))
+        {
+            var a = Domain.Shop.CardService.ToActive(it);
+            var ci = cards.GetValueOrDefault(a.TypeId);
+            list.Add(new sSCardAvilityPeriodInfo
+            {
+                uid = (uint)a.Id, tid = (uint)a.TypeId, partsTid = (uint)a.PartTypeId, partsUid = (uint)a.PartId, slotNum = a.Slot,
+                Avility = ci?.Ability ?? 0, AvilityValue = (uint)(ci?.AbilityValue ?? 0),
+                useStartTime = SystemTime(a.Start?.ToLocalTime()), useEndTime = SystemTime(a.End?.ToLocalTime()),
+                cardType = (a.TypeId >> 22) & 0xF, valid = 1,
+            });
+        }
+        return list;
+    }
+
     /// <summary>Número de registros de mapa que o cliente guarda (posição i = curso i).</summary>
     public const int MapStatCount = 20;
 

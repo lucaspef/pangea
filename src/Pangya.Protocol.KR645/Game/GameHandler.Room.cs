@@ -189,7 +189,7 @@ public sealed partial class GameHandler
                 ? MassGame.For(r, new MassOutput(r), Rooms.Sync, botDelay)
                 : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, new BotGolfer(Random.Shared, cfg.BotAccuracy)), Rooms.Sync,
                     botDelay, TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
-            InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r));
+            InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r, ctx.Data.Cards));
             InGameOutput.Broadcast(r, RoomPackets.GameInit(r));         // o cliente troca para a tela da partida
             Lobby(RoomPackets.RoomList(3, r));
             Log.Info($"sala {r.Index}: início mapa={r.CoursePlayed} buracos={r.Settings.Holes} jogadores={r.Players.Count}");

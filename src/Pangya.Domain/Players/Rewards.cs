@@ -10,18 +10,27 @@ public static class Rewards
 {
     public readonly record struct Reward(long Pang, int Exp, int LevelsUp);
 
-    public static (long Pang, int Exp) Compute(uint reportedPang, uint reportedBonus, int holes, bool finished, RewardConfig cfg) =>
-        !finished || holes <= 0 ? (0, 0)
-        : (Math.Min((long)reportedPang + reportedBonus, (long)cfg.MaxPangPerHole * holes), cfg.ExpPerHole * holes);
+    /// <summary>
+    /// Pang = (informado + bônus) limitado por buraco e depois × (1 + pang%/100); EXP × (1 + exp%/100). Os % vêm dos cards
+    /// especiais em vigor (o cliente só mostra o pang multiplicado na tela; EXP é só do servidor).
+    /// </summary>
+    public static (long Pang, int Exp) Compute(uint reportedPang, uint reportedBonus, int holes, bool finished, RewardConfig cfg,
+        int pangRate = 0, int expRate = 0)
+    {
+        if (!finished || holes <= 0) return (0, 0);
+        long pang = Math.Min((long)reportedPang + reportedBonus, (long)cfg.MaxPangPerHole * holes);
+        int exp = cfg.ExpPerHole * holes;
+        return ((long)Math.Round(pang * (1 + Math.Max(pangRate, 0) / 100.0)), (int)Math.Round(exp * (1 + Math.Max(expRate, 0) / 100.0)));
+    }
 
     /// <summary>
     /// Calcula, grava (pang, nível, EXP e a estatística do curso, se o modo tiver placar contra o par) e só então
     /// aplica no jogador. course = (mapa, placar) ou null.
     /// </summary>
     public static async Task<Reward> ApplyAsync(IPlayerStore store, Player p, uint reportedPang, uint reportedBonus, int holes, bool finished,
-        RewardConfig cfg, (int Course, int Score)? course = null)
+        RewardConfig cfg, (int Course, int Score)? course = null, int pangRate = 0, int expRate = 0)
     {
-        var (pang, exp) = Compute(reportedPang, reportedBonus, holes, finished, cfg);
+        var (pang, exp) = Compute(reportedPang, reportedBonus, holes, finished, cfg, pangRate, expRate);
         Dictionary<int, CourseRecord>? courses = null;
         if (finished && holes > 0 && course is { } c)
         {

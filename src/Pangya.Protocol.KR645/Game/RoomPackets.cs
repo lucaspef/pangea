@@ -114,19 +114,25 @@ public static class RoomPackets
 
     public static PacketWriter Chat(string nick, string message, byte kind = 0) => new PacketWriter(SChat).U8(kind).Str(nick).Str(message);
 
-    /// <summary>0x74: u8 0, u8 n, n × {sUserInfo, SYSTEMTIME, u8 cards} (modos em massa: só u8,u8,u8 + SYSTEMTIME).</summary>
-    public static PacketWriter GamePlayers(Room r)
+    /// <summary>
+    /// 0x74: u8 0, u8 n, n × {sUserInfo, SYSTEMTIME, u8 m, m × sSCardAvilityPeriodInfo} (modos em massa: só u8,u8,u8 +
+    /// SYSTEMTIME). Os cards de cada um fazem efeito para os outros clientes (o próprio jogador usa a lista do 0x12F).
+    /// </summary>
+    public static PacketWriter GamePlayers(Room r, IReadOnlyDictionary<int, Domain.Shop.CardInfo> cards)
     {
         var now = PlayerStructs.SystemTime(DateTime.Now);
         int n = Math.Min(r.Players.Count, 4);
-        var w = new PacketWriter(SGamePlayers, 8 + n * (0xB92 + 17)).U8(0).U8((byte)n);
+        var w = new PacketWriter(SGamePlayers, 8 + n * (0xB92 + 17 + 16 * 0x41)).U8(0).U8((byte)n);
         if (IsMassGame(r.Settings.Mode)) return w.U8(0).U8(0).U8(0).Struct(now);
         for (int i = 0; i < n; i++)
         {
             var ui = PlayerStructs.UserInfo(r.Players[i].Player);
             ui.roomIndex = (ushort)r.Index;
             ui.info.dwGuid = r.Players[i].Guid;
-            w.Struct(ui).Struct(now).U8(0);
+            var active = PlayerStructs.ActiveCards(r.Players[i].Player, cards);
+            int m = Math.Min(active.Count, 255);
+            w.Struct(ui).Struct(now).U8((byte)m);
+            for (int k = 0; k < m; k++) w.Struct(active[k]);
         }
         return w;
     }

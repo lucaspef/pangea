@@ -19,6 +19,28 @@ public sealed class CardService(IPlayerStore store, IGameData data, Random? rand
     public static ActiveCard ToActive(Item it) => new(it.Id, it.TypeId, it.Int("parts_tid"), it.Int("parts_id"), it.Int("slot"),
         it.Attrs["start"]?.GetValue<DateTime>(), it.ExpiresAt);
 
+    /// <summary>
+    /// Cards em vigor do jogador: encaixados em peças e especiais não vencidos (o que vai no 0x12F e no 0x74).
+    /// </summary>
+    public static List<Item> Active(Player p, DateTime nowUtc)
+    {
+        var list = new List<Item>();
+        foreach (var it in p.Items.Values)
+            if (it.Location == ItemLocation.ActiveCard && (it.ExpiresAt == null || it.ExpiresAt > nowUtc)) list.Add(it);
+        list.Sort(static (a, b) => a.Id.CompareTo(b.Id));
+        return list;
+    }
+
+    /// <summary>Valor (%) do especial em vigor com a habilidade pedida; o mais novo vale (o cliente substitui). 0 = nenhum.</summary>
+    public static int ActiveRate(Player p, IReadOnlyDictionary<int, CardInfo> cards, int ability, DateTime nowUtc)
+    {
+        int rate = 0, newest = -1;
+        foreach (var it in Active(p, nowUtc))
+            if (it.Int("parts_id") == 0 && cards.TryGetValue(it.TypeId, out var ci) && ci.Ability == ability && it.Id > newest)
+                (rate, newest) = (ci.AbilityValue, it.Id);
+        return rate;
+    }
+
     /// <summary>Abre pacote/caixa: tira 1 e sorteia 3 cards da série (tickets 0x7CC00001-03: 1 card de raridade mínima).</summary>
     public async Task<(Item Pack, int PackCountBefore, List<Item> Drawn)?> OpenPackAsync(Player p, int packTid, int packId)
     {

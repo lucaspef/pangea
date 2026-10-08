@@ -195,22 +195,10 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         var w = new PacketWriter(SCards, 8 + stacks.Count * 0x3A).U32(0).U16((ushort)stacks.Count);
         foreach (var c in stacks) w.Struct(new sCards { uid = (uint)c.Id, typeId = (uint)c.TypeId, count = c.Quantity, type = 1 });
         conn.Send(w);
-        var now = DateTime.UtcNow;
-        var active = new List<Item>();
-        foreach (var it in p.Items.Values)
-            if (it.Location == ItemLocation.ActiveCard && (it.ExpiresAt == null || it.ExpiresAt > now)) active.Add(it);
+        var active = PlayerStructs.ActiveCards(p, ctx.Data.Cards);
         conn.Send(new PacketWriter(SCardPeriodsClear));
         w = new PacketWriter(SCardPeriods, 8 + active.Count * 0x41).U16((ushort)active.Count);
-        foreach (var it in active)
-        {
-            var a = Domain.Shop.CardService.ToActive(it);
-            w.Struct(new sSCardAvilityPeriodInfo
-            {
-                uid = (uint)a.Id, tid = (uint)a.TypeId, partsTid = (uint)a.PartTypeId, partsUid = (uint)a.PartId, slotNum = a.Slot,
-                useStartTime = PlayerStructs.SystemTime(a.Start?.ToLocalTime()), useEndTime = PlayerStructs.SystemTime(a.End?.ToLocalTime()),
-                cardType = (a.TypeId >> 22) & 0xF, valid = 1,
-            });
-        }
+        foreach (var a in active) w.Struct(a);
         conn.Send(w);
     }
 
@@ -223,7 +211,11 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         {
             try
             {
-                var r = await Rewards.ApplyAsync(ctx.Players.Store, p, reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards, course);
+                var now = DateTime.UtcNow;
+                int pangRate = Domain.Shop.CardService.ActiveRate(p, ctx.Data.Cards, Domain.Shop.CardInfo.AbilityPangRate, now);
+                int expRate = Domain.Shop.CardService.ActiveRate(p, ctx.Data.Cards, Domain.Shop.CardInfo.AbilityExpRate, now);
+                var r = await Rewards.ApplyAsync(ctx.Players.Store, p, reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards,
+                    course, pangRate, expRate);
                 if (r.Pang == 0 && r.Exp == 0) return;
                 Log.Info($"{conn} recompensa: +{r.Pang} pang, +{r.Exp} EXP{(r.LevelsUp > 0 ? $", subiu {r.LevelsUp} nível(is) -> {p.Level}" : "")}");
                 conn.Send(new PacketWriter(SPang).U64((ulong)p.Pang).U64(0));
