@@ -1,4 +1,4 @@
-# Estado do servidor C# (atualizado em 2026-10-07)
+# Estado do servidor C# (atualizado em 2026-10-08)
 
 Mapa rápido do que funciona, do que falta e de como testar. Detalhes de protocolo em `docs/protocolo/SPEC-*.md`;
 plano e regras em `docs/PLANO.md`. Pacotes que o cliente manda e o servidor ainda não trata: `python3 tools/coverage.py`.
@@ -40,7 +40,13 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
   Bots não contam como jogadores, a não ser com `Game.Rewards.TrophiesCountBots: true` (para testar sozinho).
 - ✅ Medalhas do torneio (18+ jogadores): sorte, mais rápido, melhor drive, chip-in, putt longo e recuperação (18
   buracos), com item por carta; drive/chip-in/putt vêm do 0x31 do cliente, limitados por buraco.
-- ⬜ Treasure Hunter, ladder do match, entrar em partida em andamento.
+- ✅ Treasure Hunter (SPEC-treasure-hunter.md): pontos por buraco (0x12A; VS = soma da sala, torneio = de cada um),
+  caixas no fim (0x12B, de novo no 0x06) e entrega (0x12C, soma no inventário do cliente); prêmios por peso em
+  `Game.TreasureHunter`. Barras dos mapas cheias no login (0x129; o valor por mapa ainda não varia). Falta confirmar
+  no cliente que a tela das caixas abre.
+- ✅ Torneio: fim na ordem do GB (0x6A(2) de todos antes do 0xCC/0x77; SPEC-torneio-fim.md), relógio 0x8B a cada
+  buraco e fim do tempo (par + 5 no que faltou, 0x8A). Wiz City não tem a miniatura do "Next Hole" no pak do cliente.
+- ⬜ Ladder do match, entrar em partida em andamento (0x9A -> 0x111; SPEC-intrusao-tempo.md parte 1).
 
 ## Bot
 - ✅ Mira e força como o oponente do cliente; memória do buraco (água, OB, obstáculos, rota segura dos outros).
@@ -51,14 +57,23 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
   (começa em ×1,25).
 - ✅ Cobra (very hard+): por baixo de um obstáculo que já barrou a bola naquela linha; se o Cobra também bater, desiste.
 - ✅ Erro natural por fase/impacto como o oponente do cliente (raio por nível: easy 25, normal 10, hard 6, very hard 3,
-  impossible 0; faixas pela precisão real do bot); gauge só sobe em tacada PangYa.
+  impossible 0; faixas pela precisão real do bot, PangYa com |d| ≤ 2 como o cliente); gauge +12 PangYa, +4 boa.
+- ✅ Aprendizado persistente por nível (`bot_holes`/`bot_calibration`): memória dos buracos por mapa (vale para todos os
+  níveis), calibração e alcance aprendido de cada taco; carregado na subida, gravado a cada 10 s.
+- ✅ Itens de partida por nível (SPEC-bot-itens.md): Power Assist / Power Enhancer (PS sem gauge), Silent Wind (vento
+  contra ou de lado); 0x58 antes da tacada.
+- ✅ No VS a bola do bot vai acelerada para todos (0xC5 como o Time Booster; `Game.BotFastForward`).
 - ⬜ Efeito/curva e backspin (SPEC-bot-especiais.md §6.5).
 
 ## Itens, loja e economia
 - ✅ Loja (pang/cookie, pacotes), equipamento, armário, upgrades, cards (efeitos que dependem do servidor), mascote.
 - ✅ Papel Shop, raspadinha, Caixa Mágica do caddie, Spin Cube, bolsa da sorte, envelope de ano novo, caixas de evento,
   aluguel (estender/apagar), fita de replay, apagar item, recontratar caddie, escola, missões do tutorial.
-- ⬜ Troca de nick (responde "suspenso"), upgrade de caddie (0xEC), buff (0xDA), composição (0x68), pacote de suprimentos.
+- ✅ Self Design (SPEC-self-design.md): índice nas peças UCC, chave de upload (0xC1/0x14B), registrar/consultar/copiar
+  (0xB1/0x126), upload/download HTTP em `/UCC/...`. Precisa do cliente CS7. Falta testar no cliente.
+- ✅ Anéis (AuxPart) entregues e na lista de itens do login; equipar aceita o typeid (o cliente manda id antigo).
+- ⬜ Troca de nick (responde "suspenso"), upgrade de caddie (0xEC), buff (0xDA), composição (0x68), pacote de suprimentos
+  (0xEE) — SPEC-itens-restantes.md.
 
 ## Lounge (sala de avatar)
 - ✅ Avatares aparecem, andam, fazem emote/pose e se veem (0x46 com 0xFFFF, 0x63→0xC2, posição para quem entra depois).
@@ -101,9 +116,12 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - ⬜ Limite de tempo da partida (20-40 min) e troféus de guilda (só por GM/evento no 645).
 
 ## Próximos
-- ⬜ Mercado/barraca offline (desligado no KR), eventos (quase todos desligados no KR), UCC.
+- ⬜ Mercado/barraca offline (desligado no KR), eventos (quase todos desligados no KR).
+- ⬜ Mural de uma linha (0x66/0x67), relatório do Tiki (0xA2/0xA3) — SPEC-pacotes-restantes.md.
+- ⬜ Fase 10 (abertura pública): revisão de segurança, teste de carga, backups, guia de instalação, pacote do cliente.
 
 ## Comandos de administração (`dotnet src/Pangya.Server/bin/Release/net10.0/Pangya.Server.dll --config config/pangya.json ...`)
-`account-create`, `player-set <login> pang= cookie= level= identity=`, `item-give <login> <tid> [qtd] [dias]`,
-`give-all <login>`, `server-add/remove`. O jogador tem de estar fora do jogo.
+`account-create`, `account-password <login> <senha>`, `player-set <login> pang= cookie= level= identity=`,
+`item-give <login> <tid> [qtd] [dias]`, `give-all <login>`, `give-parts <login>` (roupas dos personagens + anéis),
+`server-add/remove`. O jogador tem de estar fora do jogo.
 `tools/restart-if-offline.sh` reinicia o servidor de desenvolvimento só se ninguém estiver conectado.
