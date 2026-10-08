@@ -56,11 +56,13 @@ public sealed class MassOutput(Room room, Core.Config.TreasureHunterConfig? trea
     public void NextHole(MassPlayer? to)
     {
         if (to == null) All(new PacketWriter(SNextHole));
-        else
-        {
-            if (TreasureOn) To(to, new PacketWriter(InGameOutput.STreasurePoints).U32((uint)TreasurePoints(to)));
-            To(to, new PacketWriter(SNextHole));
-        }
+        else To(to, new PacketWriter(SNextHole));
+    }
+
+    /// <summary>Fim de buraco de um jogador no torneio: 0x12A com os pontos do Treasure Hunter dele.</summary>
+    public void HoleDone(MassPlayer p)
+    {
+        if (TreasureOn) To(p, new PacketWriter(InGameOutput.STreasurePoints).U32((uint)TreasurePoints(p)));
     }
 
     // ---- Treasure Hunter no torneio (tipos 4/5): pontos de cada jogador, caixas só dele (SPEC-treasure-hunter.md §3/§4)

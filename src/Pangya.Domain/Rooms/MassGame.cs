@@ -96,6 +96,8 @@ public interface IMassOutput
     void RivalHole(MassPlayer p, byte hole);
     void RivalState(MassPlayer p, byte state);           // 2 terminou, 3 saiu
     void NextHole(MassPlayer? to);                       // null = todos
+    /// <summary>Torneio: o jogador terminou um buraco (sem 0x63; só o que acompanha, como os pontos do Treasure Hunter).</summary>
+    void HoleDone(MassPlayer p) { }
     void ApproachHole(List<ApproachEntry> entries);
     void ApproachEnd(List<ApproachEntry> totals);
     /// <summary>
@@ -425,7 +427,7 @@ public sealed class TourneyGame : MassGame
             last = AllDone();
             if (!last) Output.RivalState(p, 2);                     // o último sai no EndGame, depois do resultado
         }
-        if (!p.IsBot) Output.NextHole(p);
+        if (!p.IsBot) { Output.HoleDone(p); Output.NextHole(p); }
         if (last) EndGame(p); else CheckEnd();
     }
 
