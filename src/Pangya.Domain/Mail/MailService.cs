@@ -42,8 +42,9 @@ public interface IMailStore
     /// <summary>Apaga as cartas da conta que não têm anexo por pegar; devolve quantas não puderam ser apagadas.</summary>
     Task<int> DeleteAsync(long accountId, IReadOnlyList<int> ids);
     /// <summary>
-    /// Insere a carta (com anexos) e grava as mudanças do remetente (itens que saíram, taxa) na mesma transação.
-    /// senderChanges null = carta do sistema.
+    /// Insere a carta (com anexos) e grava <paramref name="senderChanges"/> na mesma transação: do remetente (itens que
+    /// saíram, taxa) ou, numa carta do sistema (senderId null), do próprio destinatário (o que ele gastou para ganhar o
+    /// prêmio, ex. cubo e chave).
     /// </summary>
     Task<int> SendAsync(long toAccount, long? senderId, string senderNick, string message, IReadOnlyList<MailItem> items,
         PlayerChanges? senderChanges);
@@ -101,12 +102,16 @@ public sealed class MailService(IMailStore store, IPlayerStore players, IGameDat
         return (MailCode.Ok, left);
     }
 
-    /// <summary>Carta do sistema (presentes da loja, prêmios, GM): anexos (tid, quantidade) sem tirar de ninguém.</summary>
-    public Task<int> SendSystemAsync(long toAccount, string senderNick, string message, IReadOnlyList<(int TypeId, int Quantity)> attach)
+    /// <summary>
+    /// Carta do sistema (presentes da loja, prêmios, GM): anexos (tid, quantidade). <paramref name="receiverCost"/> = o que
+    /// o destinatário gastou pelo prêmio, gravado na mesma transação da carta.
+    /// </summary>
+    public Task<int> SendSystemAsync(long toAccount, string senderNick, string message, IReadOnlyList<(int TypeId, int Quantity)> attach,
+        PlayerChanges? receiverCost = null)
     {
         var items = new List<MailItem>(attach.Count);
         foreach (var (tid, qty) in attach) items.Add(new MailItem { TypeId = tid, Quantity = qty });
-        return store.SendAsync(toAccount, null, senderNick, message, items, null);
+        return store.SendAsync(toAccount, null, senderNick, message, items, receiverCost);
     }
 
     /// <summary>

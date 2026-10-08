@@ -93,7 +93,7 @@ public sealed class MailRepository(Db db) : IMailStore
     {
         await using var c = await db.OpenAsync();
         await using var tx = await c.BeginTransactionAsync();
-        if (senderChanges != null && senderId is { } sid) await PlayerRepository.ApplyInAsync(c, tx, sid, senderChanges, strict: true);
+        if (senderChanges != null) await PlayerRepository.ApplyInAsync(c, tx, senderId ?? toAccount, senderChanges, strict: true);
         int id = await c.ExecuteScalarAsync<int>(
             "insert into mails(account_id, sender_id, sender_nick, message) values (@toAccount, @senderId, @senderNick, @message) returning id",
             new { toAccount, senderId, senderNick, message }, tx);

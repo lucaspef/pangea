@@ -134,6 +134,9 @@ faz `MailBoxManager.sendMessageWithItem` e responde 0x19D) [I].
 4. Enviar 0x1A2 `0, boxTid, rewardTid, count`. Ignorar o 0x15E que o cliente manda em seguida (ou responder com a lista
    de correio, se existir).
 
+**Implementado (2026-10-07):** com o correio ligado, o prêmio vai numa carta do sistema ("@Pangya") gravada na mesma
+transação que tira o cubo e a chave; só o 0xA5 dos dois sai antes do 0x1A2, e o 0x15E seguinte devolve a carta nova.
+
 ## 3. Reciclagem / Caixa Mágica da caddie (0x7E → 0xED)
 
 ### 3.1 Como o jogador dispara [V]

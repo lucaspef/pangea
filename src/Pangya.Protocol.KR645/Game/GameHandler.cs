@@ -43,7 +43,7 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
     Domain.Shop.MagicBoxService? magicBoxService;
     public Domain.Shop.MagicBoxService MagicBox => magicBoxService ??= new(Shop, Data);
     Domain.Shop.SpinCubeService? spinCubeService;
-    public Domain.Shop.SpinCubeService SpinCube => spinCubeService ??= new(Shop, Data);
+    public Domain.Shop.SpinCubeService SpinCube => spinCubeService ??= new(Shop, Data, null, Mail);
 }
 
 /// <summary>

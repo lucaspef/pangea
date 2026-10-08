@@ -51,7 +51,7 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 ## Correio (SPEC-correio-presentes.md)
 - ✅ Listar, ler, pegar anexos, apagar, enviar (com item/pang), aviso de carta nova (0x15E), presente da loja.
 - ✅ Presentes de subida de nível chegam como carta do sistema (uma por nível).
-- ⬜ Prêmio de caixa aleatória pelo correio (0xF1).
+- ✅ Prêmio do Spin Cube (0xF1 → 0x1A2) chega numa carta; cubo e chave saem na mesma transação.
 
 ## Guilda (SPEC-guilda.md)
 - ✅ Criar, listar/buscar, pedidos (entrar/desistir/aprovar/recusar), cargos, expulsar, sair, encerrar, notícia,

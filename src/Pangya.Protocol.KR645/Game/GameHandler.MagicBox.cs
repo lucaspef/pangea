@@ -11,8 +11,9 @@ public sealed partial class GameHandler
     const int RecycleItemSize = 0x50;
 
     /// <summary>
-    /// 0xF1 u32 caixa (My Room) -> 0xA5 cubo e chave, prêmio (0xC6 pang / 0x71 ou 0xA5 item), 0x1A2 u32 código, u32 caixa,
-    /// u32 prêmio, u32 quantidade. O cliente trava a tela até o 0x1A2, então sempre responde.
+    /// 0xF1 u32 caixa (My Room) -> 0xA5 cubo e chave, prêmio (carta do sistema; sem correio: 0xC6 pang / 0x71 ou 0xA5
+    /// item), 0x1A2 u32 código, u32 caixa, u32 prêmio, u32 quantidade. O cliente trava a tela até o 0x1A2, então sempre
+    /// responde.
     /// </summary>
     async Task OpenBoxAsync(uint boxTid)
     {
@@ -22,7 +23,8 @@ public sealed partial class GameHandler
         var w = new PacketWriter(SItemCounts, 32).U8((byte)r.Consumed.Count);
         foreach (var c in r.Consumed) w.U32((uint)c.TypeId).U32((uint)c.Id).U16((ushort)c.Count);
         conn.Send(w);
-        if (r.PrizeTypeId == Domain.Shop.SpinCubeService.PangPouch) conn.Send(PangUpdate());
+        // prêmio no correio: nada no inventário agora; o cliente pede o 0x15E depois do 0x1A2
+        if (!r.Mailed && r.PrizeTypeId == Domain.Shop.SpinCubeService.PangPouch) conn.Send(PangUpdate());
         else if (r.Item is { } g && Player.Find(g.Id) is { } it)
             conn.Send(r.NewItem ? new PacketWriter(SItems).U16(1).U16(1).Struct(PlayerStructs.ItemInfo(it))
                 : new PacketWriter(SItemCounts).U8(1).U32((uint)it.TypeId).U32((uint)it.Id).U16((ushort)it.Quantity));

@@ -38,6 +38,47 @@ public class SpinCubeTests(DbFixture fx)
     }
 
     [Fact]
+    public async Task PrizeArrivesByMail()
+    {
+        _ = fx;
+        await using var env = await GameEnv.StartAsync();
+        var (acc, key) = await env.NewPlayerAsync();
+        var p = (await env.Players.LoadAsync(acc.Id))!;
+        var shop = new ShopService(env.Players.Store, env.Data);
+        await shop.GiveAsync(p, SpinCubeService.SpinCube, 2);
+        await shop.GiveAsync(p, SpinCubeService.LuckyKey, 1);
+        long pang0 = p.Pang;
+
+        await using var c = await env.ConnectAsync();
+        await GameEnv.SendLoginAsync(c, acc, key);
+        await c.ExpectAsync(0x94);
+        await c.SendAsync(new PacketWriter(0xF1).U32(SpinCubeService.SpinCube));
+        var counts = await c.ExpectAsync(0xA5);
+        Assert.Equal(2, counts.U8());
+        foreach (var (tidLeft, left) in new[] { ((uint)SpinCubeService.SpinCube, 1), ((uint)SpinCubeService.LuckyKey, 0) })
+        {
+            Assert.Equal(tidLeft, counts.U32());
+            counts.U32();                                                             // id do objeto
+            Assert.Equal(left, counts.U16());
+        }
+        var r = await c.ExpectAsync(0x1A2);
+        Assert.Equal((0u, (uint)SpinCubeService.SpinCube), (r.U32(), r.U32()));
+        uint tid = r.U32(), qty = r.U32();
+
+        var mail = await env.S.Mail.UnreadAsync(acc.Id, 5);
+        Assert.Single(mail);
+        Assert.Equal(SpinCubeService.MailMessage, mail[0].Message);
+        Assert.Equal(((int)tid, (int)qty), (mail[0].Items[0].TypeId, mail[0].Items[0].Quantity));
+        var saved = (await env.Players.LoadAsync(acc.Id))!;
+        Assert.Equal(1, saved.FindType(SpinCubeService.SpinCube)!.Quantity);
+        Assert.Null(saved.FindType(SpinCubeService.LuckyKey));                        // a chave sai mesmo se o prêmio for outra chave
+        Assert.Equal(pang0, saved.Pang);                                              // pang só ao pegar o anexo
+
+        await c.SendAsync(new PacketWriter(0xF1).U32(SpinCubeService.SpinCube));   // sem chave agora
+        Assert.Equal(8u, (await c.ExpectAsync(0x1A2)).U32());
+    }
+
+    [Fact]
     public async Task PrizesAreSavedWithCubeAndKeyGone()
     {
         _ = fx;

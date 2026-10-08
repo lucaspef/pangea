@@ -86,7 +86,7 @@ public sealed partial class GameHandler
             if (gifts.Length == 0) continue;
             if (ctx.Mail != null)
             {
-                await ctx.Mail.SendSystemAsync(p.AccountId, "@Pangya", $"Presente do nível {lv}", gifts);
+                await ctx.Mail.SendSystemAsync(p.AccountId, "@Pangya", $"Presente do nivel {lv}", gifts);
                 continue;
             }
             foreach (var (tid, qty) in gifts)
