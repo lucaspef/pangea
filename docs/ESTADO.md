@@ -3,7 +3,7 @@
 Mapa rápido do que funciona, do que falta e de como testar. Detalhes de protocolo em `docs/protocolo/SPEC-*.md`;
 plano e regras em `docs/PLANO.md`. Pacotes que o cliente manda e o servidor ainda não trata: `python3 tools/coverage.py`.
 
-**Cliente de teste:** `E:\dev\pangya-test\KR642\ABRIR_TESTE_CS6.bat` (CS5 + URLs do emblema de guilda no C#;
+**Cliente de teste:** `E:\dev\pangya-test\KR642\ABRIR_TESTE_CS7.bat` (CS6 + URLs do Self Design; CS6 = CS5 + URLs do emblema de guilda no C#;
 CS5 = confirmado no cliente, CS4 = reserva). Portas do C#: web 30080,
 login 30101, game 30201. Dados do jogo: `tools/sync-iff.py` copia o `pangya.iff` do último pak de correção do cliente.
 
