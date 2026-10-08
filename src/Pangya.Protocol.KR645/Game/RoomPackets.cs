@@ -47,6 +47,12 @@ public static class RoomPackets
         };
         Cp949.Write(s.sNick, p.Player.Nickname);
         s.bTeam = p.Team;
+        if (p.Player.Guild is { } g)
+        {
+            Cp949.Write(s.sGuild, g.Name);
+            Cp949.Write(s.szEmblemName, g.Mark);
+            s.GuildId = (uint)g.Id;
+        }
         s.location[0] = p.X;                                                   // lounge: posição, ângulo, pose e estado
         s.location[1] = p.Z;
         s.location[2] = p.Angle;
@@ -60,7 +66,9 @@ public static class RoomPackets
 
     public static sBriefUserInfo BriefUser(Player p, ushort roomIndex = 0xFFFF)
     {
-        var b = new sBriefUserInfo { dwUid = (uint)p.AccountId, dwGuid = (uint)p.AccountId, roomIndex = roomIndex, level = (byte)p.Level };
+        var b = new sBriefUserInfo { dwUid = (uint)p.AccountId, dwGuid = (uint)p.AccountId, roomIndex = roomIndex, level = (byte)p.Level,
+            m_GuildId = (uint)(p.Guild?.Id ?? 0) };
+        if (p.Guild is { } g) Cp949.Write(b.szEmblemName, g.Mark);
         Cp949.Write(b.sNick, p.Nickname);
         return b;
     }

@@ -16,6 +16,7 @@ public sealed class ServerServices : IAsyncDisposable
     public SessionService Sessions { get; }
     public IServerRegistry Registry { get; }
     public IPlayerStore Players { get; }
+    public Pangya.Domain.Guilds.IGuildStore Guilds { get; }
 
     public ServerServices(PangyaConfig config)
     {
@@ -26,6 +27,7 @@ public sealed class ServerServices : IAsyncDisposable
         Sessions = new SessionService(new SessionRepository(Db));
         Registry = new ServerRegistry(Db);
         Players = new PlayerRepository(Db);
+        Guilds = new GuildRepository(Db);
     }
 
     public ValueTask DisposeAsync() => Db.DisposeAsync();

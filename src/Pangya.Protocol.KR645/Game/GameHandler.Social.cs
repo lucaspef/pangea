@@ -13,7 +13,7 @@ public sealed partial class GameHandler
     const ushort CHeadIcon = 0x18, CBanish = 0x26, CBanishVote = 0x27, CRoomDetail = 0x2D, CIdle = 0x32, CGiveUpSolo = 0x37,
         CChangeNick = 0x38, CCaddieRehire = 0x39, CTeamChat = 0x54, CDeleteItem = 0x64;
     const ushort CWhisper = 0x2A, CWhisperRejected = 0xE0, CInvite = 0xB2, CInviteAck = 0x29, CDirectMove = 0xAC,
-        CQuickInterests = 0xB6, CQuickMatch = 0xB7, CQuickAnswer = 0xB8;
+        CQuickInterests = 0xB6, CQuickMatch = 0xB7, CQuickAnswer = 0xB8, CPrivateTrade = 0xDB;
     const ushort SWhisper = 0x82, SInviteResult = 0x127, SInvited = 0x81, SQuickMatch = 0x133;
     /// <summary>0x3E tipos de aviso de sussurro: 4 não recebe, 6 não está conectado.</summary>
     const byte ChatNoWhisper = 4, ChatNotConnected = 6;
@@ -46,6 +46,10 @@ public sealed partial class GameHandler
             case CInviteAck: InviteAck(p.U32()); return true;
             case CDirectMove: p.U8(); JoinRoom(p.U16(), ""); return true;
             case CQuickInterests or CQuickAnswer: p.Skip(p.Remaining); return true;
+            case CPrivateTrade:                     // troca direta: desligada no cliente 645 (conteúdo 0x77; SPEC-troca-direta.md)
+                Log.Info($"{conn} troca direta (0xDB) ignorada: precisa do cliente com o conteúdo 0x77 ligado");
+                p.Skip(p.Remaining);
+                return true;
             case CQuickMatch: p.Skip(p.Remaining); conn.Send(new PacketWriter(SQuickMatch).U8(1)); return true;   // 1 = sem alvo
             default: return false;
         }

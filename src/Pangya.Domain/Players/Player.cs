@@ -86,6 +86,8 @@ public sealed class Player
     public Dictionary<int, CourseRecord> Courses { get; } = [];
     /// <summary>Totais de estatística (perfil).</summary>
     public PlayerStats Stats { get; set; } = new();
+    /// <summary>Guilda (nome, emblema, cargo) mostrada no 0x42, nas salas e na lista do lobby; null = sem guilda.</summary>
+    public Guilds.GuildTag? Guild { get; set; }
     /// <summary>Escola escolhida nas opções (sUserInfo.info.school).</summary>
     public int School { get; set; }
     /// <summary>Missões do tutorial feitas, por categoria (iniciante, básico, avançado; bits do cliente).</summary>

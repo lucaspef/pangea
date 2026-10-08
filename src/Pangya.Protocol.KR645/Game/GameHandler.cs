@@ -9,8 +9,10 @@ namespace Pangya.Protocol.KR645.Game;
 
 /// <summary>Serviços do game server (um por processo).</summary>
 public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players, IGameData data,
-    Core.Config.LotteryConfig? lottery = null, Domain.Servers.IServerRegistry? registry = null)
+    Core.Config.LotteryConfig? lottery = null, Domain.Servers.IServerRegistry? registry = null, Domain.Guilds.IGuildStore? guilds = null)
 {
+    /// <summary>Guildas (null nos testes antigos: sem guilda).</summary>
+    public Domain.Guilds.GuildService? Guilds { get; } = guilds == null ? null : new(guilds);
     readonly System.Collections.Concurrent.ConcurrentDictionary<uint, (GameHandler From, GameHandler To, int Room)> invites = new();
     int nextInvite;
 
@@ -50,12 +52,12 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
 {
     // ids C->S
     const ushort CLogin = 0x02, CEnterChannel = 0x04, CEnterChannelAlt = 0x83, CAfterChannel = 0x99, CHeartbeat = 0xF6, CUnknown55 = 0x55,
-        CGuildList = 0x105, CGhost = 0xBA;
+        CGhost = 0xBA;
     // ids S->C
     const ushort SStatsUpdate = 0x43;
     const ushort SHello = 0x3D, SPlayerInfo = 0x42, SChannels = 0x4B, SEnterChannel = 0x4C, SCharacters = 0x6E, SCaddies = 0x6F,
         SEquip = 0x70, SItems = 0x71, SGiftBox = 0x78, SCookie = 0x94, SMascots = 0xDF, SItemCounts = 0xA5,
-        SCardsClear = 0x12D, SCardPeriodsClear = 0x12E, SCardPeriods = 0x12F, SCards = 0x130, SGuildList = 0x1BA;
+        SCardsClear = 0x12D, SCardPeriodsClear = 0x12E, SCardPeriods = 0x12F, SCards = 0x130;
 
     Player? player;
     Channel? channel;
@@ -95,13 +97,12 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
-        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p)) return;
+        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p) || await HandleGuildAsync(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;
             case CEnterChannel or CEnterChannelAlt: EnterChannel(p.U8()); break;
             case CAfterChannel or CHeartbeat or CUnknown55: break;
-            case CGuildList: p.Skip(p.Remaining); conn.Send(new PacketWriter(SGuildList).U32(1).U32(1).U32(1).U16(0)); break;   // guildas: Fase futura
             case CGhost:                                                     // modo Ghost: código morto no 645 (SPEC-ghost.md)
                 Log.Info($"{conn} pacote de Ghost 0xBA sub 0x{(p.Remaining > 0 ? p.U8() : 0):X2} ignorado (exe modificado?)");
                 p.Skip(p.Remaining);
@@ -131,6 +132,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         conn.IdleTimeoutSeconds = conn.Limits.SessionIdleTimeoutSeconds;
         ctx.World.Enter(this);
         Log.Info($"{conn} entrou: {player.Login} ({player.Nickname}) uid={uid} versão={version}");
+        await LoadGuildAsync();
         SendPlayerInfo();
         SendChannels();
         SendInventory();
@@ -143,7 +145,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             .Struct(PlayerStructs.SystemTime(DateTime.Now))       // hora do servidor (loja, validade de itens)
             .U8(0).U8(0).U16(0xFFFF).U16(0xFFFF).U16(0)           // flag, ?, papel: jogadas (-1 = sem limite), bônus (-1), faltam
             .U32(0).U32(0).U32(0).U32(0)                          // flagBlock, controlServerService, ?, serverProperty
-            .Zeros(0x119);                                        // GUILD_USER_INFO: sem guilda (guildId != 0 dispara RSS)
+            .Struct(myGuildInfo);                                 // GUILD_USER_INFO (o RSS do guildId != 0 é inofensivo)
         conn.Send(w);
     }
 

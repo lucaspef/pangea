@@ -179,6 +179,13 @@ public static class PlayerStructs
         u.info.dwUID = (uint)p.AccountId;
         u.info.DoTutorial = 1;
         u.info.school = (uint)p.School;
+        if (p.Guild is { } g)
+        {
+            Cp949.Write(u.info.sGuild, g.Name);
+            Cp949.Write(u.info.szEmblemName, g.Mark);
+            u.info.dwGuildId = (uint)g.Id;
+            u.info.dwEmblemVer = (uint)g.Pang;                             // o cliente copia o guildPang para cá
+        }
         u.stat = Statistics(p);
         for (int i = 0; i < MapStatCount; i++) { u.mapStat[i] = MapStat(p, i); u.classicMapStat[i] = MapStat(null, i); }
         u.userEquip = Equip(p);
