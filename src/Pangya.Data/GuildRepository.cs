@@ -13,7 +13,7 @@ public sealed class GuildRepository(Db db) : IGuildStore
 
     sealed record GuildRow(int Id, string Name, long MasterId, string MasterNick, string Notice, string Introduce, string Mark,
         int Pang, int Point, DateTime CreatedAt, int MemberCount);
-    sealed record MemberRow(long AccountId, int GuildId, short Class, string Message, string Nickname);
+    sealed record MemberRow(long AccountId, int GuildId, short Class, string Message, string Nickname, int Point, int Pang);
 
     static Guild ToGuild(GuildRow r) => new()
     {
@@ -23,7 +23,7 @@ public sealed class GuildRepository(Db db) : IGuildStore
 
     static GuildMember ToMember(MemberRow r) => new()
     {
-        AccountId = r.AccountId, GuildId = r.GuildId, Class = r.Class, Message = r.Message, Nickname = r.Nickname,
+        AccountId = r.AccountId, GuildId = r.GuildId, Class = r.Class, Message = r.Message, Nickname = r.Nickname, Point = r.Point, Pang = r.Pang,
     };
 
     public async Task<Guild?> GetAsync(int id)
@@ -51,7 +51,7 @@ public sealed class GuildRepository(Db db) : IGuildStore
     {
         await using var c = await db.OpenAsync();
         var r = await c.QuerySingleOrDefaultAsync<MemberRow>("""
-            select m.account_id, m.guild_id, m.class, m.message, coalesce(a.nickname, '') nickname
+            select m.account_id, m.guild_id, m.class, m.message, coalesce(a.nickname, '') nickname, m.point, m.pang
             from guild_members m join accounts a on a.id = m.account_id join guilds g on g.id = m.guild_id
             where m.account_id = @accountId and g.closed_at is null
             """, new { accountId });
@@ -63,7 +63,7 @@ public sealed class GuildRepository(Db db) : IGuildStore
         await using var c = await db.OpenAsync();
         int total = await c.ExecuteScalarAsync<int>("select count(*) from guild_members where guild_id = @guildId", new { guildId });
         var rows = await c.QueryAsync<MemberRow>("""
-            select m.account_id, m.guild_id, m.class, m.message, coalesce(a.nickname, '') nickname
+            select m.account_id, m.guild_id, m.class, m.message, coalesce(a.nickname, '') nickname, m.point, m.pang
             from guild_members m join accounts a on a.id = m.account_id
             where m.guild_id = @guildId order by m.class, m.joined_at offset @skip limit @perPage
             """, new { guildId, skip = (Math.Max(page, 1) - 1) * perPage, perPage });

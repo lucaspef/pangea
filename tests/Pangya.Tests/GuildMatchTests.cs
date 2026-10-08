@@ -171,5 +171,20 @@ public class GuildMatchRoomTests(DbFixture fx)
             "select (select wins from guilds where id = @red), (select losses from guilds where id = @blue)", new { red, blue });
         Assert.Equal((1, 1), (wins, losses));
         Assert.Equal(19, await Dapper.SqlMapper.ExecuteScalarAsync<int>(db, "select point from guild_members where account_id = @id", new { id = a.Id }));
+
+        // perfil: 0x14F termina com os pontos do membro; 0x155 traz a guilda (pang/pontos)
+        var (c, key) = (await env.ConnectAsync(), await env.S.Sessions.IssueGameLoginAsync(b.Id));
+        await using var _c = c;
+        await GameEnv.SendLoginAsync(c, b, key);
+        await c.ExpectAsync(0x94);
+        await c.SendAsync(new PacketWriter(0x2F).U32((uint)a.Id).U8(5));
+        var head = await c.ExpectAsync(0x14F);
+        head.U8(); head.U32(); head.U16();
+        head.Struct<Pangya.Protocol.KR645.sPangYaUserInfo>();
+        Assert.Equal(19u, head.U32());
+        var gi = await c.ExpectAsync(0x155);
+        Assert.Equal((uint)a.Id, gi.U32());
+        var info = gi.Struct<Pangya.Protocol.KR645.GUILD_INFO>();
+        Assert.Equal(((uint)red, 19, 100), (info.guildUID, info.guildPoint, info.guildPang));
     }
 }

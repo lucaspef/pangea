@@ -47,6 +47,9 @@ public sealed class GuildMember
     public int Class { get; set; }
     public string Message { get; set; } = "";
     public string Nickname { get; init; } = "";
+    /// <summary>Contribuição nos GuildMatch: pontos e "pang de guilda".</summary>
+    public int Point { get; init; }
+    public int Pang { get; init; }
 }
 
 public readonly record struct GuildHistory(long Id, int GuildId, string GuildName, int State, DateTime At);

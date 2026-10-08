@@ -1,5 +1,6 @@
 using Pangya.Core.Logging;
 using Pangya.Core.Net;
+using Pangya.Domain.Guilds;
 using Pangya.Domain.Players;
 using Pangya.Domain.Shop;
 
@@ -22,7 +23,7 @@ public sealed partial class GameHandler
     const ushort SMyRoomAuthority = 0x123, SMyRoomAvatar = 0x16E, SFurnitureList = 0x125, SFurnitureSaved = 0x124,
         SLockerState = 0x175, SLockerOpened = 0x171, SLockerPang = 0x177, SLockerPage = 0x172, SLockerPut = 0x173, SLockerTake = 0x174,
         SLockerBank = 0x176, SPang = 0xC6, SUpgrade = 0xA3, SMascotMessage = 0xE0, SCardOpened = 0x14C, SCardResult = 0x158,
-        SCardRemoved = 0x18D, SQuickEquip = 0x49, SUserInfoDone = 0x87;
+        SCardRemoved = 0x18D, SQuickEquip = 0x49, SUserInfoDone = 0x87, SProfileGuild = 0x155;
 
     async ValueTask<bool> HandleMyRoomAsync(PacketReader p)
     {
@@ -212,7 +213,9 @@ public sealed partial class GameHandler
             stats.Level = ui.stat.Level;
             for (int i = 0; i < 6; i++) stats.cBestScore[i] = 127;      // (só a temporada atual tem totais)
         }
-        conn.Send(new PacketWriter(0x14F).U8(season).U32(uid).U16(ui.roomIndex).Struct(ui.info).U32(0));
+        // último u32 do 0x14F = pontos de guilda do jogador (contribuição nos GuildMatch; SPEC-guildmatch.md §3.5)
+        var membership = ctx.Guilds != null && season != 0 ? await ctx.Guilds.Store.MembershipAsync(target.AccountId) : null;
+        conn.Send(new PacketWriter(0x14F).U8(season).U32(uid).U16(ui.roomIndex).Struct(ui.info).U32((uint)(membership?.Point ?? 0)));
         conn.Send(new PacketWriter(0x14E).U8(season).U32(uid).Struct(ui.userEquip));
         conn.Send(new PacketWriter(0x156).U32(uid).Struct(ui.charInfo));
         conn.Send(new PacketWriter(0x150).U8(season).U32(uid).Struct(stats));
@@ -225,6 +228,8 @@ public sealed partial class GameHandler
         conn.Send(MapStats(current ? (byte)0x33 : (byte)0x0A, uid, null));
         conn.Send(new PacketWriter(0x152).U8(season).U32(uid).U16(0));
         conn.Send(new PacketWriter(0x153).U8(season).U32(uid).U16(0));
+        if (membership != null && GuildClass.IsMember(membership.Class) && await ctx.Guilds!.Store.GetAsync(membership.GuildId) is { } guild)
+            conn.Send(new PacketWriter(SProfileGuild, 0x140).U32(uid).Struct(GuildInfo(guild, membership.Class)));   // pang/pontos da guilda
         conn.Send(new PacketWriter(SUserInfoDone).U32(1).U8(season).U32(uid));
     }
 
