@@ -139,12 +139,15 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         conn.Send(w);
     }
 
+    /// <summary>Itens por pacote 0x71 no login: o cliente vai somando os pacotes (o GB manda no máximo 50).</summary>
+    const int ItemsPerPacket = 50;
+
     static bool InItemList(ItemGroup g) => g is ItemGroup.Part or ItemGroup.Club or ItemGroup.ClubSet or ItemGroup.Ball
         or ItemGroup.Usable or ItemGroup.Skin or ItemGroup.SetItem;
 
     /// <summary>
-    /// Listas que o cliente guarda (o 0x42 limpa o inventário, então vêm depois dele). Em cada lista total == n,
-    /// senão o cliente espera mais pacotes.
+    /// Listas que o cliente guarda (o 0x42 limpa o inventário, então vêm depois dele). Em cada pacote total == n
+    /// (senão o cliente espera mais); a lista de itens vai em vários pacotes, que o cliente acumula.
     /// </summary>
     void SendInventory()
     {
@@ -162,9 +165,13 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         var items = new List<Item>();
         foreach (var it in p.Items.Values)
             if (InItemList(it.Group) && it.Location == ItemLocation.Inventory) items.Add(it);
-        w = new PacketWriter(SItems, 8 + items.Count * 0xA8).U16((ushort)items.Count).U16((ushort)items.Count);
-        foreach (var it in items) w.Struct(PlayerStructs.ItemInfo(it));
-        conn.Send(w);
+        for (int start = 0; start == 0 || start < items.Count; start += ItemsPerPacket)   // páginas com total = n, como o GB
+        {
+            int n = Math.Min(ItemsPerPacket, items.Count - start);
+            w = new PacketWriter(SItems, 8 + n * 0xA8).U16((ushort)n).U16((ushort)n);
+            for (int i = start; i < start + n; i++) w.Struct(PlayerStructs.ItemInfo(items[i]));
+            conn.Send(w);
+        }
 
         conn.Send(new PacketWriter(SEquip).Struct(PlayerStructs.Equip(p)));
 

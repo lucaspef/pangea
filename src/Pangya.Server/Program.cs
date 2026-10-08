@@ -5,6 +5,7 @@
 //   Pangya.Server [--config ...] account-create <login> <senha> <nickname>              conta pronta para jogar
 //   Pangya.Server [--config ...] player-set <login> [pang=N] [cookie=N] [level=N] [identity=N]   ajusta um jogador (desconectado)
 //   Pangya.Server [--config ...] item-give <login> <typeid> [qtd] [dias]   entrega um item sem cobrar (desconectado)
+//   Pangya.Server [--config ...] give-all <login>   tudo o que está ativo no IFF, menos roupas (teste; desconectado)
 using Pangya.Core.Hosting;
 using Pangya.Core.Logging;
 using Pangya.Data;
@@ -93,6 +94,50 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
         var (code, granted) = await new Pangya.Domain.Shop.ShopService(s.Players, data)
             .GiveAsync(p, Num(rest[2]), rest.Count > 3 ? Num(rest[3]) : 1, rest.Count > 4 ? Num(rest[4]) : 0);
         Log.Info($"{rest[1]}: item-give {rest[2]} -> {code} " + string.Join(", ", granted));
+        return;
+    }
+
+    if (command == "give-all" && rest.Count == 2)
+    {
+        // administração/teste: tudo o que está ativo no IFF (personagens, club sets, mascotes, caddies, bolas, usáveis,
+        // cards), sem cobrar e sem trocar o personagem equipado. Peças de roupa ficam de fora (são milhares).
+        var acc = await s.Accounts.FindByLoginAsync(rest[1]) ?? throw new InvalidOperationException($"login {rest[1]} não existe");
+        var data = Pangya.Protocol.KR645.Kr645GameData.Load(cfg.Data.IffPath);
+        var players = new Pangya.Domain.Players.PlayerService(s.Players, data, cfg.NewPlayer);
+        var p = await players.LoadAsync(acc.Id) ?? throw new InvalidOperationException($"{rest[1]} ainda não criou o personagem");
+        int equipped = p.Equip.CharacterId;
+        var shop = new Pangya.Domain.Shop.ShopService(s.Players, data);
+        var iff = data.Iff;
+        var groups = new List<(string Name, List<uint> Tids, int Qty, int Days)>
+        {
+            ("personagens", [], 1, 0), ("club sets", [], 1, 0), ("mascotes", [], 1, 2730), ("caddies", [], 1, 0),
+            ("bolas", [], 100, 0), ("usáveis", [], 10, 0), ("cards", [], 5, 0),
+        };
+        foreach (var x in iff.Characters) if (x.c.Final != 0) groups[0].Tids.Add(x.c.TypeId);
+        foreach (var x in iff.ClubSets) if (x.c.Final != 0) groups[1].Tids.Add(x.c.TypeId);
+        foreach (var x in iff.Mascots) if (x.c.Final != 0) groups[2].Tids.Add(x.c.TypeId);
+        foreach (var x in iff.Caddies) if (x.c.Final != 0) groups[3].Tids.Add(x.c.TypeId);
+        foreach (var x in iff.Balls) if (x.c.Final != 0) groups[4].Tids.Add(x.c.TypeId);
+        foreach (var x in iff.Items) if (x.c.Final != 0) groups[5].Tids.Add(x.c.TypeId);
+        foreach (var x in iff.Cards) if (x.c.Final != 0) groups[6].Tids.Add(x.c.TypeId);
+        foreach (var (name, tids, qty, days) in groups)
+        {
+            int ok = 0, owned = 0, failed = 0;
+            foreach (var tid in tids)
+            {
+                var (code, _) = await shop.GiveAsync(p, (int)tid, qty, days);
+                if (code == Pangya.Domain.Shop.ShopCode.Ok) ok++;
+                else if (code == Pangya.Domain.Shop.ShopCode.AlreadyOwned) owned++;
+                else failed++;
+            }
+            Log.Info($"{rest[1]}: {name}: {ok} entregues, {owned} já tinha, {failed} recusados (de {tids.Count})");
+        }
+        if (equipped != 0 && p.Equip.CharacterId != equipped)
+        {
+            p.Equip.CharacterId = equipped;                      // a entrega de personagem equipa o novo; volta o anterior
+            await s.Players.SaveEquipAsync(acc.Id, p.Equip);
+        }
+        Log.Info($"{rest[1]}: total de objetos = {p.Items.Count}");
         return;
     }
 
