@@ -216,6 +216,9 @@ A soma "com multiplicador" (`Doc+0x4658 × (pang+bônus) × m_pangRate`) só apa
    vazios `u16 n` com `k = 0`; manter `dobro = 0` [C]. Hoje as caixas de campo já dão item: listá-las aqui.
 6. **Troféus** (só torneio): tidMatch na sala (sRoomInfo +0x55) pela regra do GB, troféu por posição (3.4), contar em
    sTrophyStatistics persistido e mandar os troféus reais no 0x43/0x151 em vez de zeros [R regras, C campos].
+   **Feito (2026-10-08):** Match.iff 642 tem as faixas 0x2C000000..0x2C0C0000 (아마 6급..프로 7단); os 0x2D/0x2E/0x2F
+   são troféus especiais do mesmo grupo e não contam. Faixa = média de nível / 5 (até 12), fixa ao começar. 0x77 leva
+   tidMatch, o meu troféu e os premiados em [6..11] com o item (0x18000000 + 0..14, entregue por carta).
 7. **Medalhas do torneio** (≥18 jogadores) e itens de troféu/medalha [R]. Baixa (precisa de 18+ jogadores).
 8. Prêmios por placar 0xA9 / drops 0xCA por buraco, Treasure Hunter 0x12B/0x12C, taxas de sala — opcionais [C layout].
 

@@ -210,7 +210,8 @@ public sealed partial class GameHandler
         conn.Send(new PacketWriter(0x14E).U8(season).U32(uid).Struct(ui.userEquip));
         conn.Send(new PacketWriter(0x156).U32(uid).Struct(ui.charInfo));
         conn.Send(new PacketWriter(0x150).U8(season).U32(uid).Struct(stats));
-        conn.Send(new PacketWriter(0x151).U8(season).U32(uid).Zeros(0x4E));
+        var trophies = new PacketWriter(0x151).U8(season).U32(uid);
+        conn.Send(season == 0 ? trophies.Zeros(0x4E) : trophies.Struct(ui.trophy));   // troféus só da temporada atual
         // 0x154 por tipo: 5/0 = normal (temporada atual/anterior), 0x33/0x0A = clássico. Sempre os 20 cursos, senão o
         // cache do cliente fica zerado e todas as linhas viram o curso 0 com recorde 0.
         bool current = season != 0;

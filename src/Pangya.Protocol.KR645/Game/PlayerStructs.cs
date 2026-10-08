@@ -144,6 +144,20 @@ public static class PlayerStructs
         return s;
     }
 
+    /// <summary>sTrophyStatistics (u16[13][3]: faixa do Match.iff × ouro/prata/bronze) do perfil (0x42, 0x43, 0x151, salas).</summary>
+    public static sTrophyStatistics Trophies(Player p)
+    {
+        var s = new sTrophyStatistics();
+        var t = p.Stats.Trophies;
+        for (int rank = 0; rank < Trophy.Ranks; rank++)
+            for (int k = 0; k < Trophy.Kinds; k++)
+            {
+                int i = rank * Trophy.Kinds + k;
+                s.Trophy[rank][k] = i < t.Length ? (ushort)Math.Clamp(t[i], 0, ushort.MaxValue) : (ushort)0;
+            }
+        return s;
+    }
+
     /// <summary>Estatística da partida que o cliente manda (0x31 a cada buraco, 0x06 no fim).</summary>
     public static GameStats GameStats(in sPangYaUserStatistics s) => new(
         s.dwDrive, s.dwPutt, s.dwShotTime, s.fLongest, s.dwPangya, s.dwTimeOut, s.dwOB, s.dwDistance, s.dwHole,
@@ -187,6 +201,7 @@ public static class PlayerStructs
             u.info.dwEmblemVer = (uint)g.Pang;                             // o cliente copia o guildPang para cá
         }
         u.stat = Statistics(p);
+        u.trophy = Trophies(p);
         for (int i = 0; i < MapStatCount; i++) { u.mapStat[i] = MapStat(p, i); u.classicMapStat[i] = MapStat(null, i); }
         u.userEquip = Equip(p);
         if (p.Character is { } ch) u.charInfo = Character(ch);

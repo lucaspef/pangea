@@ -73,14 +73,18 @@ public sealed class MassOutput(Room room) : IMassOutput
         All(new PacketWriter(SApproachEnd));                            // diálogos de fim -> volta para a sala
     }
 
-    public void GameOver(List<MassPlayer> players)
+    public void GameOver(List<MassPlayer> players, TourneyResult result)
     {
         foreach (var p in players)                                      // recompensa de quem terminou (humanos)
             if (p.RoomPlayer.Session is GameHandler h)
             {
+                int trophy = result.TrophyOf(p), item = 0;
+                foreach (var a in result.Awards) if (a.Player == p) item = a.ItemTid;
                 int exp = h.BeginGameEnd(p.Pang, p.Bonus, Game.HoleCount, p.Finished, Game is ApproachGame ? null : (room.CoursePlayed, p.Score),
-                    players: Game.Players.Count, positionPenalty: false, coursePlayed: room.CoursePlayed);   // torneio: sem desconto por posição
-                h.SendMassResult(exp, room.Field?.WonBy(p.Guid) ?? [], room.Settings.Mode == GameMode.GuildMatch);
+                    players: Game.Players.Count, positionPenalty: false, coursePlayed: room.CoursePlayed,   // torneio: sem desconto por posição
+                    trophy: result.MatchTid != 0 ? (result.MatchTid, trophy) : null, awardItem: item);
+                h.SendMassResult(exp, room.Field?.WonBy(p.Guid) ?? [], room.Settings.Mode == GameMode.GuildMatch,
+                    result.MatchTid, trophy, result.Awards);
             }
     }
 }

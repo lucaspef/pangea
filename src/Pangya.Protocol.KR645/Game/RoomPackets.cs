@@ -27,11 +27,25 @@ public static class RoomPackets
             nUserLimit = s.MaxPlayers, nUserNum = (byte)r.Players.Count, nHole = s.Holes, gameType = (byte)s.Mode,
             roomGuid = (ushort)r.Index, holeType = s.HoleType, mapType = s.Course, shotTimeLimit = s.ShotTimeMs,
             gameTimeLimit = s.GameTimeMs, bSleep = (byte)(s.Sleep ? 1 : 0), masterUID = (int)r.OwnerId, realGameType = (byte)s.Mode,
+            tidMatch = (uint)MatchTid(r),
         };
         Cp949.Write(i.title, s.Title);
         Cp949.Write(i.password, s.Password);
         r.Key.CopyTo(i.RoomKey.m_byKey);
         return i;
+    }
+
+    /// <summary>
+    /// Troféu da sala (sRoomInfo.tidMatch): no torneio individual, o da partida em andamento ou, esperando, pela média de
+    /// nível de quem está na sala; 0 nos outros modos.
+    /// </summary>
+    public static int MatchTid(Room r)
+    {
+        if (r.Settings.Mode != GameMode.Tournament) return 0;
+        if (r.Game is TourneyGame t) return t.MatchTid;
+        var levels = new List<int>(r.Players.Count);
+        foreach (var p in r.Players) levels.Add(p.Player.Level);
+        return Trophy.RoomTid(levels);
     }
 
     /// <summary>u16 do 0x46/0x7A: no lounge a avatar task só aceita 0xFFFF; nas outras salas, o índice da sala.</summary>

@@ -43,8 +43,16 @@ public sealed class PlayerStats
     public float LongestChipIn { get; set; }
     public long TotalScore { get; set; }
     public long Games { get; set; }
+    /// <summary>Troféus do torneio: [faixa × 3 + (ouro 0, prata 1, bronze 2)] (Trophy).</summary>
+    public int[] Trophies { get; set; } = new int[Trophy.Count];
 
-    public PlayerStats Clone() => (PlayerStats)MemberwiseClone();
+    public PlayerStats Clone()
+    {
+        var c = (PlayerStats)MemberwiseClone();
+        c.Trophies = new int[Trophy.Count];
+        Array.Copy(Trophies, c.Trophies, Math.Min(Trophies.Length, Trophy.Count));   // gravado antes dos troféus: vazio
+        return c;
+    }
 
     /// <summary>Totais depois de uma partida terminada (o original não muda). score = tacadas - par, se o modo tiver.</summary>
     public static PlayerStats After(PlayerStats? old, GameStats? game, int holes, int? score)

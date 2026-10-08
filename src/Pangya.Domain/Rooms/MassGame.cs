@@ -1,3 +1,4 @@
+using Pangya.Domain.Players;
 using System.Diagnostics;
 
 namespace Pangya.Domain.Rooms;
@@ -33,6 +34,21 @@ public sealed class MassPlayer(RoomPlayer rp)
 /// <summary>Resultado de um jogador num buraco do approach (sApproachResultData).</summary>
 public readonly record struct ApproachEntry(uint Guid, uint Uid, bool Left, byte Rank, uint Prize, uint Dist, uint Time);
 
+/// <summary>Premiado do torneio: posição (0 = 1º), troféu (Trophy.Gold..Bronze) e item sorteado.</summary>
+public readonly record struct TourneyAward(MassPlayer Player, int Position, int Trophy, int ItemTid);
+
+/// <summary>Troféu da sala (Match.iff; 0 = modo sem troféu) e premiados.</summary>
+public sealed record TourneyResult(int MatchTid, List<TourneyAward> Awards)
+{
+    public static readonly TourneyResult Empty = new(0, []);
+
+    public int TrophyOf(MassPlayer p)
+    {
+        foreach (var a in Awards) if (a.Player == p) return a.Trophy;
+        return 0;
+    }
+}
+
 /// <summary>Saída dos modos em massa (a camada de protocolo transforma em pacotes; "To" = só para aquele jogador).</summary>
 public interface IMassOutput
 {
@@ -48,7 +64,7 @@ public interface IMassOutput
     /// Fim do jogo: recompensa e tela de resultado (0xCC/0x77) de cada um que terminou. Vem ANTES do último 0x6A
     /// (closing), porque é ele que abre a tela de resultado do torneio, e ela lê o 0x77 nesse momento.
     /// </summary>
-    void GameOver(List<MassPlayer> players);
+    void GameOver(List<MassPlayer> players, TourneyResult result);
 }
 
 /// <summary>
@@ -77,8 +93,13 @@ public abstract class MassGame : RoomGame
         }
     }
 
-    public static MassGame For(Room room, IMassOutput output, object sync, TimeSpan botDelay) =>
-        room.Settings.Mode == GameMode.NewApproach ? new ApproachGame(room, output, sync, botDelay) : new TourneyGame(room, output, sync, botDelay);
+    /// <param name="trophiesCountBots">bots contam para o número de jogadores dos troféus (config Rewards.TrophiesCountBots).</param>
+    public static MassGame For(Room room, IMassOutput output, object sync, TimeSpan botDelay, bool trophiesCountBots = false) =>
+        room.Settings.Mode == GameMode.NewApproach ? new ApproachGame(room, output, sync, botDelay)
+            : new TourneyGame(room, output, sync, botDelay) { TrophiesCountBots = trophiesCountBots };
+
+    /// <summary>Troféu e premiados no fim (só o torneio individual tem).</summary>
+    protected virtual TourneyResult Results() => TourneyResult.Empty;
 
     public static bool IsMass(GameMode m) => m is GameMode.Tournament or GameMode.Team30s or GameMode.GuildMatch
         or GameMode.Approach or GameMode.NewApproach or (GameMode)14;
@@ -110,7 +131,7 @@ public abstract class MassGame : RoomGame
         var done = new List<MassPlayer>();
         foreach (var p in Players)
             if (!p.Left) done.Add(p);
-        Output.GameOver(done);
+        Output.GameOver(done, Results());
         if (closing != null) Output.RivalState(closing, 2);
         RoomManager.FinishGame(Room);
     }
@@ -127,9 +148,43 @@ public sealed class TourneyGame : MassGame
     readonly TimeSpan botHoleMax = TimeSpan.FromSeconds(90);
     bool botsRunning;
 
-    public TourneyGame(Room room, IMassOutput output, object sync, TimeSpan botDelay) : base(room, output, sync, botDelay) { }
+    /// <summary>Prêmio de cada troféu: item comum sorteado entre 0x18000000..0x1800000E (GB: ITEM &lt;&lt; 26 + 0..14).</summary>
+    public const int AwardItemBase = 0x18000000, AwardItemCount = 15;
+
+    public TourneyGame(Room room, IMassOutput output, object sync, TimeSpan botDelay) : base(room, output, sync, botDelay)
+    {
+        if (room.Settings.Mode != GameMode.Tournament) return;
+        var levels = new List<int>(Players.Count);
+        foreach (var p in Players) levels.Add(p.RoomPlayer.Player.Level);
+        MatchTid = Trophy.RoomTid(levels);                               // fixo na partida: quem sai não muda o troféu
+    }
+
+    /// <summary>Troféu da sala (Match.iff), 0 fora do torneio individual.</summary>
+    public int MatchTid { get; }
+    public bool TrophiesCountBots { get; init; }
 
     public byte HoleOf(MassPlayer p) => HoleAt(p.HoleIndex);
+
+    /// <summary>
+    /// Classificação de quem terminou (sem quem saiu; bots só se TrophiesCountBots): menor placar, depois menos tacadas.
+    /// As primeiras posições levam os troféus de Trophy.ByPosition e um item cada.
+    /// </summary>
+    protected override TourneyResult Results()
+    {
+        if (MatchTid == 0) return TourneyResult.Empty;
+        var ranked = new List<MassPlayer>();
+        foreach (var p in Players)
+            if (p.Finished && !p.Left && (!p.IsBot || TrophiesCountBots)) ranked.Add(p);
+        var order = new Dictionary<MassPlayer, int>(Players.Count);
+        for (int i = 0; i < Players.Count; i++) order[Players[i]] = i;
+        ranked.Sort((a, b) => a.Score != b.Score ? a.Score.CompareTo(b.Score)
+            : a.Total != b.Total ? a.Total.CompareTo(b.Total) : order[a].CompareTo(order[b]));
+        var kinds = Trophy.ByPosition(ranked.Count, HoleCount);
+        var awards = new List<TourneyAward>(kinds.Length);
+        for (int i = 0; i < kinds.Length && i < ranked.Count; i++)
+            awards.Add(new TourneyAward(ranked[i], i, kinds[i], AwardItemBase + Rng.Next(AwardItemCount)));
+        return new TourneyResult(MatchTid, awards);
+    }
 
     public override void Loaded(MassPlayer p)
     {

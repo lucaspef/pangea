@@ -111,6 +111,11 @@ public sealed class RewardConfig
     /// <summary>Taxa de EXP do servidor em % (100 = normal), como a taxa do servidor GB.</summary>
     public int ExpRate { get; set; } = 100;
     public int MaxPangPerHole { get; set; } = 1000;
+    /// <summary>
+    /// Bots contam como jogadores para os troféus do torneio (que só saem com 10+ jogadores). false = fiel ao original;
+    /// true serve para testar sozinho com bots.
+    /// </summary>
+    public bool TrophiesCountBots { get; set; }
 }
 
 public sealed class ChannelConfig

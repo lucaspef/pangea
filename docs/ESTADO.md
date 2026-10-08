@@ -22,7 +22,10 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
   0x77 do torneio, presentes de subida de nível, recompensa gravada depois do 0x06.
 - ✅ Recordes por curso no perfil; estatísticas (chip-in, HIO, albatross, putts...).
 - ✅ Expulsar, detalhe da sala, chat de equipe, ícone sobre a cabeça, desistir no solo.
-- ⬜ Troféus e medalhas do torneio (≥10/18 jogadores), Treasure Hunter, ladder do match, entrar em partida em andamento.
+- ✅ Troféus do torneio: troféu da sala pela média de nível (Match.iff 0x2C0x0000), ouro/prata/bronze por posição
+  (18 buracos com 10+ jogadores, 9 buracos com 15+), contagem no perfil (0x43/0x151/salas), item do prêmio por carta.
+  Bots não contam como jogadores, a não ser com `Game.Rewards.TrophiesCountBots: true` (para testar sozinho).
+- ⬜ Medalhas do torneio (18+ jogadores), Treasure Hunter, ladder do match, entrar em partida em andamento.
 
 ## Bot
 - ✅ Mira e força como o oponente do cliente; memória do buraco (água, OB, obstáculos, rota segura dos outros).

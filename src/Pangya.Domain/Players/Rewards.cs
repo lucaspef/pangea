@@ -46,15 +46,16 @@ public static class Rewards
 
     /// <summary>
     /// Calcula, grava (pang, nível, EXP e a estatística do curso, se o modo tiver placar contra o par) e só então
-    /// aplica no jogador. course = (mapa, placar) ou null.
+    /// aplica no jogador. course = (mapa, placar) ou null; trophy = (troféu da sala, ouro/prata/bronze) do torneio.
     /// </summary>
     public static async Task<Reward> ApplyAsync(IPlayerStore store, Player p, uint reportedPang, uint reportedBonus, int holes, bool finished,
         RewardConfig cfg, (int Course, int Score)? course = null, int pangRate = 0, int expRate = 0, GameStats? stats = null,
-        ExpInput? expIn = null)
+        ExpInput? expIn = null, (int RoomTid, int Kind)? trophy = null)
     {
         var (pang, exp) = Compute(reportedPang, reportedBonus, holes, finished, cfg, pangRate, expRate, expIn);
         // totais do perfil: só partida terminada; os contadores vêm do último 0x31/0x06 do cliente, limitados por buraco
         var totals = finished && holes > 0 ? PlayerStats.After(p.Stats, stats, holes, course?.Score) : null;
+        if (totals != null && trophy is { Kind: > Trophy.None } t) Trophy.Add(totals.Trophies, t.RoomTid, t.Kind);
         Dictionary<int, CourseRecord>? courses = null;
         if (finished && holes > 0 && course is { } c)
         {

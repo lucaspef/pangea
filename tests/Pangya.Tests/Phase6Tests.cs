@@ -128,7 +128,8 @@ sealed class MassRecorder : IMassOutput
     public void NextHole(MassPlayer? to) => Events.Add($"next {(to == null ? "all" : to.Guid)}");
     public void ApproachHole(List<ApproachEntry> entries) { LastHole = entries; Events.Add("ahole"); }
     public void ApproachEnd(List<ApproachEntry> totals) { Totals = totals; Events.Add("aend"); }
-    public void GameOver(List<MassPlayer> players) => Events.Add("over");
+    public TourneyResult? Result { get; private set; }
+    public void GameOver(List<MassPlayer> players, TourneyResult result) { Result = result; Events.Add("over"); }
 }
 
 public class MassModeTests
