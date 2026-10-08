@@ -18,6 +18,12 @@ public interface IGameData
     IReadOnlyDictionary<int, Shop.CardInfo> Cards { get; }
     /// <summary>Mapas que o cliente oferece, na ordem da tela de escolha (só os ativos nos dados).</summary>
     IReadOnlyList<byte> Courses { get; }
+    /// <summary>
+    /// Stats (força, controle, precisão, spin, curva) como o cliente calcula para a física (CItemManager::GetLevel +
+    /// CGolfDoc::SetPlayerLevel; SPEC-bot-especiais.md §4.1): personagem + roupas + anéis + upgrades (até o limite) +
+    /// club set + upgrades do club + caddie; força − 15. E o DriveUp dos anéis (jardas a mais em todo taco menos putter).
+    /// </summary>
+    (int[] Stats, int DriveUp) PlayStats(Player p);
     /// <summary>Estrelas do curso para a EXP (dificuldade 1..5 do Course.iff; 1 se não existir).</summary>
     float CourseStars(int course);
     /// <summary>Receitas da Caixa Mágica, na posição Index (= uiNumber-1, o índice que o cliente manda).</summary>
@@ -62,7 +68,7 @@ public sealed class PlayerService(IPlayerStore store, IGameData data, NewPlayerC
     /// </summary>
     public async Task<Player> CreateBotAsync()
     {
-        var ids = await store.NewIdsAsync(3);
+        var ids = await store.NewIdsAsync(4);
         var bot = new Player { AccountId = BotAccountId, Login = "pangbot", Nickname = "Bot", Level = 1 };
         var ch = new Item { Id = ids[0], TypeId = data.Exists(BotCharacter) ? BotCharacter : 0x04000000 };
         ch.Set("parts", data.DefaultParts(ch.TypeId));
@@ -70,7 +76,37 @@ public sealed class PlayerService(IPlayerStore store, IGameData data, NewPlayerC
         bot.Add(new Item { Id = ids[1], TypeId = start.ClubSet });
         bot.Add(new Item { Id = ids[2], TypeId = start.Ball, Quantity = start.BallCount });
         bot.Equip = new Equipment { CharacterId = ids[0], ClubSetId = ids[1], BallTypeId = start.Ball };
+        bot.Add(new Item { Id = ids[3], TypeId = 0, Location = ItemLocation.Locker });    // vaga do caddie (EquipBot)
         return bot;
+    }
+
+    /// <summary>
+    /// Veste o bot com o kit do nível (só em memória: o bot não é gravado). Itens que não existem nos dados ficam de fora.
+    /// </summary>
+    public void EquipBot(Player bot, Rooms.BotLevel level)
+    {
+        var kit = Rooms.BotKit.For(level);
+        bot.Level = kit.Level;
+        if (bot.Find(bot.Equip.CharacterId) is { } ch)
+        {
+            ch.Set("pcl", kit.CharPcl);
+            var aux = new System.Text.Json.Nodes.JsonArray();
+            foreach (var r in kit.Rings) if (data.Exists(r)) aux.Add(r);
+            ch.Attrs["aux"] = aux;
+        }
+        int clubId = bot.Equip.ClubSetId;
+        var club = new Item { Id = clubId, TypeId = data.Exists(kit.ClubSet) ? kit.ClubSet : start.ClubSet };
+        club.Set("pcl", kit.ClubPcl);
+        bot.Items[clubId] = club;
+        int caddieSlot = 0;
+        foreach (var it in bot.Items.Values)
+            if (it.Id != bot.Equip.CharacterId && it.Id != clubId && it.Group is ItemGroup.Caddie or (ItemGroup)0) caddieSlot = it.Id;
+        if (caddieSlot != 0)
+        {
+            bool has = kit.Caddie != 0 && data.Exists(kit.Caddie);
+            bot.Items[caddieSlot] = new Item { Id = caddieSlot, TypeId = has ? kit.Caddie : 0, Location = has ? ItemLocation.Inventory : ItemLocation.Locker };
+            bot.Equip.CaddieId = has ? caddieSlot : 0;
+        }
     }
 
     /// <summary>Cria o jogador; null se o personagem/cores são inválidos ou o jogador já existe.</summary>

@@ -182,9 +182,11 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         float dx = r.X - shotStartX, dz = r.Z - shotStartZ;
         var pin = Game.Holes.TryGetValue(Game.Hole, out var h) ? $" bandeira=({h.PinX:F1},{h.PinZ:F1})" : "";
         bool learned = shotClean && golfer.Calibration.Observe(shotClub, shotBar, shotAim, shotStartX, shotStartZ, r.X, r.Z,
-            shotWind, shotWindDir, r.State, learnDistance: shotByBot || shotClub > 2);
+            shotWind, shotWindDir, r.State, learnDistance: shotByBot || shotClub > 2,
+            powerStat: shotByBot ? golfer.PowerStat : 0, driveUp: shotByBot ? golfer.DriveUp : 0);
         // memória do buraco para o bot: onde a tacada devia cair (mira × distância prevista) e onde parou
-        float planned = ShotModel.Distance(ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor;
+        float planned = ShotModel.Distance(shotByBot ? ShotModel.RangeYards(shotClub, golfer.PowerStat, driveUp: golfer.DriveUp)
+            : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor;
         var (ux, uz) = ShotModel.Direction(shotAim);
         golfer.Observe(Game.HoleIndex, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
             r.State, putt: shotClub >= ShotModel.Putter1);

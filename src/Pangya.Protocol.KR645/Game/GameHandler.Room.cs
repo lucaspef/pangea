@@ -208,9 +208,17 @@ public sealed partial class GameHandler
             RoomManager.PrepareStart(r, Random.Shared, Rooms.Courses);
             var cfg = ctx.World.Config;
             var botDelay = TimeSpan.FromSeconds(cfg.BotDelaySeconds);
+            var golfer = BotGolfer.For(r.BotLevel, Random.Shared, cfg.BotAccuracy);
+            if (r.Bot is { } bot)                                       // kit do nível: vai no 0x74 e muda a física nos clientes
+            {
+                ctx.Players.EquipBot(bot.Player, r.BotLevel);
+                var (stats, driveUp) = ctx.Data.PlayStats(bot.Player);
+                (golfer.PowerStat, golfer.DriveUp) = (stats[0], driveUp);
+                Log.Info($"sala {r.Index}: bot {r.BotLevel} nível={bot.Player.Level} stats={string.Join('/', stats)} anéis=+{driveUp}jd");
+            }
             r.Game = MassGame.IsMass(r.Settings.Mode)
                 ? MassGame.For(r, new MassOutput(r), Rooms.Sync, botDelay)
-                : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, BotGolfer.For(r.BotLevel, Random.Shared, cfg.BotAccuracy)), Rooms.Sync,
+                : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, golfer), Rooms.Sync,
                     botDelay, TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
             InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r, ctx.Data.Cards));
             InGameOutput.Broadcast(r, RoomPackets.GameInit(r));         // o cliente troca para a tela da partida
@@ -234,6 +242,12 @@ public sealed partial class GameHandler
                 if (room == null || room.State != RoomState.Waiting) return;
                 room.BotLevel = level;
                 add = room.Bot == null;
+                if (room.Bot is { } present)                                    // já está na sala: troca o kit e reenvia a vaga
+                {
+                    ctx.Players.EquipBot(present.Player, level);
+                    InGameOutput.Broadcast(room, RoomPackets.SlotRemove(room, present.Guid));
+                    InGameOutput.Broadcast(room, RoomPackets.SlotAdd(room, present));
+                }
                 InGameOutput.Broadcast(room, new PacketWriter(0x3F).Str($"Bot: {level}"));
             }
             if (add)

@@ -315,3 +315,30 @@ public class BotLevelChatTests(DbFixture fx)
         Assert.NotNull(room.Bot);
     }
 }
+
+/// <summary>Kit do bot por nível e stats calculados como o cliente (SPEC-bot-especiais.md §4).</summary>
+[Collection("db")]
+public class BotKitTests(DbFixture fx)
+{
+    [Fact]
+    public async Task StatsMatchTheClientFormula()
+    {
+        _ = fx;
+        await using var env = await GameEnv.StartAsync();
+        var bot = await env.Players.CreateBotAsync();
+        Assert.Equal([0, 17, 10, 5, 5], env.Data.PlayStats(bot).Stats);    // Hana + Air Knight, nível 1
+        env.Players.EquipBot(bot, BotLevel.VeryHard);
+        var (stats, driveUp) = env.Data.PlayStats(bot);
+        Assert.Equal(70, bot.Level);
+        Assert.Equal(25, stats[0]);                                          // 9 + 13 + 16 + 2 − 15
+        Assert.Equal(4, driveUp);                                            // Midnight Ring
+        Assert.Equal(BotKit.RubyAirKnight, bot.Find(bot.Equip.ClubSetId)!.TypeId);
+        Assert.Equal(BotKit.Pippin, bot.Find(bot.Equip.CaddieId)!.TypeId);
+        env.Players.EquipBot(bot, BotLevel.Easy);                            // volta ao kit básico, sem caddie
+        Assert.Equal(0, bot.Equip.CaddieId);
+        Assert.Equal(0, env.Data.PlayStats(bot).Stats[0]);
+        Assert.Equal(284f, ShotModel.RangeYards(ShotModel.Driver, 25, driveUp: 4));   // 1W: 230 + 2×25 + 4
+        Assert.Equal(184f, ShotModel.RangeYards(3, 25, driveUp: 4));                  // 2I: ferro não usa a força
+        Assert.Equal(20f, ShotModel.RangeYards(ShotModel.Putter1, 25, driveUp: 4));   // putter: nada
+    }
+}

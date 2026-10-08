@@ -54,6 +54,62 @@ public sealed class Kr645GameData : IGameData
         }
     }
 
+    Dictionary<uint, Iff.sChar>? charStats;
+    Dictionary<uint, Iff.sPart>? partStats;
+    Dictionary<uint, Iff.sClubSet>? clubStats;
+    Dictionary<uint, Iff.sCaddie>? caddieStats;
+    Dictionary<uint, Iff.sAuxPart>? auxStats;
+
+    public (int[] Stats, int DriveUp) PlayStats(Player p)
+    {
+        if (charStats == null)
+        {
+            var c = new Dictionary<uint, Iff.sChar>(); foreach (var x in Iff.Characters) c[x.c.TypeId] = x;
+            var pt = new Dictionary<uint, Iff.sPart>(); foreach (var x in Iff.Parts) pt[x.c.TypeId] = x;
+            var cs = new Dictionary<uint, Iff.sClubSet>(); foreach (var x in Iff.ClubSets) cs[x.c.TypeId] = x;
+            var cd = new Dictionary<uint, Iff.sCaddie>(); foreach (var x in Iff.Caddies) cd[x.c.TypeId] = x;
+            var ax = new Dictionary<uint, Iff.sAuxPart>(); foreach (var x in Iff.AuxParts) ax[x.c.TypeId] = x;
+            (partStats, clubStats, caddieStats, auxStats, charStats) = (pt, cs, cd, ax, c);
+        }
+        var stats = new int[5];
+        int driveUp = 0;
+        var cap = new int[5];
+        var lvl = new int[5];
+        if (p.Character is { } ch && charStats.TryGetValue((uint)ch.TypeId, out var cinfo))
+        {
+            var upg = ch.IntArray("pcl", 5);
+            for (int t = 0; t < 5; t++) { cap[t] = cinfo.Attr[t]; lvl[t] = cinfo.PCL[t] + upg[t]; }
+            if (p.Level >= 6) cap[0] += (p.Level - 1) / 5;
+            foreach (var tid in ch.IntArray("parts", 24))
+                if (tid != 0 && partStats!.TryGetValue((uint)tid, out var part))
+                    for (int t = 0; t < 5; t++) { cap[t] += part.Slot[t] + part.Attr[t]; lvl[t] += part.Attr[t]; }
+            foreach (var tid in ch.IntArray("aux", 5))
+                if (tid != 0 && auxStats!.TryGetValue((uint)tid, out var aux))
+                {
+                    for (int t = 0; t < 5; t++) { cap[t] += aux.Attr[t] + aux.Slot[t]; lvl[t] += aux.Attr[t]; }
+                    driveUp += aux.DriveUp;
+                }
+            for (int t = 0; t < 5; t++) stats[t] = Math.Min(lvl[t], cap[t]);
+        }
+        if (p.Find(p.Equip.ClubSetId) is { } club && clubStats!.TryGetValue((uint)club.TypeId, out var cset))
+        {
+            var upg = club.IntArray("pcl", 5);
+            for (int t = 0; t < 5; t++) stats[t] += cset.Attr[t] + upg[t];
+        }
+        if (p.Find(p.Equip.CaddieId) is { } cad && caddieStats!.TryGetValue((uint)cad.TypeId, out var cdi) && cdi.c.Level <= p.Level)
+            for (int t = 0; t < 5; t++) stats[t] += cdi.Attr[t];
+        stats[0] = Math.Clamp(stats[0], 0, 100) - 15;
+        int penalty = Math.Max(0, stats[0] - (PowerPenalty(p.Level) + 5));
+        stats[1] = Math.Clamp(stats[1] - penalty, 0, 30);
+        stats[2] = Math.Clamp(stats[2] - penalty, 0, 30);
+        stats[3] = Math.Clamp(stats[3], 1, 30);
+        stats[4] = Math.Clamp(stats[4], 1, 30);
+        return (stats, driveUp);
+    }
+
+    /// <summary>CalcPowerPenalty: 0 até o nível 5, +1 a cada 5 níveis, 13 a partir do 66.</summary>
+    static int PowerPenalty(int level) => level <= 5 ? 0 : Math.Min(level / 5, 13);
+
     public float CourseStars(int course)
     {
         foreach (var c in Iff.Courses)

@@ -18,10 +18,11 @@ public static class ShotModel
     /// Alcance do taco em jardas. Putters: "putt longo" (+20 jardas) fora do green ou a 15+ jardas da bandeira.
     /// PW/SW têm alcances especiais perto da bandeira que não são modelados (o bot não usa esses tacos).
     /// </summary>
-    public static float RangeYards(int club, int powerStat = 0, float yardsToPin = 0, bool onGreen = true)
+    public static float RangeYards(int club, int powerStat = 0, float yardsToPin = 0, bool onGreen = true, int driveUp = 0)
     {
         float r = Ranges[Math.Clamp(club, 0, Ranges.Length - 1)];
-        if (club <= LastWood) r += 2 * powerStat;
+        if (club <= LastWood) r += 2 * powerStat;                   // ferros não usam a força (club.c GetRange)
+        if (club < Putter1) r += driveUp;                           // anéis (DriveUp): todo taco menos putter
         if (club >= Putter1 && (!onGreen || yardsToPin >= 15)) r += 20;
         return r;
     }
@@ -82,10 +83,10 @@ public sealed class ShotCalibration
 
     /// <summary>Uma tacada e onde a bola parou. false = descartada.</summary>
     public bool Observe(int club, float bar, float aim, float startX, float startZ, float endX, float endZ,
-        byte windStrength, byte windDirection, byte state, bool learnDistance, int powerStat = 0)
+        byte windStrength, byte windDirection, byte state, bool learnDistance, int powerStat = 0, int driveUp = 0)
     {
         if (club >= ShotModel.Putter1 || state is ShotResult.StateWaterOrOut or ShotResult.StateHoled) return false;
-        float d = ShotModel.Distance(ShotModel.RangeYards(club, powerStat), bar);                       // previsto, na mira
+        float d = ShotModel.Distance(ShotModel.RangeYards(club, powerStat, driveUp: driveUp), bar);                       // previsto, na mira
         var (wx, wz) = ShotModel.Wind(windStrength, windDirection);
         float ax = endX - startX - wx * ShotModel.WindFactor, az = endZ - startZ - wz * ShotModel.WindFactor;   // real sem o vento
         float aLen = MathF.Sqrt(ax * ax + az * az);
@@ -150,7 +151,9 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     public float Accuracy { get; } = Math.Clamp(accuracy, 0f, 1f);
     public ShotCalibration Calibration { get; } = new();
     /// <summary>Stat de força do bot (alcance das madeiras); o bot tem o kit de um jogador novo.</summary>
-    public int PowerStat { get; init; }
+    public int PowerStat { get; set; }
+    /// <summary>Jardas a mais dos anéis do bot (DriveUp).</summary>
+    public int DriveUp { get; set; }
 
     /// <summary>Raio (jardas) em volta de um perigo conhecido em que o bot não mira.</summary>
     public const float HazardYards = 15;
@@ -203,7 +206,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// </summary>
     (float X, float Z) Target(float x, float z, float pinX, float pinZ)
     {
-        float reach = ShotModel.RangeYards(ShotModel.Driver, PowerStat) * Calibration.DistanceFactor * ShotModel.UnitsPerYard;
+        float reach = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp) * Calibration.DistanceFactor * ShotModel.UnitsPerYard;
         float dist = Dist(x, z, pinX, pinZ);
         var direct = dist <= reach ? (pinX, pinZ) : (x + (pinX - x) * reach / dist, z + (pinZ - z) * reach / dist);
         if (hazards.Count == 0 || !NearHazard(direct.Item1, direct.Item2)) return direct;
@@ -262,7 +265,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
             float need = MathF.Sqrt((dx - wx) * (dx - wx) + (dz - wz) * (dz - wz)) / ShotModel.UnitsPerYard;   // já com o vento
             club = ClubFor(need / factor);
             if (cautious) club = Math.Min(club + 2, ShotModel.Iron9);
-            float reach = ShotModel.RangeYards(club, PowerStat) * factor;      // alcance real (calibrado)
+            float reach = ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp) * factor;      // alcance real (calibrado)
             if (yards > reach) { dx *= reach / yards; dz *= reach / yards; }    // alvo: até onde o taco alcança
             dx -= wx;
             dz -= wz;
@@ -279,7 +282,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     public int ClubFor(float yards)
     {
         for (int c = ShotModel.Iron9; c > ShotModel.Driver; c--)
-            if (ShotModel.RangeYards(c, PowerStat) >= yards) return c;
+            if (ShotModel.RangeYards(c, PowerStat, driveUp: DriveUp) >= yards) return c;
         return ShotModel.Driver;
     }
 }
