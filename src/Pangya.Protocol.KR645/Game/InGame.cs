@@ -41,6 +41,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     public void TeeReady() => All(new PacketWriter(STeeReady));
     public void NextTurn(GamePlayer p)
     {
+        botFlight++;                                                        // a bola já parou: não acelera mais
         var w = new PacketWriter(SNextTurn).U32(p.Guid);
         if (room.Settings.Mode == GameMode.PangBattle) w.U16(0);         // pang battle: + u16 mensagem da tacada
         All(w);
@@ -49,6 +50,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     /// <summary>0x63: vazio; no pang battle u32 vencedor do buraco (0xFFFFFFFF = acumula).</summary>
     public void NextHole(uint holeWinner)
     {
+        botFlight++;
         var w = new PacketWriter(SNextHole);
         if (room.Settings.Mode == GameMode.PangBattle) w.U32(holeWinner);
         All(w);
@@ -140,7 +142,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     /// Acelera a bola do bot como o Time Booster (CGolfRule::OnProcess: FASTFORWARD manda 0x65 f32 3.0): S->C 0xC5 f32
     /// velocidade + u32 guid a todos. Cada cliente põe a velocidade do jogo (CProjectG+0xC) e volta a 1× sozinho no fim da
     /// tacada (DoToDefaultCamera); o item só é gasto por quem tem o guid (o bot não tem). Sai depois de uma espera para
-    /// pegar a bola já em voo; se o resultado já chegou, não manda.
+    /// pegar a bola já em voo; se a vez já passou, não manda (o resultado 0x1B não serve: o cliente manda logo na tacada).
     /// </summary>
     void FastForwardLater(uint guid)
     {
@@ -234,7 +236,6 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     /// <summary>Registra para onde a bola foi de fato (direção e distância reais) e alimenta a calibração do bot.</summary>
     public void OnResult(ShotResult r)
     {
-        botFlight++;                                                        // bola parou: não acelera mais
         float dx = r.X - shotStartX, dz = r.Z - shotStartZ;
         var pin = Game.Holes.TryGetValue(Game.Hole, out var h) ? $" bandeira=({h.PinX:F1},{h.PinZ:F1})" : "";
         bool learned = shotClean && golfer.Calibration.Observe(shotClub, shotBar, shotAim, shotStartX, shotStartZ, r.X, r.Z,
