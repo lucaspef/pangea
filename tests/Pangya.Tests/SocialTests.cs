@@ -117,4 +117,48 @@ public class SocialTests(DbFixture fx)
         await Task.Delay(300);
         Assert.Equal(pang, (await env.Players.LoadAsync(id))!.Pang);
     }
+
+    [Fact]
+    public async Task WhisperInviteAndFollow()
+    {
+        _ = fx;
+        await using var env = await GameEnv.StartAsync();
+        var (a, aId) = await EnterAsync(env);
+        var (b, bId) = await EnterAsync(env);
+        await using var _a = a;
+        await using var _b = b;
+        string bNick = (await env.Players.LoadAsync(bId))!.Nickname, aNick = (await env.Players.LoadAsync(aId))!.Nickname;
+
+        await a.SendAsync(new PacketWriter(0x2A).Str(bNick).Str("oi b"));          // sussurro
+        var echo = await a.ExpectAsync(0x82);
+        Assert.Equal((0, bNick, "oi b"), (echo.U8(), echo.Str(), echo.Str()));
+        var got = await b.ExpectAsync(0x82);
+        Assert.Equal((1, aNick, "oi b"), (got.U8(), got.Str(), got.Str()));
+        await a.SendAsync(new PacketWriter(0x2A).Str("ninguem").Str("oi"));        // não está online
+        Assert.Equal(6, (await a.ExpectAsync(0x3E)).U8());
+
+        await a.SendAsync(MakeRoom());
+        var enter = await a.ExpectAsync(0x47);
+        enter.U8(); enter.U8();
+        ushort index = enter.Struct<Pangya.Protocol.KR645.sRoomInfo>().roomGuid;
+        await a.SendAsync(new PacketWriter(0xB2).Str(bNick).U32((uint)bId));        // convite
+        var inv = await a.ExpectAsync(0x127);
+        Assert.Equal(0, inv.U16());
+        inv.U32(); inv.U8();
+        Assert.Equal((index, (uint)bId), (inv.U16(), inv.U32()));
+        inv.Str();
+        uint id = inv.U32();
+        await a.SendAsync(new PacketWriter(0x29).U32(id));
+        var invited = await b.ExpectAsync(0x81);
+        Assert.Equal(0, invited.U16());
+        invited.U32(); invited.U8();
+        Assert.Equal((index, (uint)aId, aNick, id), (invited.U16(), invited.U32(), invited.Str(), invited.U32()));
+
+        await b.SendAsync(new PacketWriter(0xAC).U8(0).U16(index));                // segue até a sala
+        Assert.Equal(0, (await b.ExpectAsync(0x47)).U8());
+        await a.SendAsync(new PacketWriter(0xB2).Str(bNick).U32((uint)bId));        // já está numa sala
+        Assert.Equal(6, (await a.ExpectAsync(0x127)).U16());
+        await b.SendAsync(new PacketWriter(0xB7).U8(0));                           // partida rápida: sem alvo
+        Assert.Equal(1, (await b.ExpectAsync(0x133)).U8());
+    }
 }

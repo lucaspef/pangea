@@ -12,6 +12,13 @@ public sealed partial class GameHandler
 {
     const ushort CHeadIcon = 0x18, CBanish = 0x26, CBanishVote = 0x27, CRoomDetail = 0x2D, CIdle = 0x32, CGiveUpSolo = 0x37,
         CChangeNick = 0x38, CCaddieRehire = 0x39, CTeamChat = 0x54, CDeleteItem = 0x64;
+    const ushort CWhisper = 0x2A, CWhisperRejected = 0xE0, CInvite = 0xB2, CInviteAck = 0x29, CDirectMove = 0xAC,
+        CQuickInterests = 0xB6, CQuickMatch = 0xB7, CQuickAnswer = 0xB8;
+    const ushort SWhisper = 0x82, SInviteResult = 0x127, SInvited = 0x81, SQuickMatch = 0x133;
+    /// <summary>0x3E tipos de aviso de sussurro: 4 não recebe, 6 não está conectado.</summary>
+    const byte ChatNoWhisper = 4, ChatNotConnected = 6;
+    /// <summary>0x127 códigos: 2 sala cheia, 6 já está numa sala, 0x17 não está num lugar onde dá para convidar.</summary>
+    const ushort InviteRoomFull = 2, InviteInRoom = 6, InviteNotHere = 0x17;
     const ushort SHeadIcon = 0x5B, SRoomDetail = 0x84, STeamChat = 0xAE, SChangeNick = 0x4E, SCaddieRehire = 0x91;
 
     async ValueTask<bool> HandleSocialAsync(PacketReader p)
@@ -30,8 +37,67 @@ public sealed partial class GameHandler
                 conn.Send(new PacketWriter(SChangeNick).U32(7));                      // 7 = "troca de nick suspensa"
                 return true;
             case CCaddieRehire: CaddieRehire(p.U32()); return true;
+            case CWhisper: Whisper(p.Str(32), p.Str(256)); return true;
+            case CWhisperRejected:
+                if (FindOnline(p.Str(32)) is { } from && from != this)
+                    from.Connection.Send(RoomPackets.Chat(Player.Nickname, "", ChatNoWhisper));
+                return true;
+            case CInvite: Invite(p.Str(32), p.U32()); return true;
+            case CInviteAck: InviteAck(p.U32()); return true;
+            case CDirectMove: p.U8(); JoinRoom(p.U16(), ""); return true;
+            case CQuickInterests or CQuickAnswer: p.Skip(p.Remaining); return true;
+            case CQuickMatch: p.Skip(p.Remaining); conn.Send(new PacketWriter(SQuickMatch).U8(1)); return true;   // 1 = sem alvo
             default: return false;
         }
+    }
+
+    GameHandler? FindOnline(string nick)
+    {
+        foreach (var s in ctx.World.Online)
+            if (s is GameHandler h && h.player != null && string.Equals(h.player.Nickname, nick, StringComparison.OrdinalIgnoreCase)) return h;
+        return null;
+    }
+
+    /// <summary>
+    /// 0x2A str nick, str texto (sussurro) -> 0x82 u8 0 (eco), nick do alvo, texto para mim e 0x82 u8 1, meu nick, texto
+    /// para o alvo (bit 0x80 = cor de GM); alvo fora: 0x3E tipo 6 "não está conectado".
+    /// </summary>
+    void Whisper(string nick, string text)
+    {
+        if (text.Length == 0) return;
+        var t = FindOnline(nick);
+        if (t == null) { conn.Send(RoomPackets.Chat(nick, "", ChatNotConnected)); return; }
+        byte gm = IsGm ? ChatGm : (byte)0;
+        conn.Send(new PacketWriter(SWhisper).U8(gm).Str(t.Player.Nickname).Str(text));
+        if (t != this) t.Connection.Send(new PacketWriter(SWhisper).U8((byte)(1 | gm)).Str(Player.Nickname).Str(text));
+    }
+
+    /// <summary>
+    /// 0xB2 str nick, u32 uid: convidar para a minha sala. 0x127 u16 0, u32 servidor, u8 canal, u16 sala, u32 uid, str nick,
+    /// u32 convite (o cliente confirma com 0x29) ou só o código (2 cheia, 6 já em sala, 0x17 não dá para convidar).
+    /// </summary>
+    void Invite(string nick, uint uid)
+    {
+        lock (Rooms.Sync)
+        {
+            var r = room;
+            var t = (ctx.World.Find(uid) as GameHandler) ?? FindOnline(nick);
+            ushort code = r == null || t == null || t == this ? InviteNotHere
+                : t.room != null ? InviteInRoom
+                : r.Players.Count >= r.Settings.MaxPlayers ? InviteRoomFull : (ushort)0;
+            if (code != 0) { conn.Send(new PacketWriter(SInviteResult).U16(code)); return; }
+            uint id = ctx.NewInvite(this, t!, r!.Index);
+            conn.Send(new PacketWriter(SInviteResult).U16(0).U32((uint)ctx.World.Config.Id).U8((byte)(channel?.Id ?? 0))
+                .U16((ushort)r.Index).U32((uint)t!.Player.AccountId).Str(t.Player.Nickname).U32(id));
+        }
+    }
+
+    /// <summary>0x29 u32 convite -> 0x81 para o convidado: u16 0, u32 servidor, u8 canal, u16 sala, u32 uid, str nick, u32 id.</summary>
+    void InviteAck(uint id)
+    {
+        if (ctx.TakeInvite(id) is not { } inv || inv.From != this) return;
+        inv.To.Connection.Send(new PacketWriter(SInvited).U16(0).U32((uint)ctx.World.Config.Id).U8((byte)(channel?.Id ?? 0))
+            .U16((ushort)inv.Room).U32((uint)Player.AccountId).Str(Player.Nickname).U32(id));
     }
 
     /// <summary>0x18 u16 ícone (0xFFFF limpa) -> 0x5B u32 guid, u16 para os outros da sala.</summary>

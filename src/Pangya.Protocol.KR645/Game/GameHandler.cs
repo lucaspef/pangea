@@ -11,6 +11,19 @@ namespace Pangya.Protocol.KR645.Game;
 public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players, IGameData data,
     Core.Config.LotteryConfig? lottery = null, Domain.Servers.IServerRegistry? registry = null)
 {
+    readonly System.Collections.Concurrent.ConcurrentDictionary<uint, (GameHandler From, GameHandler To, int Room)> invites = new();
+    int nextInvite;
+
+    /// <summary>Convite pendente (0xB2 -> 0x29): id único; os antigos somem ao serem usados ou com o servidor.</summary>
+    public uint NewInvite(GameHandler from, GameHandler to, int room)
+    {
+        uint id = (uint)Interlocked.Increment(ref nextInvite);
+        invites[id] = (from, to, room);
+        return id;
+    }
+
+    public (GameHandler From, GameHandler To, int Room)? TakeInvite(uint id) => invites.TryRemove(id, out var v) ? v : null;
+
     /// <summary>Registro de servidores (lista de servidores no jogo, 0x43); null nos testes que não usam.</summary>
     public Domain.Servers.IServerRegistry? Registry { get; } = registry;
     public GameWorld World { get; } = world;
