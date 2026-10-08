@@ -195,8 +195,9 @@ public sealed partial class GameHandler
     bool Owns(int id, ItemGroup g) => Player.Find(id) is { } it && it.Group == g && it.Location == ItemLocation.Inventory;
 
     /// <summary>
-    /// Roupas novas do personagem: cada parte tem de ser a padrão daquele personagem ou uma parte que o jogador possui
-    /// (o id na ItemIdList tem de ser dele e do mesmo typeid). Cabelo e camisa não mudam por aqui.
+    /// Roupas novas do personagem: cada parte tem de ser a padrão daquele personagem ou uma parte que o jogador possui.
+    /// O cliente às vezes manda na ItemIdList o id da peça que estava antes no lugar (id de outro typeid, ou id numa peça
+    /// padrão): vale o typeid, e o id gravado é o da peça dele daquele typeid. Cabelo e camisa não mudam por aqui.
     /// </summary>
     bool ApplyOutfit(Item ch, in sCharacterInfo info, out string why)
     {
@@ -208,18 +209,12 @@ public sealed partial class GameHandler
         {
             int tid = (int)info.tidParts[i], id = (int)info.ItemIdList[i];
             if (tid == 0) continue;
-            if (id != 0)
+            var part = id != 0 && Player.Find(id) is { } byId && byId.TypeId == tid && byId.Location == ItemLocation.Inventory
+                ? byId : Player.FindType(tid) is { Location: ItemLocation.Inventory } byType ? byType : null;
+            if (part != null) partIds[i] = part.Id;
+            else if (tid != defaults[i] && !ctx.Data.IsDefaultPart(ch.TypeId, tid))
             {
-                if (Player.Find(id) is not { } part || part.TypeId != tid || part.Location != ItemLocation.Inventory)
-                {
-                    why = $"parte {i}: 0x{tid:X8} id {id} não é dele";
-                    return false;
-                }
-                partIds[i] = id;
-            }
-            else if (tid != defaults[i] && !ctx.Data.IsDefaultPart(ch.TypeId, tid) && Player.FindType(tid) == null)
-            {
-                why = $"parte {i}: 0x{tid:X8} sem id, não é a padrão (0x{defaults[i]:X8}) nem dele";
+                why = $"parte {i}: 0x{tid:X8} (id {id}) não é a padrão (0x{defaults[i]:X8}) nem dele";
                 return false;
             }
             parts[i] = tid;

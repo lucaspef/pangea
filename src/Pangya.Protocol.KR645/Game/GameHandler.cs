@@ -196,7 +196,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
     const int ItemsPerPacket = 50;
 
     static bool InItemList(ItemGroup g) => g is ItemGroup.Part or ItemGroup.Club or ItemGroup.ClubSet or ItemGroup.Ball
-        or ItemGroup.Usable or ItemGroup.Skin or ItemGroup.SetItem;
+        or ItemGroup.Usable or ItemGroup.Skin or ItemGroup.SetItem or ItemGroup.AuxPart;   // anéis vão na lista de itens
 
     /// <summary>
     /// Listas que o cliente guarda (o 0x42 limpa o inventário, então vêm depois dele). Em cada pacote total == n

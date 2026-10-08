@@ -186,7 +186,7 @@ public sealed class ShopService(IPlayerStore store, IGameData data)
                 granted.Add(new Granted(tid, c.Id, c.Quantity));
                 return ShopCode.Ok;
             }
-            case (ItemGroup)0x1C:
+            case ItemGroup.AuxPart:
                 return ShopCode.Fail;                                       // grupo não vendido no KR 645
             case ItemGroup.Ball or ItemGroup.Usable:                        // empilha; Count = total novo
             {

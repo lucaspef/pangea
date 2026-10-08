@@ -6,7 +6,7 @@ namespace Pangya.Domain.Players;
 public enum ItemGroup
 {
     Character = 1, Part = 2, Club = 3, ClubSet = 4, Ball = 5, Usable = 6, Caddie = 7, CaddieItem = 8, SetItem = 9,
-    Skin = 0xE, HairColor = 0xF, Mascot = 0x10, Furniture = 0x12, Card = 0x1F,
+    Skin = 0xE, HairColor = 0xF, Mascot = 0x10, Furniture = 0x12, AuxPart = 0x1C, Card = 0x1F,
 }
 
 /// <summary>Onde o objeto está.</summary>
