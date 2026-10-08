@@ -9,8 +9,9 @@ namespace Pangya.Protocol.KR645.Game;
 /// </summary>
 public sealed partial class GameHandler
 {
-    const ushort CNotice = 0x57, CGmCommand = 0x8C, CGmDisconnect = 0x61, CGmDestroyRoom = 0x60;
-    const ushort SNoticeBoard = 0x40;
+    const ushort CNotice = 0x57, CGmCommand = 0x8C, CGmDisconnect = 0x61, CGmDestroyRoom = 0x60, CGmIdentity = 0x41,
+        CGmItemDrop = 0x4E, CGmAdminSlot = 0x4C, CGmObserve = 0x5D, CGmJoin = 0x3E, CGmGallery = 0x3F;
+    const ushort SNoticeBoard = 0x40, SIdentity = 0x98;
     /// <summary>0x3E: bit 0x80 no tipo 0 = texto azul de GM; tipo 7 = "알림 : texto" (aviso).</summary>
     const byte ChatGm = 0x80, ChatNotice = 7;
     const int IdentityGm = 0x04;
@@ -25,8 +26,30 @@ public sealed partial class GameHandler
             case CNotice: Notice(p.Str(256)); return true;
             case CGmCommand: GmCommand(p); return true;
             case CGmDisconnect or CGmDestroyRoom: p.Skip(p.Remaining); return true;    // repetem o 0x8C 11/13
+            case CGmIdentity: GmIdentity(p.U32(), p.Remaining >= 2 ? p.Str(32) : ""); return true;
+            case CGmItemDrop or CGmAdminSlot or CGmObserve or CGmJoin or CGmGallery:     // sem sistema por trás ainda
+                Log.Info($"{conn} comando de GM 0x{p.Id:X2} ({(IsGm ? "GM" : "recusado: não é GM")}) ignorado");
+                p.Skip(p.Remaining);
+                return true;
             default: return false;
         }
+    }
+
+    /// <summary>
+    /// 0x41 u32 identidade (0xFFFFFFFF = consultar), str nick (/identity admin|user): só GM, só a própria visão. Responde
+    /// 0x98 u32 ao próprio cliente (ver o jogo como jogador comum, por exemplo) sem gravar: a identidade da conta não
+    /// muda, então o GM não perde o acesso por engano.
+    /// </summary>
+    void GmIdentity(uint value, string nick)
+    {
+        if (!IsGm || (nick.Length > 0 && !string.Equals(nick, Player.Nickname, StringComparison.OrdinalIgnoreCase)))
+        {
+            Log.Warn($"{conn} /identity recusado (GM={IsGm}, alvo '{nick}')");
+            return;
+        }
+        uint shown = value == 0xFFFFFFFF ? (uint)Player.IdentityFlags : value;
+        conn.Send(new PacketWriter(SIdentity).U32(shown));
+        Log.Info($"{conn} /identity -> 0x{shown:X} (só na tela; conta continua 0x{Player.IdentityFlags:X})");
     }
 
     /// <summary>/notice: letreiro no topo (0x40) e "알림 : texto" no chat de todos os online.</summary>

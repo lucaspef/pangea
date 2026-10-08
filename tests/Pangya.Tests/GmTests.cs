@@ -47,4 +47,22 @@ public class GmTests(DbFixture fx)
         Assert.Null(env.Game.World.Find(userId));
         Assert.NotNull(env.Game.World.Find(gmId));
     }
+
+    [Fact]
+    public async Task IdentityCommandOnlyChangesTheGmsOwnView()
+    {
+        _ = fx;
+        await using var env = await GameEnv.StartAsync();
+        var (gm, gmId) = await EnterAsync(env, 0x14);
+        var (user, _) = await EnterAsync(env, 0);
+        await using var _g = gm;
+        await using var _u = user;
+        await user.SendAsync(new PacketWriter(0x41).U32(0x14).Str(""));           // comum: ignorado
+        await user.SendAsync(new PacketWriter(0x03).Str("x").Str("ping"));
+        Assert.Equal(0, (await user.ExpectAsync(0x3E)).U8());                    // chegou o chat, não um 0x98
+        await gm.SendAsync(new PacketWriter(0x41).U32(0x80).Str(""));             // GM se vê como comum
+        Assert.Equal(0x80u, (await gm.ExpectAsync(0x98)).U32());
+        var acc = await env.S.Accounts.FindByLoginAsync((await env.Players.LoadAsync(gmId))!.Login);
+        Assert.Equal(0x14, acc!.IdentityFlags);                                  // a conta continua GM
+    }
 }
