@@ -58,11 +58,15 @@ public sealed class HoleMemory
     }
 }
 
+/// <summary>Tipo de ponto da memória do buraco.</summary>
+public enum HoleMark { Safe, Hazard, Blocked, CobraBlocked }
+
 /// <summary>
 /// O que um nível de bot aprendeu: a calibração (fator de distância, desvio de mira, alcance das especiais) e a memória
 /// de cada buraco já jogado. Compartilhado por todas as salas daquele nível; mexido só com a trava do jogo (Rooms.Sync).
+/// A memória dos buracos é geometria do mapa: o que um nível observa vale para todos (parent); a calibração é de cada um.
 /// </summary>
-public sealed class BotLevelKnowledge(BotLevel level)
+public sealed class BotLevelKnowledge(BotLevel level, BotKnowledge? parent = null)
 {
     public BotLevel Level { get; } = level;
     public ShotCalibration Calibration { get; private set; } = new();
@@ -80,6 +84,25 @@ public sealed class BotLevelKnowledge(BotLevel level)
     }
 
     public void MarkDirty(byte course, byte hole) => dirtyHoles.Add((course, hole));
+
+    /// <summary>Ponto observado no buraco: entra neste nível e em todos os outros já conhecidos. true = mudou aqui.</summary>
+    public bool Record(byte course, byte hole, HoleMark mark, float x, float z)
+    {
+        bool changed = AddLocal(course, hole, mark, x, z);
+        if (parent != null)
+            foreach (var other in parent.AllLevels())
+                if (other != this) other.AddLocal(course, hole, mark, x, z);
+        return changed;
+    }
+
+    bool AddLocal(byte course, byte hole, HoleMark mark, float x, float z)
+    {
+        var m = Hole(course, hole);
+        var list = mark switch { HoleMark.Safe => m.Safe, HoleMark.Hazard => m.Hazards, HoleMark.Blocked => m.Blocked, _ => m.CobraBlocked };
+        if (!HoleMemory.Add(list, x, z)) return false;
+        MarkDirty(course, hole);
+        return true;
+    }
 
     /// <summary>A gravação falhou: a calibração volta a contar como alterada.</summary>
     internal void CalibrationNotSaved() => savedCalibration = Calibration.Version - 1;
@@ -128,8 +151,16 @@ public sealed class BotKnowledge(IBotKnowledgeStore? store = null)
 
     public BotLevelKnowledge For(BotLevel level)
     {
-        if (!levels.TryGetValue(level, out var k)) levels[level] = k = new BotLevelKnowledge(level);
+        if (!levels.TryGetValue(level, out var k)) levels[level] = k = new BotLevelKnowledge(level, this);
         return k;
+    }
+
+    /// <summary>Todos os níveis (cria os que faltam: a memória dos buracos vai para todos).</summary>
+    internal List<BotLevelKnowledge> AllLevels()
+    {
+        var all = new List<BotLevelKnowledge>();
+        foreach (var l in Enum.GetValues<BotLevel>()) all.Add(For(l));
+        return all;
     }
 
     /// <summary>Carrega tudo do banco (antes das partidas começarem). Devolve (buracos, calibrações).</summary>

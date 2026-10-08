@@ -318,15 +318,14 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         if (putt || state == ShotResult.StateHoled) return;
         float planned = Dist(sx, sz, tx, tz), moved = Dist(sx, sz, ex, ez);
         bool wasBlocked = planned > 30 * ShotModel.UnitsPerYard && moved < planned * BlockedFraction;
-        bool changed = false;
+        // a memória vai para todos os níveis (é geometria do mapa); só este bot usa
         if (state == ShotResult.StateWaterOrOut || wasBlocked)
         {
-            changed = HoleMemory.Add(hazards, tx, tz);
-            if (state != ShotResult.StateWaterOrOut) changed |= HoleMemory.Add(cobra ? cobraBlocked : blocked, tx, tz);
+            mem.Record(Course, (byte)hole, HoleMark.Hazard, tx, tz);
+            if (state != ShotResult.StateWaterOrOut) mem.Record(Course, (byte)hole, cobra ? HoleMark.CobraBlocked : HoleMark.Blocked, tx, tz);
         }
         else if (moved > 10 * ShotModel.UnitsPerYard)
-            changed = HoleMemory.Add(safe, ex, ez);
-        if (changed) mem.MarkDirty(Course, (byte)hole);
+            mem.Record(Course, (byte)hole, HoleMark.Safe, ex, ez);
     }
 
     static float Dist(float ax, float az, float bx, float bz) => MathF.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));

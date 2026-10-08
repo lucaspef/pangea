@@ -230,7 +230,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         golfer.Observe(Game.Hole, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
             r.State, putt: shotClub >= ShotModel.Putter1, cobra: special == Special.Cobra);
         var cal = golfer.Calibration;
-        Log.Info($"sala {room.Index} resultado {r.Guid}: pos=({r.X:F1},{r.Y:F1},{r.Z:F1}) estado={r.State} " +
+        Log.Info($"sala {room.Index} buraco {Game.Hole} resultado {r.Guid}: pos=({r.X:F1},{r.Y:F1},{r.Z:F1}) estado={r.State} " +
                  $"direção real={ShotModel.AimTo(dx, dz):F4} (mira {shotAim:F4}) distância={MathF.Sqrt(dx * dx + dz * dz):F1} " +
                  $"(prevista {ShotModel.Distance(ShotModel.RangeYards(shotClub), shotBar):F1}, barra {shotBar:F1}, taco {shotClub}, " +
                  $"vento {shotWind}/{shotWindDir}){pin} calibração{(learned ? "+" : "")}: fator={cal.DistanceFactor:F3} " +

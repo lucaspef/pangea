@@ -69,8 +69,8 @@ public class BotKnowledgeTests
         var normal = BotGolfer.For(BotLevel.Normal, new Random(4), knowledge: k.For(BotLevel.Normal));
         normal.Course = 5;
         normal.Plan(0, 0, 0, 300 * Y, 0, 0, hole: 3);
-        Assert.Empty(normal.Hazards);                                       // outro nível: aprendizado separado
-        Assert.Same(g1.Calibration, g2.Calibration);
+        Assert.Single(normal.Hazards);                                      // outro nível: o mapa é o mesmo
+        Assert.Same(g1.Calibration, g2.Calibration);                        // calibração: separada por nível
         Assert.NotSame(g1.Calibration, normal.Calibration);
     }
 
@@ -90,7 +90,7 @@ public class BotKnowledgeTests
         Assert.True(g.Calibration.Observe(5, 400, 0, 0, 0, 0, d * 1.1f, 0, 0, 2, learnDistance: true));
         float ps = ShotModel.Distance(ShotModel.RangeYards(ShotModel.Driver, 0, driveUp: 0, powerShot: 1), 400) * g.Calibration.DistanceFactor;
         Assert.True(g.Calibration.ObserveSpecial(Special.Tomahawk, ShotModel.Driver, 400, 0, 0, 0, ps * 1.4f, 0, 0, 2, 0, 0, 1));
-        Assert.Equal(2, await k.FlushAsync(sync));                          // 1 buraco + 1 calibração
+        Assert.Equal(5 + 1, await k.FlushAsync(sync));                      // o buraco nos 5 níveis + 1 calibração
         Assert.Equal(0, await k.FlushAsync(sync));
         g.Observe(7, 0, 0, 50 * Y, 151 * Y, 50 * Y, 151 * Y, 2, putt: false); // mesmo lugar: nada novo
         Assert.Equal(0, await k.FlushAsync(sync));
@@ -99,10 +99,10 @@ public class BotKnowledgeTests
         g.Observe(8, 0, 0, 0, 200 * Y, 0, 0, ShotResult.StateWaterOrOut, putt: false);
         await Assert.ThrowsAsync<InvalidOperationException>(() => k.FlushAsync(sync));
         store.Fail = false;
-        Assert.Equal(1, await k.FlushAsync(sync));
+        Assert.Equal(5, await k.FlushAsync(sync));
 
         var loaded = new BotKnowledge(store);
-        Assert.Equal((2, 1), await loaded.LoadAsync());
+        Assert.Equal((10, 1), await loaded.LoadAsync());
         var g2 = BotGolfer.For(BotLevel.VeryHard, new Random(2), knowledge: loaded.For(BotLevel.VeryHard));
         g2.Course = 2;
         g2.Plan(0, 0, 0, 300 * Y, 0, 0, hole: 7);
