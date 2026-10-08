@@ -217,7 +217,7 @@ public sealed partial class GameHandler
                 }
                 partIds[i] = id;
             }
-            else if (tid != defaults[i] && Player.FindType(tid) == null)
+            else if (tid != defaults[i] && !ctx.Data.IsDefaultPart(ch.TypeId, tid) && Player.FindType(tid) == null)
             {
                 why = $"parte {i}: 0x{tid:X8} sem id, não é a padrão (0x{defaults[i]:X8}) nem dele";
                 return false;

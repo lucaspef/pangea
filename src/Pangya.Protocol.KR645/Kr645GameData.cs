@@ -305,6 +305,10 @@ public sealed class Kr645GameData : IGameData
     public bool Exists(int typeId) => typeIds.Contains(typeId);
 
     /// <summary>CItemManager::GetDefCombo (itemmanager.cpp:2737): 0x08000400 | índice&lt;&lt;18 | slot&lt;&lt;13, se existir no Part.iff.</summary>
+    public bool IsDefaultPart(int characterTypeId, int partTypeId) =>
+        parts.Contains(partTypeId) && ((partTypeId >> 18) & 0xFF) == (characterTypeId & 0xFF)
+        && (partTypeId & 0x1FF) == 0 && (partTypeId & 0xC00) == 0x400;
+
     public int[] DefaultParts(int characterTypeId)
     {
         int idx = characterTypeId & 0xFF;
