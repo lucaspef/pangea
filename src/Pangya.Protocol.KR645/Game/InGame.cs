@@ -90,8 +90,8 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
 
     /// <summary>Tacada do bot já planejada no BotPrepare (o 0x56 do power shot já saiu).</summary>
     BotShot? prepared;
-    /// <summary>Power shot da última tacada do bot (alcance previsto na calibração/memória).</summary>
-    byte lastBotPowerShot;
+    /// <summary>Power shot e tacada especial da última tacada do bot (alcance previsto na calibração/memória).</summary>
+    byte lastBotPowerShot, lastBotSpecial;
     static readonly TimeSpan PowerShotCharge = TimeSpan.FromSeconds(1);
 
     /// <summary>
@@ -105,7 +105,8 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         prepared = shot;
         if (shot.PowerShot == 0) return TimeSpan.Zero;
         All(new PacketWriter(SPowerShot).U32(bot.Guid).U8(shot.PowerShot));
-        Log.Info($"sala {room.Index}: bot arma power shot {shot.PowerShot} (gauge {golfer.Gauge:F0})");
+        Log.Info($"sala {room.Index}: bot arma power shot {shot.PowerShot} (gauge {golfer.Gauge:F0})" +
+                 (shot.Special != 0 ? $" para {(shot.Special == Special.Spike ? "Spike" : "Tomahawk")}" : ""));
         return PowerShotCharge;
     }
 
@@ -121,6 +122,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
             var shot = prepared ?? PlanBot(bot);
             prepared = null;
             lastBotPowerShot = shot.PowerShot;
+            lastBotSpecial = shot.PowerShot > 0 ? shot.Special : Special.None;
             var block = BotBlock(template, shot);
             OnShot(bot, block);
             All(new PacketWriter(SShot).U32(bot.Guid).Bytes(block).Bytes(trailer));
@@ -141,8 +143,9 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
 
     /// <summary>
     /// Bloco de 46 bytes de uma tacada reta (docs/protocolo/SPEC-ingame.md, "Bot"): barra, mira e taco do plano;
-    /// impacto (+0x04) = centro do impacto (+0x21); sem efeito (+0x08/+0x0C), fase 4, sem tacada especial (+0x11),
-    /// +0x26 e +0x2A zerados (o +0x2A soma na mira). +0x15, +0x1D e +0x21 vêm da última tacada humana, se houver.
+    /// impacto (+0x04) = centro do impacto (+0x21); sem efeito (+0x08/+0x0C), fase 4, tacada especial (+0x11) só com power
+    /// shot (Tomahawk/Spike exigem o PS armado pelo 0x56; Spike só com madeira), +0x26 e +0x2A zerados (o +0x2A soma na
+    /// mira). +0x15, +0x1D e +0x21 vêm da última tacada humana, se houver.
     /// </summary>
     public static byte[] BotBlock(byte[]? template, BotShot shot)
     {
@@ -161,6 +164,8 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         BinaryPrimitives.WriteSingleLittleEndian(s[0x0C..], 0f);
         b[0x10] = 4;
         BinaryPrimitives.WriteUInt32LittleEndian(s[0x11..], 0);
+        if (shot.PowerShot > 0 && (shot.Special == Special.Tomahawk || (shot.Special == Special.Spike && shot.Club <= 2)))
+            b[0x11] = shot.Special;
         BinaryPrimitives.WriteSingleLittleEndian(s[0x19..], shot.Aim);
         b[0x25] = (byte)shot.Club;
         BinaryPrimitives.WriteSingleLittleEndian(s[0x26..], 0f);
@@ -213,9 +218,13 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
             shotWind, shotWindDir, r.State, learnDistance: shotByBot || shotClub > 2,
             powerStat: shotByBot ? golfer.PowerStat : 0, driveUp: shotByBot ? golfer.DriveUp : 0,
             powerShot: shotByBot ? lastBotPowerShot : 0);
+        byte special = shotByBot ? lastBotSpecial : Special.None;
+        if (special != Special.None && golfer.Calibration.ObserveSpecial(special, shotClub, shotBar, shotStartX, shotStartZ, r.X, r.Z,
+                shotWind, shotWindDir, r.State, golfer.PowerStat, golfer.DriveUp, lastBotPowerShot))
+            Log.Info($"sala {room.Index}: alcance da especial 0x{special:X2} do bot agora ×{golfer.Calibration.SpecialFactor(special):F2}");
         // memória do buraco para o bot: onde a tacada devia cair (mira × distância prevista) e onde parou
         float planned = ShotModel.Distance(shotByBot ? ShotModel.RangeYards(shotClub, golfer.PowerStat, driveUp: golfer.DriveUp, powerShot: lastBotPowerShot)
-            : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor;
+            : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor * golfer.Calibration.SpecialFactor(special);
         var (ux, uz) = ShotModel.Direction(shotAim);
         golfer.Observe(Game.HoleIndex, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
             r.State, putt: shotClub >= ShotModel.Putter1);

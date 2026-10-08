@@ -97,6 +97,43 @@ public class BotPowerShotTests
         for (int i = 0; i < 9; i++) normal.ShotDone(new BotShot(0, 1, 0));
         Assert.Equal(1, normal.Plan(0, 0, 0, 248 * Y, 0, 0).PowerShot);      // normal: só o simples
     }
+
+    static BotGolfer Charged(BotLevel level)
+    {
+        var g = BotGolfer.For(level, new Random(1));
+        for (int i = 0; i < 9; i++) g.ShotDone(new BotShot(0, 1, 0));       // gauge 99
+        return g;
+    }
+
+    [Fact]
+    public void TomahawkOnlyWhenTheBiggestPowerShotDoesNotReach()
+    {
+        var hard = Charged(BotLevel.Hard);
+        Assert.Equal(Special.None, hard.Plan(0, 0, 0, 248 * Y, 0, 0).Special);   // o duplo alcança
+        var s = hard.Plan(0, 0, 0, 290 * Y, 0, 0);
+        Assert.Equal((ShotModel.Driver, (byte)2, Special.Tomahawk), (s.Club, s.PowerShot, s.Special));
+        // alcance estimado 250 × 1,25 = 312,5 jd: 290 jd pede ~93 % da barra (precisão 0,93 → erro pequeno)
+        Assert.InRange(s.Power, 0.85f, 1f);
+        Assert.Equal(Special.None, Charged(BotLevel.Normal).Plan(0, 0, 0, 290 * Y, 0, 0).Special);
+        Assert.Equal(Special.None, hard.Plan(0, 0, 0, 290 * Y, 0, 0, cautious: true).Special);   // depois de água: 2 tacos a menos
+    }
+
+    [Fact]
+    public void SpecialRangeIsLearnedAndTheLongerOneIsUsed()
+    {
+        var vh = Charged(BotLevel.VeryHard);
+        Assert.Equal(Special.Tomahawk, vh.Plan(0, 0, 0, 300 * Y, 0, 0).Special);   // fatores iguais: Tomahawk
+        var c = vh.Calibration;
+        // Spike foi 50 % além da tacada normal com PS duplo (250 jd → 375 jd na barra cheia)
+        for (int i = 0; i < 10; i++)
+            Assert.True(c.ObserveSpecial(Special.Spike, 0, ShotModel.BarOf(1), 0, 0, 0, 375 * Y, 0, 0, 2, 0, 0, 2));
+        Assert.Equal(1.5f, c.SpecialFactor(Special.Spike), 1);
+        Assert.Equal(Special.InitialFactor, c.SpecialFactor(Special.Tomahawk));
+        Assert.Equal(1f, c.DistanceFactor);                                          // a calibração normal não muda
+        Assert.Equal(Special.Spike, vh.Plan(0, 0, 0, 300 * Y, 0, 0).Special);
+        Assert.False(c.ObserveSpecial(Special.Spike, 0, ShotModel.BarOf(1), 0, 0, 0, 375 * Y, 0, 0, ShotResult.StateWaterOrOut, 0, 0, 2));
+        Assert.False(c.ObserveSpecial(Special.None, 0, ShotModel.BarOf(1), 0, 0, 0, 375 * Y, 0, 0, 2, 0, 0, 2));
+    }
 }
 
 public class BotLevelTests
@@ -315,6 +352,16 @@ public class BotBlockTests
         Assert.Equal(574u, U(b, 0x15));
         Assert.Equal(14057u, U(b, 0x1D));
         Assert.Equal(3, Real[0x10]);                   // o modelo não foi alterado
+    }
+
+    [Fact]
+    public void SpecialFlagGoesInTheBlockOnlyWithPowerShot()
+    {
+        Assert.Equal(Special.Tomahawk, InGameOutput.BotBlock(Real, new BotShot(0, 1, 0, 1, Special.Tomahawk))[0x11]);
+        Assert.Equal(Special.Spike, InGameOutput.BotBlock(Real, new BotShot(0, 1, 0, 2, Special.Spike))[0x11]);
+        Assert.Equal(0, InGameOutput.BotBlock(Real, new BotShot(0, 1, 0, 0, Special.Tomahawk))[0x11]);   // sem PS: nada
+        Assert.Equal(0, InGameOutput.BotBlock(Real, new BotShot(4, 1, 0, 1, Special.Spike))[0x11]);      // Spike só madeira
+        Assert.Equal(4, InGameOutput.BotBlock(Real, new BotShot(0, 1, 0, 1, Special.Tomahawk))[0x10]);   // fase 4
     }
 
     [Fact]

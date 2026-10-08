@@ -64,10 +64,24 @@ public static class ShotModel
 /// <summary>Dificuldade do bot (escolhida na sala com "!bot nível").</summary>
 public enum BotLevel { Easy, Normal, Hard, VeryHard, Impossible }
 
-/// <summary>Tacada escolhida pelo bot: taco (+0x25), força 0..1 (barra = 140 + 360 × força) e mira (+0x19).</summary>
-public readonly record struct BotShot(int Club, float Power, float Aim, byte PowerShot = 0)
+/// <summary>
+/// Tacada escolhida pelo bot: taco (+0x25), força 0..1 (barra = 140 + 360 × força), mira (+0x19), power shot (0x56) e
+/// tacada especial (+0x11: <see cref="Special"/>).
+/// </summary>
+public readonly record struct BotShot(int Club, float Power, float Aim, byte PowerShot = 0, byte Special = 0)
 {
     public float Bar => ShotModel.BarOf(Power);
+}
+
+/// <summary>
+/// Flags de tacada especial do bloco (+0x11; SPEC-bot-especiais.md §2.2). Tomahawk e Spike precisam de power shot armado
+/// e saem com a velocidade ×1,3; Spike só com madeira. (Cobra: rasante para passar sob árvores; o bot não usa.)
+/// </summary>
+public static class Special
+{
+    public const byte None = 0, Tomahawk = 0x10, Cobra = 0x20, Spike = 0x40;
+    /// <summary>Chute inicial do alcance em relação à tacada normal com o mesmo power shot (velocidade ×1,3 ≈ +25 %).</summary>
+    public const float InitialFactor = 1.25f;
 }
 
 /// <summary>
@@ -84,6 +98,29 @@ public sealed class ShotCalibration
     public float DistanceFactor { get; private set; } = 1;
     public float AimOffset { get; private set; }
     public int Samples { get; private set; }
+    readonly Dictionary<byte, float> special = [];
+
+    /// <summary>Alcance de uma tacada especial do bot em relação à normal (aprendido; começa em Special.InitialFactor).</summary>
+    public float SpecialFactor(byte kind) => kind == Special.None ? 1 : special.GetValueOrDefault(kind, Special.InitialFactor);
+
+    /// <summary>
+    /// Tacada especial do bot: só ajusta o fator daquele tipo (a distância real comparada à prevista pela tacada normal
+    /// com o mesmo power shot e o fator de distância atual). Mesmos descartes da <see cref="Observe"/>, faixa 0,9..1,8.
+    /// </summary>
+    public bool ObserveSpecial(byte kind, int club, float bar, float startX, float startZ, float endX, float endZ,
+        byte windStrength, byte windDirection, byte state, int powerStat, int driveUp, int powerShot)
+    {
+        if (kind == Special.None || club >= ShotModel.Putter1 || state is ShotResult.StateWaterOrOut or ShotResult.StateHoled) return false;
+        float d = ShotModel.Distance(ShotModel.RangeYards(club, powerStat, driveUp: driveUp, powerShot: powerShot), bar) * DistanceFactor;
+        var (wx, wz) = ShotModel.Wind(windStrength, windDirection);
+        float ax = endX - startX - wx * ShotModel.WindFactor, az = endZ - startZ - wz * ShotModel.WindFactor;
+        float aLen = MathF.Sqrt(ax * ax + az * az);
+        if (d < MinUnits || aLen < MinUnits) return false;
+        float ratio = aLen / d, f = SpecialFactor(kind);
+        if (ratio is < 0.6f or > 2.2f) return false;
+        special[kind] = Math.Clamp(f + Alpha * (ratio - f), 0.9f, 1.8f);
+        return true;
+    }
 
     /// <summary>Uma tacada e onde a bola parou. false = descartada.</summary>
     public bool Observe(int club, float bar, float aim, float startX, float startZ, float endX, float endZ,
@@ -118,8 +155,12 @@ public sealed class ShotCalibration
 ///   Assim nunca repete a tacada que já falhou;
 /// - erro aleatório de mira e força conforme <see cref="Accuracy"/> (1 = perfeito).
 /// </summary>
-public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind = true, bool remembers = true, int maxPowerShot = 0)
+public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind = true, bool remembers = true, int maxPowerShot = 0,
+    byte specials = Special.None)
 {
+    /// <summary>Tacadas especiais que o nível permite (flags de <see cref="Special"/>).</summary>
+    public byte Specials { get; } = specials;
+
     /// <summary>
     /// Gauge de power shot do bot, espelhando o que cada cliente calcula (SPEC-ingame "Gauge"): tacada PangYa (fase 4,
     /// a do bot) sem power shot +12, power shot −33 (simples) / −66 (duplo), estouro de tempo −30; entre 0 e 99.
@@ -146,9 +187,9 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     public static BotGolfer For(BotLevel level, Random rng, float normalAccuracy = 0.85f) => level switch
     {
         BotLevel.Easy => new(rng, 0.55f, readsWind: false, remembers: false),
-        BotLevel.Hard => new(rng, 0.93f, maxPowerShot: 2),
-        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2),
-        BotLevel.Impossible => new(rng, 1f, maxPowerShot: 2),
+        BotLevel.Hard => new(rng, 0.93f, maxPowerShot: 2, specials: Special.Tomahawk),
+        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike),
+        BotLevel.Impossible => new(rng, 1f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike),
         _ => new(rng, normalAccuracy, maxPowerShot: 1),
     };
 
@@ -229,8 +270,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// </summary>
     (float X, float Z) Target(float x, float z, float pinX, float pinZ)
     {
-        float reach = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp, powerShot: AvailablePowerShot())
-            * Calibration.DistanceFactor * ShotModel.UnitsPerYard;
+        float reach = MaxReachYards() * ShotModel.UnitsPerYard;
         float dist = Dist(x, z, pinX, pinZ);
         var direct = dist <= reach ? (pinX, pinZ) : (x + (pinX - x) * reach / dist, z + (pinZ - z) * reach / dist);
         if (hazards.Count == 0 || !NearHazard(direct.Item1, direct.Item2)) return direct;
@@ -259,6 +299,26 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     static readonly (float Turn, float Frac)[] LayUps =
         [(0, 0.7f), (0.3f, 0.8f), (-0.3f, 0.8f), (0, 0.5f), (0.6f, 0.7f), (-0.6f, 0.7f), (0.3f, 0.5f), (-0.3f, 0.5f)];
 
+    /// <summary>Alcance do driver com o maior power shot disponível e a melhor especial permitida (calibrado).</summary>
+    float MaxReachYards()
+    {
+        int ps = AvailablePowerShot();
+        float r = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp, powerShot: ps) * Calibration.DistanceFactor;
+        return ps > 0 ? r * Calibration.SpecialFactor(BestSpecial()) : r;
+    }
+
+    /// <summary>A especial de maior alcance que o nível permite (pelo fator aprendido; empate = Tomahawk).</summary>
+    byte BestSpecial()
+    {
+        byte best = Special.None;
+        float f = 1;
+        foreach (var k in SpecialOrder)
+            if ((Specials & k) != 0 && Calibration.SpecialFactor(k) > f) (best, f) = (k, Calibration.SpecialFactor(k));
+        return best;
+    }
+
+    static readonly byte[] SpecialOrder = [Special.Tomahawk, Special.Spike];
+
     /// <summary>Planeja a tacada da bola (x, z) para a bandeira (pinX, pinZ) com o vento atual. hole = índice do buraco (memória).</summary>
     public BotShot Plan(float x, float z, float pinX, float pinZ, byte windStrength, byte windDirection, bool cautious = false, int hole = -1)
     {
@@ -274,7 +334,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         }
         float power, aim;
         int club;
-        byte ps = 0;
+        byte ps = 0, special = Special.None;
         if (yards <= PuttYards)
         {
             club = ShotModel.Putter1;
@@ -290,13 +350,16 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
             float need = MathF.Sqrt((dx - wx) * (dx - wx) + (dz - wz) * (dz - wz)) / ShotModel.UnitsPerYard;   // já com o vento
             club = ClubFor(need / factor);
             if (cautious) club = Math.Min(club + 2, ShotModel.Iron9);
-            // power shot só no driver quando nem ele alcança: o menor que resolve (simples antes do duplo)
+            // power shot só no driver quando nem ele alcança: o menor que resolve (simples antes do duplo); se nem o
+            // maior power shot alcança e o nível permite, Tomahawk/Spike (precisam do power shot armado)
             if (club == ShotModel.Driver && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp))
             {
                 int avail = AvailablePowerShot();
                 ps = avail >= 1 && need / factor <= ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: 1) ? (byte)1 : (byte)avail;
+                if (ps > 0 && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps)) special = BestSpecial();
             }
-            float reach = ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps) * factor;      // alcance real (calibrado)
+            float reach = ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps) * factor
+                * Calibration.SpecialFactor(special);                                                        // alcance real (calibrado)
             if (yards > reach) { dx *= reach / yards; dz *= reach / yards; }    // alvo: até onde o taco alcança
             dx -= wx;
             dz -= wz;
@@ -306,7 +369,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         float miss = 1 - Accuracy;
         aim += (float)(rng.NextDouble() * 2 - 1) * miss * MaxAimError;
         power *= 1 + (float)(rng.NextDouble() * 2 - 1) * miss * MaxPowerError;
-        return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps);
+        return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps, special);
     }
 
     /// <summary>O taco mais curto que alcança (1W..9I); longe demais = driver.</summary>

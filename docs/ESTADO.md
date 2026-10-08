@@ -32,7 +32,9 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - ✅ Níveis `!bot easy|normal|hard|veryhard|impossible`: driver 240/250/260/280/300 jd, controle 30, spin 7/9/11/15/30
   (equipamento real no 0x74, stats pela fórmula do cliente).
 - ✅ Power shot simples/duplo com gauge espelhado (0x56 antes da tacada).
-- ⬜ Tomahawk/Spike/Cobra, efeito/curva, erro por fase/impacto (SPEC-bot-especiais.md).
+- ✅ Tomahawk (hard+) e Spike (very hard+) com power shot quando nem o duplo alcança; alcance aprendido por tipo
+  (começa em ×1,25).
+- ⬜ Cobra, efeito/curva, erro por fase/impacto (SPEC-bot-especiais.md).
 
 ## Itens, loja e economia
 - ✅ Loja (pang/cookie, pacotes), equipamento, armário, upgrades, cards (efeitos que dependem do servidor), mascote.
