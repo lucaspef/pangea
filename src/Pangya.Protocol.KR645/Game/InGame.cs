@@ -88,15 +88,43 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         Log.Info($"sala {room.Index}: fim de jogo ({end.Kind})");
     }
 
+    /// <summary>Tacada do bot já planejada no BotPrepare (o 0x56 do power shot já saiu).</summary>
+    BotShot? prepared;
+    /// <summary>Power shot da última tacada do bot (alcance previsto na calibração/memória).</summary>
+    byte lastBotPowerShot;
+    static readonly TimeSpan PowerShotCharge = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// Planeja a tacada do bot. Com power shot manda S->C 0x56 (u32 guid, u8 tipo) a todos, como faria o 0x15 de um
+    /// jogador: os clientes armam o power shot do bot (sem conferir gauge) antes do 0x53 (SPEC-bot-especiais.md §2.1).
+    /// </summary>
+    public TimeSpan BotPrepare(GamePlayer bot)
+    {
+        if (botPasses) return TimeSpan.Zero;
+        var shot = PlanBot(bot);
+        prepared = shot;
+        if (shot.PowerShot == 0) return TimeSpan.Zero;
+        All(new PacketWriter(SPowerShot).U32(bot.Guid).U8(shot.PowerShot));
+        Log.Info($"sala {room.Index}: bot arma power shot {shot.PowerShot} (gauge {golfer.Gauge:F0})");
+        return PowerShotCharge;
+    }
+
     public void BotTurn(GamePlayer bot)
     {
         if (botPasses)
+        {
             All(new PacketWriter(STimeOut).U32(bot.Guid));         // estouro de tempo: +1 tacada, os clientes confirmam
+            golfer.ShotDone(default, timeOut: true);
+        }
         else
         {
-            var block = BotBlock(template, PlanBot(bot));
+            var shot = prepared ?? PlanBot(bot);
+            prepared = null;
+            lastBotPowerShot = shot.PowerShot;
+            var block = BotBlock(template, shot);
             OnShot(bot, block);
             All(new PacketWriter(SShot).U32(bot.Guid).Bytes(block).Bytes(trailer));
+            golfer.ShotDone(shot);
         }
         Game.BotShoot(bot);
     }
@@ -183,9 +211,10 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         var pin = Game.Holes.TryGetValue(Game.Hole, out var h) ? $" bandeira=({h.PinX:F1},{h.PinZ:F1})" : "";
         bool learned = shotClean && golfer.Calibration.Observe(shotClub, shotBar, shotAim, shotStartX, shotStartZ, r.X, r.Z,
             shotWind, shotWindDir, r.State, learnDistance: shotByBot || shotClub > 2,
-            powerStat: shotByBot ? golfer.PowerStat : 0, driveUp: shotByBot ? golfer.DriveUp : 0);
+            powerStat: shotByBot ? golfer.PowerStat : 0, driveUp: shotByBot ? golfer.DriveUp : 0,
+            powerShot: shotByBot ? lastBotPowerShot : 0);
         // memória do buraco para o bot: onde a tacada devia cair (mira × distância prevista) e onde parou
-        float planned = ShotModel.Distance(shotByBot ? ShotModel.RangeYards(shotClub, golfer.PowerStat, driveUp: golfer.DriveUp)
+        float planned = ShotModel.Distance(shotByBot ? ShotModel.RangeYards(shotClub, golfer.PowerStat, driveUp: golfer.DriveUp, powerShot: lastBotPowerShot)
             : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor;
         var (ux, uz) = ShotModel.Direction(shotAim);
         golfer.Observe(Game.HoleIndex, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,

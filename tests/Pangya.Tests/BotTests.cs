@@ -60,6 +60,45 @@ public class BotHoleMemoryTests
     }
 }
 
+public class BotPowerShotTests
+{
+    const float Y = ShotModel.UnitsPerYard;
+
+    [Fact]
+    public void GaugeFollowsTheClientRules()
+    {
+        var g = new BotGolfer(new Random(1), 1, maxPowerShot: 2);
+        for (int i = 0; i < 3; i++) g.ShotDone(new BotShot(0, 1, 0));
+        Assert.Equal(36, g.Gauge);                                          // 3 × PangYa (+12)
+        g.ShotDone(new BotShot(0, 1, 0, PowerShot: 1));
+        Assert.Equal(3, g.Gauge);                                           // −33
+        g.ShotDone(default, timeOut: true);
+        Assert.Equal(0, g.Gauge);                                           // −30, não fica negativo
+        for (int i = 0; i < 20; i++) g.ShotDone(new BotShot(0, 1, 0));
+        Assert.Equal(BotGolfer.GaugeMax, g.Gauge);
+    }
+
+    [Fact]
+    public void UsesTheSmallestPowerShotThatReachesAndOnlyWithGauge()
+    {
+        var g = new BotGolfer(new Random(1), 1, maxPowerShot: 2);
+        Assert.Equal(0, g.Plan(0, 0, 0, 238 * Y, 0, 0).PowerShot);          // sem gauge: sem power shot
+        for (int i = 0; i < 6; i++) g.ShotDone(new BotShot(0, 1, 0));       // gauge 72
+        var s1 = g.Plan(0, 0, 0, 238 * Y, 0, 0);
+        Assert.Equal((ShotModel.Driver, (byte)1), (s1.Club, s1.PowerShot));  // 230 não chega; 240 (simples) chega
+        Assert.Equal(2, g.Plan(0, 0, 0, 248 * Y, 0, 0).PowerShot);           // precisa do duplo (250)
+        Assert.Equal(0, g.Plan(0, 0, 0, 200 * Y, 0, 0).PowerShot);           // o driver alcança: não gasta gauge
+        Assert.Equal(240f, ShotModel.RangeYards(ShotModel.Driver, powerShot: 1));
+        Assert.Equal(180f, ShotModel.RangeYards(4, powerShot: 1));             // ferros também ganham (3I: 170 + 10)
+        var easy = BotGolfer.For(BotLevel.Easy, new Random(1));
+        for (int i = 0; i < 9; i++) easy.ShotDone(new BotShot(0, 1, 0));
+        Assert.Equal(0, easy.Plan(0, 0, 0, 238 * Y, 0, 0).PowerShot);        // easy nunca usa
+        var normal = BotGolfer.For(BotLevel.Normal, new Random(1));
+        for (int i = 0; i < 9; i++) normal.ShotDone(new BotShot(0, 1, 0));
+        Assert.Equal(1, normal.Plan(0, 0, 0, 248 * Y, 0, 0).PowerShot);      // normal: só o simples
+    }
+}
+
 public class BotLevelTests
 {
     const float Y = ShotModel.UnitsPerYard;

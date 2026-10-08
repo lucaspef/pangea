@@ -18,9 +18,13 @@ public static class ShotModel
     /// Alcance do taco em jardas. Putters: "putt longo" (+20 jardas) fora do green ou a 15+ jardas da bandeira.
     /// PW/SW têm alcances especiais perto da bandeira que não são modelados (o bot não usa esses tacos).
     /// </summary>
-    public static float RangeYards(int club, int powerStat = 0, float yardsToPin = 0, bool onGreen = true, int driveUp = 0)
+    /// <summary>Jardas a mais por tipo de power shot (CClub::GetPowerShotFactor: nenhum, simples, duplo, item).</summary>
+    public static readonly int[] PowerShotYards = [0, 10, 20, 15];
+
+    public static float RangeYards(int club, int powerStat = 0, float yardsToPin = 0, bool onGreen = true, int driveUp = 0, int powerShot = 0)
     {
         float r = Ranges[Math.Clamp(club, 0, Ranges.Length - 1)];
+        if (club < Putter1) r += PowerShotYards[Math.Clamp(powerShot, 0, 3)];        // madeiras e ferros
         if (club <= LastWood) r += 2 * powerStat;                   // ferros não usam a força (club.c GetRange)
         if (club < Putter1) r += driveUp;                           // anéis (DriveUp): todo taco menos putter
         if (club >= Putter1 && (!onGreen || yardsToPin >= 15)) r += 20;
@@ -61,7 +65,7 @@ public static class ShotModel
 public enum BotLevel { Easy, Normal, Hard, VeryHard, Impossible }
 
 /// <summary>Tacada escolhida pelo bot: taco (+0x25), força 0..1 (barra = 140 + 360 × força) e mira (+0x19).</summary>
-public readonly record struct BotShot(int Club, float Power, float Aim)
+public readonly record struct BotShot(int Club, float Power, float Aim, byte PowerShot = 0)
 {
     public float Bar => ShotModel.BarOf(Power);
 }
@@ -83,10 +87,10 @@ public sealed class ShotCalibration
 
     /// <summary>Uma tacada e onde a bola parou. false = descartada.</summary>
     public bool Observe(int club, float bar, float aim, float startX, float startZ, float endX, float endZ,
-        byte windStrength, byte windDirection, byte state, bool learnDistance, int powerStat = 0, int driveUp = 0)
+        byte windStrength, byte windDirection, byte state, bool learnDistance, int powerStat = 0, int driveUp = 0, int powerShot = 0)
     {
         if (club >= ShotModel.Putter1 || state is ShotResult.StateWaterOrOut or ShotResult.StateHoled) return false;
-        float d = ShotModel.Distance(ShotModel.RangeYards(club, powerStat, driveUp: driveUp), bar);                       // previsto, na mira
+        float d = ShotModel.Distance(ShotModel.RangeYards(club, powerStat, driveUp: driveUp, powerShot: powerShot), bar);                       // previsto, na mira
         var (wx, wz) = ShotModel.Wind(windStrength, windDirection);
         float ax = endX - startX - wx * ShotModel.WindFactor, az = endZ - startZ - wz * ShotModel.WindFactor;   // real sem o vento
         float aLen = MathF.Sqrt(ax * ax + az * az);
@@ -114,8 +118,27 @@ public sealed class ShotCalibration
 ///   Assim nunca repete a tacada que já falhou;
 /// - erro aleatório de mira e força conforme <see cref="Accuracy"/> (1 = perfeito).
 /// </summary>
-public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind = true, bool remembers = true)
+public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind = true, bool remembers = true, int maxPowerShot = 0)
 {
+    /// <summary>
+    /// Gauge de power shot do bot, espelhando o que cada cliente calcula (SPEC-ingame "Gauge"): tacada PangYa (fase 4,
+    /// a do bot) sem power shot +12, power shot −33 (simples) / −66 (duplo), estouro de tempo −30; entre 0 e 99.
+    /// </summary>
+    public float Gauge { get; private set; }
+    public const float GaugeMax = 99, GaugePerPangya = 12, GaugeTimeOut = 30;
+    /// <summary>0 = nunca usa power shot, 1 = só simples, 2 = simples ou duplo.</summary>
+    public int MaxPowerShot { get; } = Math.Clamp(maxPowerShot, 0, 2);
+
+    /// <summary>Depois que a tacada do bot saiu (ou ele estourou o tempo): atualiza o gauge.</summary>
+    public void ShotDone(BotShot shot, bool timeOut = false)
+    {
+        float g = Gauge + (timeOut ? -GaugeTimeOut : shot.PowerShot switch { 1 => -33, 2 => -66, _ => GaugePerPangya });
+        Gauge = Math.Clamp(g, 0, GaugeMax);
+    }
+
+    /// <summary>Power shot que o bot pode usar agora (pelo nível e pelo gauge).</summary>
+    int AvailablePowerShot() => MaxPowerShot >= 2 && Gauge >= 66 ? 2 : MaxPowerShot >= 1 && Gauge >= 33 ? 1 : 0;
+
     /// <summary>
     /// Bot de um nível: precisão (erro de mira/força), se compensa o vento e se usa a memória do buraco.
     /// Normal usa a precisão da configuração (Game.BotAccuracy).
@@ -123,10 +146,10 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     public static BotGolfer For(BotLevel level, Random rng, float normalAccuracy = 0.85f) => level switch
     {
         BotLevel.Easy => new(rng, 0.55f, readsWind: false, remembers: false),
-        BotLevel.Hard => new(rng, 0.93f),
-        BotLevel.VeryHard => new(rng, 0.98f),
-        BotLevel.Impossible => new(rng, 1f),
-        _ => new(rng, normalAccuracy),
+        BotLevel.Hard => new(rng, 0.93f, maxPowerShot: 2),
+        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2),
+        BotLevel.Impossible => new(rng, 1f, maxPowerShot: 2),
+        _ => new(rng, normalAccuracy, maxPowerShot: 1),
     };
 
     /// <summary>Nível pelo nome do chat (pt/en, sem acento); null = desconhecido.</summary>
@@ -206,7 +229,8 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// </summary>
     (float X, float Z) Target(float x, float z, float pinX, float pinZ)
     {
-        float reach = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp) * Calibration.DistanceFactor * ShotModel.UnitsPerYard;
+        float reach = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp, powerShot: AvailablePowerShot())
+            * Calibration.DistanceFactor * ShotModel.UnitsPerYard;
         float dist = Dist(x, z, pinX, pinZ);
         var direct = dist <= reach ? (pinX, pinZ) : (x + (pinX - x) * reach / dist, z + (pinZ - z) * reach / dist);
         if (hazards.Count == 0 || !NearHazard(direct.Item1, direct.Item2)) return direct;
@@ -250,6 +274,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         }
         float power, aim;
         int club;
+        byte ps = 0;
         if (yards <= PuttYards)
         {
             club = ShotModel.Putter1;
@@ -265,7 +290,13 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
             float need = MathF.Sqrt((dx - wx) * (dx - wx) + (dz - wz) * (dz - wz)) / ShotModel.UnitsPerYard;   // já com o vento
             club = ClubFor(need / factor);
             if (cautious) club = Math.Min(club + 2, ShotModel.Iron9);
-            float reach = ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp) * factor;      // alcance real (calibrado)
+            // power shot só no driver quando nem ele alcança: o menor que resolve (simples antes do duplo)
+            if (club == ShotModel.Driver && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp))
+            {
+                int avail = AvailablePowerShot();
+                ps = avail >= 1 && need / factor <= ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: 1) ? (byte)1 : (byte)avail;
+            }
+            float reach = ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps) * factor;      // alcance real (calibrado)
             if (yards > reach) { dx *= reach / yards; dz *= reach / yards; }    // alvo: até onde o taco alcança
             dx -= wx;
             dz -= wz;
@@ -275,7 +306,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         float miss = 1 - Accuracy;
         aim += (float)(rng.NextDouble() * 2 - 1) * miss * MaxAimError;
         power *= 1 + (float)(rng.NextDouble() * 2 - 1) * miss * MaxPowerError;
-        return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim);
+        return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps);
     }
 
     /// <summary>O taco mais curto que alcança (1W..9I); longe demais = driver.</summary>

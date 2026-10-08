@@ -13,6 +13,11 @@ public interface IGameOutput
     void PlayerLeft(GamePlayer p);
     /// <summary>Vez do bot: a camada de protocolo monta e manda a tacada e chama <see cref="StrokeGame.BotShoot"/>.</summary>
     void BotTurn(GamePlayer bot);
+    /// <summary>
+    /// Antes da tacada do bot: planeja e, se for usar power shot, avisa os clientes (0x56) e devolve quanto esperar
+    /// pela animação de carga antes do <see cref="BotTurn"/>.
+    /// </summary>
+    TimeSpan BotPrepare(GamePlayer bot) => TimeSpan.Zero;
 }
 
 /// <summary>Estado de um participante na partida.</summary>
@@ -341,7 +346,13 @@ public class StrokeGame : RoomGame
         Later(botDelay, () =>
         {
             if (Turn != bot || ShotOpen || !HasHumans()) return;
-            Out.BotTurn(bot);
+            var charge = Out.BotPrepare(bot);
+            if (charge <= TimeSpan.Zero) { Out.BotTurn(bot); return; }
+            Later(charge, () =>                                          // power shot: espera a animação de carga
+            {
+                if (Turn != bot || ShotOpen || !HasHumans()) return;
+                Out.BotTurn(bot);
+            });
         });
     }
 
