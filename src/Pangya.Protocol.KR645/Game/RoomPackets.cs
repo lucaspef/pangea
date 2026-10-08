@@ -34,6 +34,9 @@ public static class RoomPackets
         return i;
     }
 
+    /// <summary>u16 do 0x46/0x7A: no lounge a avatar task só aceita 0xFFFF; nas outras salas, o índice da sala.</summary>
+    public static ushort SlotKey(Room r) => r.Settings.Mode == GameMode.AvatarChat ? (ushort)0xFFFF : (ushort)r.Index;
+
     public static sSlotInfo SlotInfo(RoomPlayer p)
     {
         var s = new sSlotInfo
@@ -44,6 +47,11 @@ public static class RoomPackets
         };
         Cp949.Write(s.sNick, p.Player.Nickname);
         s.bTeam = p.Team;
+        s.location[0] = p.X;                                                   // lounge: posição, ângulo, pose e estado
+        s.location[1] = p.Z;
+        s.location[2] = p.Angle;
+        s.action = p.Action;
+        s.state = p.State;
         s.bMaster = p.Master ? 1u : 0u;
         s.bReady = p.Ready ? 1u : 0u;
         return s;
@@ -92,7 +100,7 @@ public static class RoomPackets
     public static PacketWriter SlotsFull(Room r)
     {
         bool mass = IsMassGame(r.Settings.Mode);
-        var w = new PacketWriter(SSlots, 16 + r.Players.Count * (0x152 + 0x1BC)).U8(0).U16((ushort)r.Index).U8((byte)r.Players.Count);
+        var w = new PacketWriter(SSlots, 16 + r.Players.Count * (0x152 + 0x1BC)).U8(0).U16(SlotKey(r)).U8((byte)r.Players.Count);
         foreach (var p in r.Players)
         {
             w.Struct(SlotInfo(p));
@@ -103,12 +111,12 @@ public static class RoomPackets
 
     public static PacketWriter SlotAdd(Room r, RoomPlayer p)
     {
-        var w = new PacketWriter(SSlots, 0x320).U8(1).U16((ushort)r.Index).Struct(SlotInfo(p));
+        var w = new PacketWriter(SSlots, 0x320).U8(1).U16(SlotKey(r)).Struct(SlotInfo(p));
         return IsMassGame(r.Settings.Mode) ? w : w.Struct(Character(p));
     }
 
-    public static PacketWriter SlotRemove(Room r, uint guid) => new PacketWriter(SSlots).U8(2).U16((ushort)r.Index).U32(guid);
-    public static PacketWriter SlotUpdate(Room r, RoomPlayer p) => new PacketWriter(SSlots).U8(3).U16((ushort)r.Index).U32(p.Guid).Struct(SlotInfo(p));
+    public static PacketWriter SlotRemove(Room r, uint guid) => new PacketWriter(SSlots).U8(2).U16(SlotKey(r)).U32(guid);
+    public static PacketWriter SlotUpdate(Room r, RoomPlayer p) => new PacketWriter(SSlots).U8(3).U16(SlotKey(r)).U32(p.Guid).Struct(SlotInfo(p));
 
     static sCharacterInfo Character(RoomPlayer p) => p.Player.Character is { } c ? PlayerStructs.Character(c) : default;
 

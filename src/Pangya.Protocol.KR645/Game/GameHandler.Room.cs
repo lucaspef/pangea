@@ -44,7 +44,8 @@ public sealed partial class GameHandler
             case CTeam: SetTeam(p.U8()); return true;
             case CChat: await ChatAsync(p.Str(32), p.Str(256)); return true;
             case CGameOptions: p.Skip(p.Remaining); return true;           // opções e macros: sem resposta
-            case CRoomAction: ResendSlotsOnce(); return true;
+            case CRoomAction: RoomAction(p); return true;
+            case CAvatarData: p.Skip(p.Remaining); return true;            // lounge: pedido de dados do avatar (opcional)
             default: return false;
         }
     }
@@ -113,6 +114,7 @@ public sealed partial class GameHandler
         conn.Send(RoomPackets.EnterRoom(r));
         conn.Send(RoomPackets.Settings(r));
         conn.Send(RoomPackets.SlotsFull(r));
+        if (IsLounge(r)) StartLoungeSync(r);                                // a avatar task ainda não existia: reenvia
         Lobby(RoomPackets.RoomList(1, r));
     }
 
@@ -134,7 +136,7 @@ public sealed partial class GameHandler
             else
             {
                 InGameOutput.Broadcast(r, RoomPackets.SlotRemove(r, rp.Guid));
-                if (newMaster != null) InGameOutput.Broadcast(r, new PacketWriter(RoomPackets.SNewMaster).U32(newMaster.Guid).U16((ushort)r.Index));
+                if (newMaster != null) InGameOutput.Broadcast(r, new PacketWriter(RoomPackets.SNewMaster).U32(newMaster.Guid).U16(RoomPackets.SlotKey(r)));
                 Lobby(RoomPackets.RoomList(3, r));
             }
         }
@@ -204,7 +206,7 @@ public sealed partial class GameHandler
         {
             var r = room;
             if (r == null || r.State != RoomState.Waiting) return;
-            if (r.Find(this) is not { Master: true }) { conn.Send(new PacketWriter(RoomPackets.SStartFailed).U8(1)); return; }
+            if (r.Find(this) is not { Master: true } || IsLounge(r)) { conn.Send(new PacketWriter(RoomPackets.SStartFailed).U8(1)); return; }
             RoomManager.PrepareStart(r, Random.Shared, Rooms.Courses);
             var cfg = ctx.World.Config;
             var botDelay = TimeSpan.FromSeconds(cfg.BotDelaySeconds);
@@ -305,13 +307,11 @@ public sealed partial class GameHandler
     /// 0x63 é o primeiro pacote que o cliente manda de dentro da sala: o avatar só é desenhado quando a tela da sala
     /// existe (lobbymain.cpp:3189/7149), então a lista de slots é reenviada uma vez.
     /// </summary>
-    void ResendSlotsOnce()
+    /// <summary>Primeiro 0x63 de uma sala normal: reenvia os slots uma vez (chamado sob o lock).</summary>
+    void ResendSlotsOnceLocked()
     {
-        lock (Rooms.Sync)
-        {
-            if (room == null || room.State != RoomState.Waiting || slotsResent) return;
-            slotsResent = true;
-            conn.Send(RoomPackets.SlotsFull(room));
-        }
+        if (room == null || room.State != RoomState.Waiting || slotsResent) return;
+        slotsResent = true;
+        conn.Send(RoomPackets.SlotsFull(room));
     }
 }

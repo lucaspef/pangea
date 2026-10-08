@@ -36,7 +36,7 @@ public sealed class RoomSettings
         Password = Password.Length > 15 ? Password[..15] : Password;
         Holes = Math.Clamp(Holes, (byte)1, (byte)18);
         HoleType = HoleType <= 3 ? HoleType : (byte)0;
-        MaxPlayers = Math.Clamp(MaxPlayers, (byte)1, MassGame.IsMass(Mode) ? (byte)30 : (byte)4);   // torneio/approach: até 30
+        MaxPlayers = Math.Clamp(MaxPlayers, (byte)1, MassGame.IsMass(Mode) || Mode == GameMode.AvatarChat ? (byte)30 : (byte)4);   // torneio/approach/lounge: até 30
         ShotTimeMs = Math.Min(ShotTimeMs, 600_000);
         GameTimeMs = Math.Min(GameTimeMs, 7_200_000);
     }
@@ -55,6 +55,12 @@ public sealed class RoomPlayer
     public bool Master { get; set; }
     public bool Ready { get; set; }
     public byte Team { get; set; }
+    // lounge (modo 2): onde o avatar está e o que está fazendo, para quem entra depois (sSlotInfo.location/action/state)
+    public float X { get; set; }
+    public float Z { get; set; }
+    public float Angle { get; set; }
+    public uint Action { get; set; }
+    public uint State { get; set; }
 }
 
 public sealed class Room
