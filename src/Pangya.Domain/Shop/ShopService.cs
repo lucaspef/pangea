@@ -186,8 +186,6 @@ public sealed class ShopService(IPlayerStore store, IGameData data)
                 granted.Add(new Granted(tid, c.Id, c.Quantity));
                 return ShopCode.Ok;
             }
-            case ItemGroup.AuxPart:
-                return ShopCode.Fail;                                       // grupo não vendido no KR 645
             case ItemGroup.Ball or ItemGroup.Usable:                        // empilha; Count = total novo
             {
                 var it = d.FindType(tid);
@@ -196,7 +194,7 @@ public sealed class ShopService(IPlayerStore store, IGameData data)
                 granted.Add(new Granted(tid, it.Id, it.Quantity));
                 return ShopCode.Ok;
             }
-            default:
+            default:                                                        // peça, club set, anel (AuxPart)...: um de cada
             {
                 if (d.FindType(tid) != null) return ShopCode.AlreadyOwned;
                 var it = await d.AddAsync(tid, 1);
