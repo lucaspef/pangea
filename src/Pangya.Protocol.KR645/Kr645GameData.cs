@@ -8,13 +8,18 @@ public sealed class Kr645GameData : IGameData
 {
     readonly HashSet<int> typeIds = [];
     readonly HashSet<int> parts = [];
+    readonly Dictionary<int, UccPartInfo> ucc = [];
 
     public Kr645Iff Iff { get; }
 
     public Kr645GameData(Kr645Iff iff)
     {
         Iff = iff;
-        foreach (var p in iff.Parts) parts.Add((int)p.c.TypeId);
+        foreach (var p in iff.Parts)
+        {
+            parts.Add((int)p.c.TypeId);
+            if (p.Category is 7 or 8 or 9) ucc[(int)p.c.TypeId] = UccInfo(p);
+        }
         typeIds.UnionWith(parts);
         foreach (var x in iff.Characters) typeIds.Add((int)x.c.TypeId);
         foreach (var x in iff.Clubs) typeIds.Add((int)x.c.TypeId);
@@ -303,6 +308,26 @@ public sealed class Kr645GameData : IGameData
     }
 
     public bool Exists(int typeId) => typeIds.Contains(typeId);
+
+    public UccPartInfo? UccPart(int typeId) => ucc.GetValueOrDefault(typeId);
+
+    /// <summary>IsUccClothes / IsSameClothes (ucclibrary.c): textura base e a chave Data + Tex[0..2] + OrgTex[0..2].</summary>
+    static UccPartInfo UccInfo(Iff.sPart p)
+    {
+        var key = new System.Text.StringBuilder();
+        var data = p.Data;
+        key.Append(Core.Text.Cp949.Read(data));
+        string tex0 = "";
+        for (int i = 0; i < 3; i++)
+        {
+            var t = p.Tex[i];
+            var o = p.OrgTex[i];
+            string ts = Core.Text.Cp949.Read(t);
+            if (i == 0) tex0 = ts;
+            key.Append('|').Append(ts).Append('|').Append(Core.Text.Cp949.Read(o));
+        }
+        return new UccPartInfo(p.Category, tex0, key.ToString().ToLowerInvariant());
+    }
 
     /// <summary>CItemManager::GetDefCombo (itemmanager.cpp:2737): 0x08000400 | índice&lt;&lt;18 | slot&lt;&lt;13, se existir no Part.iff.</summary>
     public bool IsDefaultPart(int characterTypeId, int partTypeId) =>

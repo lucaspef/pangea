@@ -85,7 +85,50 @@ public static class WebServer
                 ? Results.File(path, "image/png") : Results.NotFound();
         });
 
-        new AdminPanel(services, world).Map(app);                          // /admin (só com Web.AdminEnabled)
+        // Self Design (SPEC-self-design.md §4): o desenho é um zip com os bitmaps (front/back/icon), mesmo com ".jpg"
+        string uccDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(cfg.Data.IffPath)) ?? ".", "UCC", "clothes");
+        app.MapPost("/UCC/upload_one.asp", async (HttpContext ctx) =>
+        {
+            var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "?";
+            if (ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+                limit.MaxRequestBodySize = UccMaxBytes + 64 * 1024;
+            var form = ctx.Request.HasFormContentType ? await ctx.Request.ReadFormAsync() : null;
+            var file = form?.Files.GetFile("uccfile");
+            long.TryParse(form?["uid"].ToString(), out long uid);
+            int.TryParse(form?["item_id"].ToString(), out int item);
+            string key = form?["key"].ToString() ?? "";
+            string sent = file?.FileName ?? "";
+            sent = sent[(Math.Max(sent.LastIndexOf('\\'), sent.LastIndexOf('/')) + 1)..].ToLowerInvariant();   // caminho do Windows
+            string err = "";
+            string? expected = world?.Ucc.Consume(uid, item, key, DateTime.UtcNow);
+            if (world == null) err = "ERR_SRVVAR";
+            else if (expected == null) err = "ERR_KEY";
+            else if (form?["ucctype"].ToString() != "clothes" || file == null || sent != expected || !Pangya.Domain.Players.Ucc.ValidFileName(expected)) err = "ERR_UCC";
+            byte[] zip = [];
+            if (err == "")
+            {
+                using var ms = new MemoryStream();
+                if (file!.Length is > 0 and <= UccMaxBytes) await file.CopyToAsync(ms);
+                zip = ms.ToArray();
+                if (!ValidUccZip(zip)) err = "ERR_FILE";
+            }
+            Log.Info($"WEB self design uid={uid} item={item} arquivo={sent} ({zip.Length} bytes) ip={ip}: {(err == "" ? "ok" : err)}");
+            if (err != "") return Results.Content(err, "text/plain");
+            string dir = Path.Combine(uccDir, expected![..1]);
+            Directory.CreateDirectory(dir);
+            await File.WriteAllBytesAsync(Path.Combine(dir, expected), zip);
+            world!.Ucc.MarkUploaded(uid, item, DateTime.UtcNow);
+            return Results.Content("PANGYA_UPDATE_OK", "text/plain");
+        });
+        app.MapGet("/UCC/UCC_ONE/clothes/{d}/{name}", (string d, string name) =>
+        {
+            name = name.ToLowerInvariant();
+            bool ok = d.Length == 1 && char.IsAsciiLetterOrDigit(d[0]) && Pangya.Domain.Players.Ucc.ValidFileName(name);
+            string path = ok ? Path.Combine(uccDir, d.ToLowerInvariant(), name) : "";
+            return ok && File.Exists(path) ? Results.File(path, "application/octet-stream") : Results.NotFound();
+        });
+
+        new AdminPanel(services, world).Map(app);                         // /admin (só com Web.AdminEnabled)
 
         app.MapGet("/register", () => Html(RegisterPage.Render(null, false)));
         app.MapPost("/register", async (HttpContext ctx) =>
@@ -107,6 +150,29 @@ public static class WebServer
             }, status == RegisterStatus.Ok));
         });
         return app;
+    }
+
+    /// <summary>Tamanho máximo do zip do Self Design (bitmaps crus comprimidos: algumas centenas de KB).</summary>
+    public const int UccMaxBytes = 2 * 1024 * 1024;
+
+    /// <summary>Zip do Self Design: tem "front" e "back", nada fora disso além de "icon", sem entrada gigante.</summary>
+    public static bool ValidUccZip(byte[] zip)
+    {
+        if (zip.Length < 22) return false;
+        try
+        {
+            using var z = new System.IO.Compression.ZipArchive(new MemoryStream(zip), System.IO.Compression.ZipArchiveMode.Read);
+            bool front = false, back = false;
+            foreach (var e in z.Entries)
+            {
+                if (e.Length > 4 * 1024 * 1024) return false;
+                if (e.FullName == "front") front = true;
+                else if (e.FullName == "back") back = true;
+                else if (e.FullName != "icon") return false;
+            }
+            return front && back;
+        }
+        catch (InvalidDataException) { return false; }
     }
 
     static IResult Xml(string xml) => Results.Content(xml, "text/xml");

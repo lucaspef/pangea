@@ -61,6 +61,8 @@ public sealed class GameWorld(GameConfig config)
         return list;
     }
     public int OnlineCount => online.Count;
+    /// <summary>Chaves e uploads do Self Design (game server cria a chave, web recebe o arquivo).</summary>
+    public UccUploads Ucc { get; } = new();
     public bool IsFull => online.Count >= Config.MaxUsers;
 
     /// <summary>Registra a sessão; se a conta já estava online aqui, a sessão antiga é derrubada.</summary>

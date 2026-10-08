@@ -15,6 +15,8 @@ public interface IGameData
     /// tenha o item. No Part.iff são as de série 0 com 0x400/0x600 no código (기본머리 …0400, 기본보조머리 …0600).
     /// </summary>
     bool IsDefaultPart(int characterTypeId, int partTypeId);
+    /// <summary>Peça Self Design (Part.iff categoria 7/8/9); null = não é.</summary>
+    UccPartInfo? UccPart(int typeId);
     /// <summary>Item do catálogo da loja (null = não existe).</summary>
     Shop.ShopItem? GetShopItem(int typeId);
     /// <summary>Preço em pang para subir um atributo (0 força .. 4 curva) a partir do nível atual; null = não dá.</summary>

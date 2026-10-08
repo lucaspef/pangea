@@ -9,6 +9,11 @@ namespace Pangya.Protocol.KR645.Game;
 /// </summary>
 public static class PlayerStructs
 {
+    /// <summary>
+    /// Dados do jogo para reconhecer as peças Self Design no sItemInfo (o GameContext liga; sem ele, peça comum).
+    /// </summary>
+    public static IGameData? Data { get; set; }
+
     /// <summary>"Permanente" para o cliente: 2099-01-01.</summary>
     static readonly DateTime Forever = new(2099, 1, 1);
 
@@ -45,8 +50,20 @@ public static class PlayerStructs
             var pcl = it.IntArray("pcl", 5);                                      // upgrades do club set
             for (int i = 0; i < 5; i++) s.Common[i] = (short)pcl[i];
         }
+        if (it.Group == ItemGroup.Part && Data?.UccPart(it.TypeId) != null) FillUcc(ref s, it);
         s.IsValid = 1;
         return s;
+    }
+
+    /// <summary>Self Design (SPEC-self-design.md §1.1): índice (nunca vazio), status, série, nome, quem copiou, data.</summary>
+    static void FillUcc(ref sItemInfo s, Item it)
+    {
+        Cp949.Write(s.UccIndex, Ucc.Index(it));
+        s.status = (byte)Ucc.Status(it);
+        s.Seq = (ushort)Ucc.Seq(it);
+        Cp949.Write(s.ItemName, Ucc.Name(it));
+        Cp949.Write(s.CopierNick, Ucc.Copier(it));
+        if (Ucc.Date(it) is { } d) s.ItemDate = SystemTime(d.ToLocalTime());
     }
 
     public static sCaddieInfo Caddie(Item c)

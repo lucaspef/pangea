@@ -13,6 +13,8 @@ Patches (só dados, sem mexer em código):
   - LOGIN_PORT_LIST[0] (loginunit.cpp:8, VA 0x00AA2538 no .map) 10101 -> <porta_login>
   - emblema da guilda: upload  -> http://<ip>:<porta_web>/Guild/upload.asp
                        download -> http://<ip>:<porta_web>/_Files/GuildMark/   (SPEC-guilda.md §4.4)
+  - Self Design:       upload  -> http://<ip>:<porta_web>/UCC/upload_one.asp
+                       download -> http://<ip>:<porta_web>/UCC/UCC_ONE/clothes/   (SPEC-self-design.md §4.1)
 """
 import hashlib
 import os
@@ -83,6 +85,10 @@ def main():
     down = b'http://qa.contents.pangya.gametree.co.kr:50006/_Files/GuildMark/'
     replace_slot(data, up, len(up) + 1, ('http://%s/Guild/upload.asp' % host).encode())
     replace_slot(data, down, len(down) + 1, ('http://%s/_Files/GuildMark/' % host).encode())
+    up = b'http://qa.contents.pangya.gametree.co.kr:50006/UCC/upload_one.asp'
+    down = b'http://qa.contents.pangya.gametree.co.kr:50006/UCC/UCC_ONE/clothes/'
+    replace_slot(data, up, len(up) + 1, ('http://%s/UCC/upload_one.asp' % host).encode())
+    replace_slot(data, down, len(down) + 1, ('http://%s/UCC/UCC_ONE/clothes/' % host).encode())
     off = va_to_offset(data, LOGIN_PORT_VA)
     old = struct.unpack_from('<i', data, off)[0]
     if old != 10101:

@@ -48,8 +48,11 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
     public GameWorld World { get; } = world;
     public SessionService Sessions { get; } = sessions;
     public PlayerService Players { get; } = players;
-    public IGameData Data { get; } = data;
+    public IGameData Data { get; } = LinkUcc(data);
+    /// <summary>As structs do 0x71 precisam reconhecer as peças Self Design.</summary>
+    static IGameData LinkUcc(IGameData d) { PlayerStructs.Data = d; return d; }
     public Domain.Shop.ShopService Shop { get; } = new(players.Store, data);
+
     public Domain.Shop.CardService Cards { get; } = new(players.Store, data);
     public PlayerActions Actions { get; } = new(players.Store, data);
     Domain.Shop.LotteryService? lotteryService;
@@ -126,7 +129,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
-        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p) || await HandleGuildAsync(p) || await HandleMailAsync(p) || await HandleMessengerAsync(p)) return;
+        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p) || await HandleGuildAsync(p) || await HandleMailAsync(p) || await HandleMessengerAsync(p) || await HandleUccAsync(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;
