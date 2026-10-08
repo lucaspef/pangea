@@ -209,7 +209,7 @@ public sealed partial class GameHandler
         {
             stats = default;
             stats.Level = ui.stat.Level;
-            for (int i = 0; i < 6; i++) stats.cBestScore[i] = 127;
+            for (int i = 0; i < 6; i++) stats.cBestScore[i] = 127;      // (só a temporada atual tem totais)
         }
         conn.Send(new PacketWriter(0x14F).U8(season).U32(uid).U16(ui.roomIndex).Struct(ui.info).U32(0));
         conn.Send(new PacketWriter(0x14E).U8(season).U32(uid).Struct(ui.userEquip));

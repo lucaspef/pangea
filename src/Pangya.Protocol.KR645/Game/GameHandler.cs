@@ -37,6 +37,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
     const ushort CLogin = 0x02, CEnterChannel = 0x04, CEnterChannelAlt = 0x83, CAfterChannel = 0x99, CHeartbeat = 0xF6, CUnknown55 = 0x55,
         CGuildList = 0x105, CGhost = 0xBA;
     // ids S->C
+    const ushort SStatsUpdate = 0x43;
     const ushort SHello = 0x3D, SPlayerInfo = 0x42, SChannels = 0x4B, SEnterChannel = 0x4C, SCharacters = 0x6E, SCaddies = 0x6F,
         SEquip = 0x70, SItems = 0x71, SGiftBox = 0x78, SCookie = 0x94, SMascots = 0xDF, SItemCounts = 0xA5,
         SCardsClear = 0x12D, SCardPeriodsClear = 0x12E, SCardPeriods = 0x12F, SCards = 0x130, SGuildList = 0x1BA;
@@ -216,8 +217,16 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
                 var now = DateTime.UtcNow;
                 int pangRate = Domain.Shop.CardService.ActiveRate(p, ctx.Data.Cards, Domain.Shop.CardInfo.AbilityPangRate, now);
                 int expRate = Domain.Shop.CardService.ActiveRate(p, ctx.Data.Cards, Domain.Shop.CardInfo.AbilityExpRate, now);
+                var stats = lastGameStats;
+                lastGameStats = null;
                 var r = await Rewards.ApplyAsync(ctx.Players.Store, p, reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards,
-                    course, pangRate, expRate);
+                    course, pangRate, expRate, stats);
+                if (finished && holes > 0)                                   // 0x43: totais e o registro do curso no cliente
+                {
+                    var w = new PacketWriter(SStatsUpdate, 0x160).Struct(PlayerStructs.Statistics(p)).Zeros(0x4E);
+                    if (course is { } c) w.U8((byte)c.Course).Struct(PlayerStructs.MapStat(p, c.Course)); else w.U8(0xFF);
+                    conn.Send(w.U8(0xFF));
+                }
                 if (r.Pang == 0 && r.Exp == 0) return;
                 Log.Info($"{conn} recompensa: +{r.Pang} pang, +{r.Exp} EXP{(r.LevelsUp > 0 ? $", subiu {r.LevelsUp} nível(is) -> {p.Level}" : "")}");
                 conn.Send(new PacketWriter(SPang).U64((ulong)p.Pang).U64(0));

@@ -125,6 +125,30 @@ public static class PlayerStructs
         return list;
     }
 
+    /// <summary>sPangYaUserStatistics do jogador (0x42, salas, perfil 0x150, 0x43): nível/pang e os totais gravados.</summary>
+    public static sPangYaUserStatistics Statistics(Player p)
+    {
+        var t = p.Stats;
+        static uint U(long v) => (uint)Math.Clamp(v, 0, uint.MaxValue);
+        static ushort W(long v) => (ushort)Math.Clamp(v, 0, ushort.MaxValue);
+        var s = new sPangYaUserStatistics
+        {
+            dwDrive = U(t.Drive), dwPutt = U(t.Putt), dwShotTime = U(t.ShotTime), fLongest = t.Longest, dwPangya = U(t.Pangya),
+            dwTimeOut = U(t.TimeOut), dwOB = U(t.OB), dwDistance = U(t.Distance), dwHole = U(t.Hole), wHoleInOne = W(t.HoleInOne),
+            wBunker = W(t.Bunker), dwFairway = U(t.Fairway), wAlbatross = W(t.Albatross), dwHoleIn = U(t.HoleIn),
+            dwPuttIn = U(t.PuttIn), fLongestPuttIn = t.LongestPuttIn, fLongestChipIn = t.LongestChipIn,
+            iTotalScore = (int)Math.Clamp(t.TotalScore, int.MinValue, int.MaxValue), dwGameCount = U(t.Games),
+            Level = (byte)p.Level, dwExp = (uint)p.Exp, i64Pang = p.Pang,
+        };
+        for (int i = 0; i < 6; i++) s.cBestScore[i] = 127;                 // 127 = sem recorde
+        return s;
+    }
+
+    /// <summary>Estatística da partida que o cliente manda (0x31 a cada buraco, 0x06 no fim).</summary>
+    public static GameStats GameStats(in sPangYaUserStatistics s) => new(
+        s.dwDrive, s.dwPutt, s.dwShotTime, s.fLongest, s.dwPangya, s.dwTimeOut, s.dwOB, s.dwDistance, s.dwHole,
+        s.wHoleInOne, s.wBunker, s.dwFairway, s.wAlbatross, s.dwHoleIn, s.dwPuttIn, s.fLongestPuttIn, s.fLongestChipIn);
+
     /// <summary>Número de registros de mapa que o cliente guarda (posição i = curso i).</summary>
     public const int MapStatCount = 20;
 
@@ -154,10 +178,7 @@ public static class PlayerStructs
         u.info.dwGuid = (uint)p.AccountId;          // MyGuid(): chave do jogador nas salas, não pode ser 0
         u.info.dwUID = (uint)p.AccountId;
         u.info.DoTutorial = 1;
-        u.stat.Level = (byte)p.Level;
-        u.stat.dwExp = (uint)p.Exp;
-        u.stat.i64Pang = p.Pang;
-        for (int i = 0; i < 6; i++) u.stat.cBestScore[i] = 127;           // 127 = sem recorde
+        u.stat = Statistics(p);
         for (int i = 0; i < MapStatCount; i++) { u.mapStat[i] = MapStat(p, i); u.classicMapStat[i] = MapStat(null, i); }
         u.userEquip = Equip(p);
         if (p.Character is { } ch) u.charInfo = Character(ch);

@@ -14,13 +14,16 @@ public sealed partial class GameHandler
 {
     // ids C->S
     const ushort CLoading = 0x48, CHoleData = 0x1A, CLoaded = 0x11, CTeeReady = 0x34, CShot = 0x12, CShotResult = 0x1B,
-        CShotFinished = 0x1C, CHoleStats = 0x31, CAim = 0x13, CGauge = 0x14, CPowerShot = 0x15, CClub = 0x16, CUseItem = 0x17,
+        CShotFinished = 0x1C, CHoleStats = 0x31, CGameStats = 0x06, CAim = 0x13, CGauge = 0x14, CPowerShot = 0x15, CClub = 0x16, CUseItem = 0x17,
         CDrop = 0x19, CPause = 0x30, CTimeBooster = 0x65, CCutIn = 0xE7, CTurnClock = 0x22, CShotCommand = 0x42, CErrorReport = 0x33,
         CTeamHoleIn = 0x35, CMatchHoleIn = 0x52;
 
     static bool IsPlayPacket(ushort id) => id is CLoading or CHoleData or CLoaded or CTeeReady or CShot or CShotResult
-        or CShotFinished or CHoleStats or CAim or CGauge or CPowerShot or CClub or CUseItem or CDrop or CPause or CTimeBooster
+        or CShotFinished or CHoleStats or CGameStats or CAim or CGauge or CPowerShot or CClub or CUseItem or CDrop or CPause or CTimeBooster
         or CCutIn or CTurnClock or CShotCommand or CErrorReport or CTeamHoleIn or CMatchHoleIn;
+
+    /// <summary>Última estatística da partida mandada pelo cliente (consumida no fim do jogo).</summary>
+    GameStats? lastGameStats;
 
     /// <summary>O que gravar depois de sair do lock: item usado e/ou prêmios dos itens de campo.</summary>
     sealed class PendingSave
@@ -46,7 +49,12 @@ public sealed partial class GameHandler
                 p.Skip(p.Remaining);
                 conn.Send(new PacketWriter(InGameOutput.SCutIn).U8(0).U16(0));
                 return true;
-            case CHoleStats or CTurnClock or CTeamHoleIn or CMatchHoleIn:   // estatísticas / relógio / pose: sem resposta
+            case CHoleStats or CGameStats:
+                // estatística acumulada da partida (0x31 a cada buraco, 0x06 no fim): a última vale no fim do jogo
+                if (p.Remaining >= 0xEB) lastGameStats = PlayerStructs.GameStats(p.Struct<sPangYaUserStatistics>());
+                p.Skip(p.Remaining);
+                return true;
+            case CTurnClock or CTeamHoleIn or CMatchHoleIn:                // relógio / pose: sem resposta
                 p.Skip(p.Remaining);
                 return true;
         }

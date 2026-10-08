@@ -28,23 +28,26 @@ public static class Rewards
     /// aplica no jogador. course = (mapa, placar) ou null.
     /// </summary>
     public static async Task<Reward> ApplyAsync(IPlayerStore store, Player p, uint reportedPang, uint reportedBonus, int holes, bool finished,
-        RewardConfig cfg, (int Course, int Score)? course = null, int pangRate = 0, int expRate = 0)
+        RewardConfig cfg, (int Course, int Score)? course = null, int pangRate = 0, int expRate = 0, GameStats? stats = null)
     {
         var (pang, exp) = Compute(reportedPang, reportedBonus, holes, finished, cfg, pangRate, expRate);
+        // totais do perfil: só partida terminada; os contadores vêm do último 0x31/0x06 do cliente, limitados por buraco
+        var totals = finished && holes > 0 ? PlayerStats.After(p.Stats, stats, holes, course?.Score) : null;
         Dictionary<int, CourseRecord>? courses = null;
         if (finished && holes > 0 && course is { } c)
         {
             courses = new Dictionary<int, CourseRecord>(p.Courses);
             courses[c.Course] = new CourseResult(c.Course, holes, c.Score, pang, p.Character?.TypeId ?? 0).ApplyTo(p.Courses.GetValueOrDefault(c.Course));
         }
-        if (pang == 0 && exp == 0 && courses == null) return default;
+        if (pang == 0 && exp == 0 && courses == null && totals == null) return default;
         var after = new Player { Level = p.Level, Exp = p.Exp };
         int levels = Levels.AddExp(after, exp);
-        await store.ApplyAsync(p.AccountId, new PlayerChanges { Pang = p.Pang + pang, Level = after.Level, Exp = after.Exp, Courses = courses });
+        await store.ApplyAsync(p.AccountId, new PlayerChanges { Pang = p.Pang + pang, Level = after.Level, Exp = after.Exp, Courses = courses, Stats = totals });
         p.Pang += pang;
         p.Level = after.Level;
         p.Exp = after.Exp;
         if (courses != null && course is { } played) p.Courses[played.Course] = courses[played.Course];
+        if (totals != null) p.Stats = totals;
         return new Reward(pang, exp, levels);
     }
 }

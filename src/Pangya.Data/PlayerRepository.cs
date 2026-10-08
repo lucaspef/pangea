@@ -28,7 +28,9 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
             Level = p.Level, Exp = p.Exp, Pang = p.Pang, Cookie = p.Cookie, Flags = p.Flags, LockerPang = p.LockerPang,
             Equip = JsonSerializer.Deserialize<Equipment>(p.Equip, Json) ?? new(),
         };
-        if (JsonNode.Parse(p.Stats)?["courses"] is JsonObject courses)
+        var stats = JsonNode.Parse(p.Stats);
+        if (stats?["totals"] is JsonObject totals && totals.Deserialize<PlayerStats>(Json) is { } t) player.Stats = t;
+        if (stats?["courses"] is JsonObject courses)
             foreach (var (k, v) in courses)
                 if (int.TryParse(k, out var course) && v != null && v.Deserialize<CourseRecord>(Json) is { } rec) player.Courses[course] = rec;
         foreach (var i in items)
@@ -67,13 +69,14 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
             update players set pang = coalesce(@Pang, pang), cookie = coalesce(@Cookie, cookie),
                 locker_pang = coalesce(@LockerPang, locker_pang), level = coalesce(@Level::smallint, level),
                 exp = coalesce(@Exp, exp), flags = coalesce(@Flags, flags), equip = coalesce(@equip::jsonb, equip),
-                stats = coalesce(jsonb_set(stats, '{courses}', @courses::jsonb), stats)
+                stats = stats || jsonb_strip_nulls(jsonb_build_object('courses', @courses::jsonb, 'totals', @totals::jsonb))
             where account_id = @accountId
             """, new
         {
             accountId, ch.Pang, ch.Cookie, ch.LockerPang, ch.Level, ch.Exp, ch.Flags,
             equip = ch.Equip == null ? null : JsonSerializer.Serialize(ch.Equip, Json),
             courses = ch.Courses == null ? null : JsonSerializer.Serialize(ch.Courses, Json),
+            totals = ch.Stats == null ? null : JsonSerializer.Serialize(ch.Stats, Json),
         }, tx);
         await tx.CommitAsync();
     }
