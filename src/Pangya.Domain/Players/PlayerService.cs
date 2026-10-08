@@ -24,6 +24,8 @@ public interface IGameData
     /// club set + upgrades do club + caddie; força − 15. E o DriveUp dos anéis (jardas a mais em todo taco menos putter).
     /// </summary>
     (int[] Stats, int DriveUp) PlayStats(Player p);
+    /// <summary>Pode ir para a loja pessoal (IFF_ITEM_COMMON.IsSalable 1 ou 3, como o cliente filtra).</summary>
+    bool CanTrade(int typeId);
     /// <summary>Estrelas do curso para a EXP (dificuldade 1..5 do Course.iff; 1 se não existir).</summary>
     float CourseStars(int course);
     /// <summary>Receitas da Caixa Mágica, na posição Index (= uiNumber-1, o índice que o cliente manda).</summary>

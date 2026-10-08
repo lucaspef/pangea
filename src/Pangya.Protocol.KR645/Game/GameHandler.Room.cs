@@ -123,6 +123,8 @@ public sealed partial class GameHandler
     {
         var r = room;
         if (r == null) return;
+        CloseMyShopLocked();                                                // a loja fecha com quem sai do lounge
+        LeaveVisitedShopLocked();
         room = null;
         var rp = r.Find(this);
         if (rp != null)

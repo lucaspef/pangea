@@ -61,6 +61,8 @@ public sealed class RoomPlayer
     public float Angle { get; set; }
     public uint Action { get; set; }
     public uint State { get; set; }
+    /// <summary>Título da loja pessoal (sSlotInfo.strTradeTitle; vazio = sem loja).</summary>
+    public string TradeTitle { get; set; } = "";
 }
 
 public sealed class Room
@@ -75,6 +77,8 @@ public sealed class Room
     readonly Dictionary<IGameSession, RoomPlayer> bySession = [];
     readonly Dictionary<uint, RoomPlayer> byGuid = [];
     public long OwnerId { get; set; }
+    /// <summary>Lojas pessoais abertas no lounge, pelo guid do dono.</summary>
+    public Dictionary<uint, PersonalShop> Shops { get; } = [];
 
     // definidos ao começar a partida
     public byte CoursePlayed { get; set; }

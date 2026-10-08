@@ -110,6 +110,23 @@ public sealed class Kr645GameData : IGameData
     /// <summary>CalcPowerPenalty: 0 até o nível 5, +1 a cada 5 níveis, 13 a partir do 66.</summary>
     static int PowerPenalty(int level) => level <= 5 ? 0 : Math.Min(level / 5, 13);
 
+    Dictionary<int, byte>? salable;
+
+    public bool CanTrade(int typeId)
+    {
+        if (salable == null)
+        {
+            var d = new Dictionary<int, byte>();
+            void Add(in IFF_ITEM_COMMON c) => d[(int)c.TypeId] = (byte)c.IsSalable;
+            foreach (var x in Iff.Parts) Add(x.c);
+            foreach (var x in Iff.ClubSets) Add(x.c);
+            foreach (var x in Iff.Balls) Add(x.c);
+            foreach (var x in Iff.Items) Add(x.c);
+            salable = d;
+        }
+        return salable.TryGetValue(typeId, out var s) && s is 1 or 3;
+    }
+
     public float CourseStars(int course)
     {
         foreach (var c in Iff.Courses)

@@ -52,6 +52,7 @@ public static class RoomPackets
         s.location[2] = p.Angle;
         s.action = p.Action;
         s.state = p.State;
+        Cp949.Write(s.strTradeTitle, p.TradeTitle);
         s.bMaster = p.Master ? 1u : 0u;
         s.bReady = p.Ready ? 1u : 0u;
         return s;

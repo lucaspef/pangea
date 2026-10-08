@@ -53,18 +53,40 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
         if (ch.IsEmpty) return;
         await using var c = await db.OpenAsync();
         await using var tx = await c.BeginTransactionAsync();
+        await ApplyInAsync(c, tx, accountId, ch, strict: false);
+        await tx.CommitAsync();
+    }
+
+    public async Task ApplyTradeAsync(long sellerId, PlayerChanges seller, long buyerId, PlayerChanges buyer)
+    {
+        await using var c = await db.OpenAsync();
+        await using var tx = await c.BeginTransactionAsync();
+        await ApplyInAsync(c, tx, sellerId, seller, strict: true);         // o item tem de continuar com o vendedor
+        await ApplyInAsync(c, tx, buyerId, buyer, strict: true);
+        await tx.CommitAsync();
+    }
+
+    /// <summary>strict: cada item alterado/apagado tem de existir na conta (senão exceção = rollback).</summary>
+    static async Task ApplyInAsync(System.Data.Common.DbConnection c, System.Data.Common.DbTransaction tx, long accountId, PlayerChanges ch, bool strict)
+    {
         foreach (var it in ch.Added)
             await c.ExecuteAsync("""
                 insert into items(id, account_id, type_id, quantity, attrs, expires_at, location)
                 values (@Id, @accountId, @TypeId, @Quantity, @attrs::jsonb, @ExpiresAt, @loc)
                 """, new { it.Id, accountId, it.TypeId, it.Quantity, attrs = it.Attrs.ToJsonString(), it.ExpiresAt, loc = (short)it.Location }, tx);
         foreach (var it in ch.Updated)
-            await c.ExecuteAsync("""
+        {
+            int n = await c.ExecuteAsync("""
                 update items set quantity = @Quantity, attrs = @attrs::jsonb, expires_at = @ExpiresAt, location = @loc
                 where id = @Id and account_id = @accountId
                 """, new { it.Id, accountId, it.Quantity, attrs = it.Attrs.ToJsonString(), it.ExpiresAt, loc = (short)it.Location }, tx);
+            if (strict && n != 1) throw new InvalidOperationException($"item {it.Id} não é da conta {accountId}");
+        }
         foreach (var id in ch.Removed)
-            await c.ExecuteAsync("delete from items where id = @id and account_id = @accountId", new { id, accountId }, tx);
+        {
+            int n = await c.ExecuteAsync("delete from items where id = @id and account_id = @accountId", new { id, accountId }, tx);
+            if (strict && n != 1) throw new InvalidOperationException($"item {id} não é da conta {accountId}");
+        }
         await c.ExecuteAsync("""
             update players set pang = coalesce(@Pang, pang), cookie = coalesce(@Cookie, cookie),
                 locker_pang = coalesce(@LockerPang, locker_pang), level = coalesce(@Level::smallint, level),
@@ -78,7 +100,6 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
             courses = ch.Courses == null ? null : JsonSerializer.Serialize(ch.Courses, Json),
             totals = ch.Stats == null ? null : JsonSerializer.Serialize(ch.Stats, Json),
         }, tx);
-        await tx.CommitAsync();
     }
 
     public async Task SaveItemAsync(long accountId, Item item)

@@ -133,6 +133,11 @@ public interface IPlayerStore
     Task<int[]> NewIdsAsync(int count);
     /// <summary>Grava várias mudanças do jogador numa transação (tudo ou nada).</summary>
     Task ApplyAsync(long accountId, PlayerChanges changes);
+    /// <summary>
+    /// Troca entre jogadores: as mudanças das duas contas numa transação. Falha (exceção, nada gravado) se algum item
+    /// alterado/apagado não pertence mais à conta.
+    /// </summary>
+    Task ApplyTradeAsync(long sellerId, PlayerChanges seller, long buyerId, PlayerChanges buyer);
     /// <summary>Grava quantidade/atributos de um item (quantidade 0 apaga).</summary>
     Task SaveItemAsync(long accountId, Item item);
     Task SaveEquipAsync(long accountId, Equipment equip);
