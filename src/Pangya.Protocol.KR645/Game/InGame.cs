@@ -332,7 +332,8 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
             : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.ClubFactor(shotClub) * golfer.Calibration.SpecialFactor(special);
         var (ux, uz) = ShotModel.Direction(shotAim);
         golfer.Observe(Game.Hole, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
-            r.State, putt: shotClub >= ShotModel.Putter1, cobra: special == Special.Cobra);
+            r.State, putt: shotClub >= ShotModel.Putter1, cobra: special == Special.Cobra,
+            pinX: pin.Length > 0 ? h.PinX : null, pinZ: pin.Length > 0 ? h.PinZ : null);
         var cal = golfer.Calibration;
         Log.Info($"sala {room.Index} buraco {Game.Hole} resultado {r.Guid}: pos=({r.X:F1},{r.Y:F1},{r.Z:F1}) estado={r.State} " +
                  $"direção real={ShotModel.AimTo(dx, dz):F4} (mira {shotAim:F4}) distância={MathF.Sqrt(dx * dx + dz * dz):F1} " +

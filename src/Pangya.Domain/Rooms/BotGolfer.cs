@@ -371,7 +371,8 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// (obstáculo) também marca o ponto como "barrado": dá para passar por baixo com Cobra, a não ser que um Cobra já
     /// tenha sido barrado ali (cobra = a tacada observada foi um Cobra).
     /// </summary>
-    public void Observe(int hole, float sx, float sz, float tx, float tz, float ex, float ez, byte state, bool putt, bool cobra = false)
+    public void Observe(int hole, float sx, float sz, float tx, float tz, float ex, float ez, byte state, bool putt, bool cobra = false,
+        float? pinX = null, float? pinZ = null)
     {
         if (!Remembers) return;
         UseHole(hole);
@@ -381,17 +382,41 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         // a memória vai para todos os níveis (é geometria do mapa); só este bot usa
         if (state == ShotResult.StateWaterOrOut || wasBlocked)
         {
-            mem.Record(Course, (byte)hole, HoleMark.Hazard, tx, tz);
             // água/OB: o cliente só devolve o ponto de saída, não onde a bola caiu; ela pode ter caído antes do alvo
-            // (vento, tacada curta, rasante). Marca também o trecho final da linha, para não repetir mais curto.
-            if (state == ShotResult.StateWaterOrOut)
+            // (vento, tacada curta, rasante). Marca também o trecho final da linha, para não repetir mais curto. Perto
+            // da bandeira não marca: quem mirou nela e saiu errou a força/direção, a bandeira não é água.
+            bool water = state == ShotResult.StateWaterOrOut;
+            if (!water || !NearPin(tx, tz, pinX, pinZ)) mem.Record(Course, (byte)hole, HoleMark.Hazard, tx, tz);
+            if (water)
                 foreach (var f in WaterLine)
-                    mem.Record(Course, (byte)hole, HoleMark.Hazard, sx + (tx - sx) * f, sz + (tz - sz) * f);
+                {
+                    float lx = sx + (tx - sx) * f, lz = sz + (tz - sz) * f;
+                    if (!NearPin(lx, lz, pinX, pinZ)) mem.Record(Course, (byte)hole, HoleMark.Hazard, lx, lz);
+                }
             if (state != ShotResult.StateWaterOrOut) mem.Record(Course, (byte)hole, cobra ? HoleMark.CobraBlocked : HoleMark.Blocked, tx, tz);
         }
         else if (moved > 10 * ShotModel.UnitsPerYard)
             mem.Record(Course, (byte)hole, HoleMark.Safe, ex, ez);
     }
+
+    /// <summary>Raio (jardas) em volta da bandeira em que água/OB não é gravada.</summary>
+    public const float PinClearYards = 20;
+
+    /// <summary>Tira da memória água/OB perto da bandeira (gravados antes da regra de <see cref="PinClearYards"/>).</summary>
+    void ClearNearPin(int hole, float pinX, float pinZ)
+    {
+        bool changed = false;
+        for (int i = hazards.Count - 1; i >= 0; i--)
+            if (NearPin(hazards[i].X, hazards[i].Z, pinX, pinZ) && !Near(blocked, hazards[i].X, hazards[i].Z))
+            {
+                hazards.RemoveAt(i);
+                changed = true;
+            }
+        if (changed) mem.MarkDirty(Course, (byte)hole);
+    }
+
+    static bool NearPin(float x, float z, float? pinX, float? pinZ) =>
+        pinX is { } px && pinZ is { } pz && Dist(x, z, px, pz) < PinClearYards * ShotModel.UnitsPerYard;
 
     /// <summary>Frações da linha saída -> alvo também marcadas como perigo quando a bola cai na água/OB.</summary>
     static readonly float[] WaterLine = [0.85f, 0.7f];
@@ -427,6 +452,9 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         cobra = false;
         float reach = MaxReachYards() * ShotModel.UnitsPerYard;
         float dist = Dist(x, z, pinX, pinZ);
+        // a bandeira ao alcance (com power shot, item ou especial): vai nela. Perigo perto da bandeira é erro de quem
+        // mirou nela; só um obstáculo já marcado na frente dela muda o plano
+        if (dist <= reach && !Near(blocked, pinX, pinZ)) return (pinX, pinZ);
         var direct = dist <= reach ? (pinX, pinZ) : (x + (pinX - x) * reach / dist, z + (pinZ - z) * reach / dist);
         if (hazards.Count == 0 || !NearHazard(direct.Item1, direct.Item2)) return direct;
         if (CanCobra)
@@ -457,9 +485,13 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         return (x + fx * len * 0.3f, z + fz * len * 0.3f);
     }
 
-    /// <summary>Lay-ups em ordem de preferência: (desvio da linha da bandeira em rad, fração da distância).</summary>
+    /// <summary>
+    /// Desvios em ordem de preferência: (ângulo em relação à linha da bandeira em rad, fração da distância). Primeiro
+    /// outra direção com a mesma força; só depois mais curto.
+    /// </summary>
     static readonly (float Turn, float Frac)[] LayUps =
-        [(0, 0.7f), (0.3f, 0.8f), (-0.3f, 0.8f), (0, 0.5f), (0.6f, 0.7f), (-0.6f, 0.7f), (0.3f, 0.5f), (-0.3f, 0.5f)];
+        [(0.15f, 1), (-0.15f, 1), (0.3f, 1), (-0.3f, 1), (0.45f, 0.95f), (-0.45f, 0.95f), (0, 0.8f), (0.3f, 0.8f), (-0.3f, 0.8f),
+         (0, 0.6f), (0.6f, 0.7f), (-0.6f, 0.7f)];
 
     /// <summary>Alcance do driver com o maior power shot disponível (gauge ou item) e a melhor especial permitida (calibrado).</summary>
     float MaxReachYards()
@@ -483,9 +515,9 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     static readonly byte[] SpecialOrder = [Special.Tomahawk, Special.Spike];
 
     /// <summary>Planeja a tacada da bola (x, z) para a bandeira (pinX, pinZ) com o vento atual. hole = número do buraco (memória).</summary>
-    public BotShot Plan(float x, float z, float pinX, float pinZ, byte windStrength, byte windDirection, bool cautious = false, int hole = -1)
+    public BotShot Plan(float x, float z, float pinX, float pinZ, byte windStrength, byte windDirection, int hole = -1)
     {
-        if (hole >= 0) UseHole(hole);
+        if (hole >= 0) { UseHole(hole); ClearNearPin(hole, pinX, pinZ); }
         float dx = pinX - x, dz = pinZ - z;
         float yards = MathF.Sqrt(dx * dx + dz * dz) / ShotModel.UnitsPerYard;
         bool useCobra = false;
@@ -508,13 +540,13 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         }
         else
         {
-            var c = Choose(dx, dz, windStrength, windDirection, cautious, useCobra);
+            var c = Choose(dx, dz, windStrength, windDirection, useCobra);
             // vento forte contra ou de lado numa tacada longa: Silent Wind (vento 1 m só nesta tacada), se não precisa de
             // item de power shot. Vento a favor ajuda (leva a bola por cima da água): esse não se corta
             if (c.Item == 0 && ReadsWind && windStrength + 1 >= BotItem.SilentWindMeters && yards > BotItem.SilentWindMinYards
                 && !Tailwind(dx, dz, windStrength, windDirection) && Has(BotItem.SilentWind))
             {
-                var calm = Choose(dx, dz, 0, windDirection, cautious, useCobra);
+                var calm = Choose(dx, dz, 0, windDirection, useCobra);
                 if (calm.Item == 0) c = calm with { Item = BotItem.SilentWind };
             }
             (club, ps, special, item) = (c.Club, c.Ps, c.Special, c.Item);
@@ -551,7 +583,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// alcança e o nível permite, o maior com Tomahawk/Spike (precisam do power shot armado).
     /// </summary>
     (int Club, byte Ps, byte Special, int Item, float Wx, float Wz) Choose(float dx, float dz, byte windStrength, byte windDirection,
-        bool cautious, bool useCobra)
+        bool useCobra)
     {
         var (wx, wz) = ReadsWind ? ShotModel.Wind(windStrength, windDirection) : (0f, 0f);
         wx *= ShotModel.WindFactor;
@@ -559,11 +591,10 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         float factor = Calibration.ClubFactor(ShotModel.Driver);
         float need = MathF.Sqrt((dx - wx) * (dx - wx) + (dz - wz) * (dz - wz)) / ShotModel.UnitsPerYard;   // já com o vento
         int club = ClubFor(need);                                            // pelo alcance aprendido de cada taco
-        if (cautious) club = Math.Min(club + 2, ShotModel.Iron9);
         byte ps = 0, special = Special.None;
         int item = 0;
         var opts = PowerOptions();
-        if (useCobra && !cautious && opts.Count > 0)                         // rasante por baixo do obstáculo: driver + PS
+        if (useCobra && opts.Count > 0)                         // rasante por baixo do obstáculo: driver + PS
             return (ShotModel.Driver, opts[0].Ps, Special.Cobra, opts[0].Item, wx, wz);
         if (club == ShotModel.Driver && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp) && opts.Count > 0)
         {

@@ -23,16 +23,41 @@ public class BotHoleMemoryTests
     public void AfterWaterTheSameShotIsNotRepeated()
     {
         var g = Perfect();
-        var first = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
+        var first = g.Plan(0, 0, 0, 400 * Y, 0, 0, hole: 0);                 // bandeira fora do alcance: alvo na linha
         var t1 = Target(first, 0, 0);
         g.Observe(0, 0, 0, t1.X, t1.Z, 0, 0, ShotResult.StateWaterOrOut, putt: false);   // água: a bola volta ao início
         Assert.Equal(3, g.Hazards.Count);                                     // alvo + trecho final da linha
-        var second = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
+        var second = g.Plan(0, 0, 0, 400 * Y, 0, 0, hole: 0);
         Assert.True(Dist(Target(second, 0, 0), t1) >= BotGolfer.HazardYards * Y);  // cai longe da água
         g.Observe(0, 0, 0, Target(second, 0, 0).X, Target(second, 0, 0).Z, 0, 0, ShotResult.StateWaterOrOut, putt: false);
-        var third = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
+        var third = g.Plan(0, 0, 0, 400 * Y, 0, 0, hole: 0);
         Assert.True(Dist(Target(third, 0, 0), t1) >= BotGolfer.HazardYards * Y);
         Assert.True(Dist(Target(third, 0, 0), Target(second, 0, 0)) >= BotGolfer.HazardYards * Y);
+    }
+
+    [Fact]
+    public void AfterWaterTheBotChangesDirectionNotStrength()
+    {
+        var g = Perfect();
+        var first = g.Plan(0, 0, 0, 400 * Y, 0, 0, hole: 0);                // longe: o mais longe na linha
+        var t1 = Target(first, 0, 0);
+        g.Observe(0, 0, 0, t1.X, t1.Z, 0, 0, ShotResult.StateWaterOrOut, putt: false);
+        var second = g.Plan(0, 0, 0, 400 * Y, 0, 0, hole: 0);
+        Assert.Equal(first.Club, second.Club);                             // mesmo taco
+        var t2 = Target(second, 0, 0);
+        Assert.InRange(Dist(t2, (0f, 0f)), Dist(t1, (0f, 0f)) * 0.95f, Dist(t1, (0f, 0f)) * 1.05f);   // mesma distância
+        Assert.True(Dist(t2, t1) >= BotGolfer.HazardYards * Y);            // outra direção
+    }
+
+    [Fact]
+    public void PinInReachIsTheTargetEvenWithAMissNearIt()
+    {
+        var g = Perfect();
+        // alguém mirou a bandeira e saiu (OB atrás do green): não vira perigo
+        g.Observe(0, 0, 0, 0, 150 * Y, 0, 0, ShotResult.StateWaterOrOut, putt: false, pinX: 0, pinZ: 150 * Y);
+        Assert.Equal(2, g.Hazards.Count);                                   // só o trecho da linha, longe da bandeira
+        var t = Target(g.Plan(0, 0, 0, 150 * Y, 0, 0, hole: 0), 0, 0);
+        Assert.True(Dist(t, (0f, 150 * Y)) < 2 * Y);                        // vai na bandeira
     }
 
     [Fact]
@@ -40,8 +65,10 @@ public class BotHoleMemoryTests
     {
         var g = Perfect();
         g.Observe(0, 0, 0, 0, 200 * Y, 0, 0, ShotResult.StateWaterOrOut, putt: false);   // não se sabe onde caiu na linha
-        var t = Target(g.Plan(0, 0, 0, 170 * Y, 0, 0, hole: 0), 0, 0);                  // bandeira mais curta na mesma linha
-        Assert.True(Dist(t, (0f, 170 * Y)) >= BotGolfer.HazardYards * Y);               // não repete mais curto (ex.: Cobra)
+        Assert.Contains(g.Hazards, h => Dist(h, (0f, 170 * Y)) < 1);                    // 85 % e 70 % da linha
+        Assert.Contains(g.Hazards, h => Dist(h, (0f, 140 * Y)) < 1);
+        g.Plan(0, 0, 0, 170 * Y, 0, 0, hole: 0);                                        // bandeira no ponto marcado:
+        Assert.DoesNotContain(g.Hazards, h => Dist(h, (0f, 170 * Y)) < 1);              // perto da bandeira não conta
     }
 
     [Fact]
@@ -124,7 +151,6 @@ public class BotPowerShotTests
         // alcance estimado 250 × 1,25 = 312,5 jd: 290 jd pede ~93 % da barra (precisão 0,93 → erro pequeno)
         Assert.InRange(s.Power, 0.85f, 1f);
         Assert.Equal(Special.None, Charged(BotLevel.Normal).Plan(0, 0, 0, 290 * Y, 0, 0).Special);
-        Assert.Equal(Special.None, hard.Plan(0, 0, 0, 290 * Y, 0, 0, cautious: true).Special);   // depois de água: 2 tacos a menos
     }
 
     [Fact]
@@ -354,15 +380,6 @@ public class BotGolferTests
         Assert.Equal(0, putt.Aim, 5);                // putt: direto na bandeira
         Assert.Equal((10 + 1) / 20f, putt.Power, 4); // 1PT 20 jardas (+1 jarda para a bola chegar)
         Assert.Equal((16 + 1) / 40f, Perfect().Plan(0, 0, 0, 16 * Y, 0, 0).Power, 4);   // 15+ jardas: putt longo (40)
-    }
-
-    [Fact]
-    public void AfterWaterTheBotLaysUp()
-    {
-        var g = Perfect();
-        Assert.Equal(ShotModel.Driver, g.Plan(0, 0, 0, 300 * Y, 0, 0).Club);
-        Assert.Equal(2, g.Plan(0, 0, 0, 300 * Y, 0, 0, cautious: true).Club);
-        Assert.Equal(ShotModel.Iron9, g.Plan(0, 0, 0, 100 * Y, 0, 0, cautious: true).Club);
     }
 
     [Fact]
