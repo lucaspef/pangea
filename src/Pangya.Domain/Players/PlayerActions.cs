@@ -75,6 +75,33 @@ public sealed class PlayerActions(IPlayerStore store, IGameData data)
         return false;
     }
 
+    /// <summary>
+    /// Apaga `count` unidades do item (pilha) ou o objeto inteiro. Recusa item em uso, personagem/caddie/mascote e a bola
+    /// básica (nunca acaba). Tira o tid dos slots de item se a pilha acabar. Devolve o item com a quantidade nova (0 = apagado).
+    /// </summary>
+    public async Task<Item?> DeleteItemAsync(Player p, int tid, int count)
+    {
+        if (count <= 0 || tid == Item.BasicBall || p.FindType(tid) is not { } it) return null;
+        if (it.Group is ItemGroup.Character or ItemGroup.Caddie or ItemGroup.Mascot || IsEquipped(p, it)) return null;
+        var edit = it.Clone();
+        var ch = new PlayerChanges();
+        bool stack = it.Group is ItemGroup.Ball or ItemGroup.Usable or ItemGroup.Card;
+        edit.Quantity = stack ? Math.Max(it.Quantity - count, 0) : 0;
+        if (edit.Quantity == 0)
+        {
+            ch.Removed.Add(it.Id);
+            var slots = p.Equip.ItemSlots;
+            bool slotChanged = false;
+            for (int i = 0; i < slots.Length; i++) if (slots[i] == tid) { slots[i] = 0; slotChanged = true; }
+            if (p.Equip.BallTypeId == tid) { p.Equip.BallTypeId = Item.BasicBall; slotChanged = true; }
+            if (slotChanged) ch.Equip = p.Equip;
+        }
+        else ch.Updated.Add(edit);
+        await store.ApplyAsync(p.AccountId, ch);
+        if (edit.Quantity == 0) p.Items.Remove(it.Id); else p.Items[it.Id] = edit;
+        return edit;
+    }
+
     /// <summary>Tira um item do armário de volta para o inventário. null = não está lá.</summary>
     public async Task<Item?> LockerTakeAsync(Player p, int id)
     {

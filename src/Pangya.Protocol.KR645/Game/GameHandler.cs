@@ -80,7 +80,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
-        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p)) return;
+        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;

@@ -312,6 +312,19 @@ public class StrokeGame : RoomGame
         return s;
     }
 
+    /// <summary>
+    /// "Desistir e voltar para a sala" (0x37): só no stroke com um único jogador. Ele conta como quem saiu (sem
+    /// recompensa) e a partida termina com o placar.
+    /// </summary>
+    public bool GiveUp(uint guid)
+    {
+        var p = Find(guid);
+        if (p == null || Over || Players.Count != 1) return false;
+        p.Left = p.Done = true;
+        Finish();
+        return true;
+    }
+
     protected void Finish()
     {
         if (Over) return;
