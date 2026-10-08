@@ -41,22 +41,30 @@ public sealed class ShopService(IPlayerStore store, IGameData data)
         return s.UnitPrice;
     }
 
-    public async Task<(ShopCode Code, List<Granted> Granted)> BuyAsync(Player p, IReadOnlyList<BuyRequest> requests)
+    /// <summary>Preço total (pang, cookie) de um carrinho, com as mesmas regras da compra; Ok = o jogador pode pagar.</summary>
+    public (ShopCode Code, long Pang, long Cookie) Quote(Player p, IReadOnlyList<BuyRequest> requests)
     {
-        if (requests.Count == 0) return (ShopCode.Fail, []);
-        if (requests.Count > MaxLines) return (ShopCode.TooMany, []);
+        if (requests.Count == 0) return (ShopCode.Fail, 0, 0);
+        if (requests.Count > MaxLines) return (ShopCode.TooMany, 0, 0);
         long pang = 0, cookie = 0;
         foreach (var r in requests)
         {
             var s = data.GetShopItem(r.TypeId);
-            if (s == null) return (ShopCode.BadCode, []);
-            if (s.InStock is not (1 or 3)) return (ShopCode.NotForSale, []);
+            if (s == null) return (ShopCode.BadCode, 0, 0);
+            if (s.InStock is not (1 or 3)) return (ShopCode.NotForSale, 0, 0);
             var price = Price(s, Math.Clamp(r.Quantity, 1, MaxQuantity), r.Days);
-            if (price is not { } v || v >= ShopItem.NotForSale) return (ShopCode.NotForSale, []);
+            if (price is not { } v || v >= ShopItem.NotForSale) return (ShopCode.NotForSale, 0, 0);
             if (s.IsCash) cookie += v; else pang += v;
         }
-        if (pang > p.Pang) return (ShopCode.NoPang, []);
-        if (cookie > p.Cookie) return (ShopCode.NoCookie, []);
+        if (pang > p.Pang) return (ShopCode.NoPang, 0, 0);
+        if (cookie > p.Cookie) return (ShopCode.NoCookie, 0, 0);
+        return (ShopCode.Ok, pang, cookie);
+    }
+
+    public async Task<(ShopCode Code, List<Granted> Granted)> BuyAsync(Player p, IReadOnlyList<BuyRequest> requests)
+    {
+        var (quoted, pang, cookie) = Quote(p, requests);
+        if (quoted != ShopCode.Ok) return (quoted, []);
 
         var draft = new ShopDraft(p, store);
         var granted = new List<Granted>();

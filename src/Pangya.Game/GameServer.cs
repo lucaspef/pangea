@@ -18,6 +18,8 @@ public sealed class GameServer
     readonly ServerServices services;
     public GameWorld World { get; }
     public TcpServer Tcp { get; }
+    /// <summary>Serviços do jogo (correio, guildas, loja...), para administração e testes.</summary>
+    public Pangya.Protocol.KR645.Game.GameContext Context { get; }
 
     public GameServer(ServerServices s, int? portOverride = null)
     {
@@ -26,7 +28,7 @@ public sealed class GameServer
         World = new GameWorld(cfg.Game);
         var data = Kr645GameData.Load(cfg.Data.IffPath);
         World.Rooms.Courses = cfg.Game.Courses.Length > 0 ? Bytes(cfg.Game.Courses) : data.Courses;
-        var ctx = new GameContext(World, s.Sessions, new PlayerService(s.Players, data, cfg.NewPlayer), data, cfg.Lottery, s.Registry, s.Guilds);
+        var ctx = Context = new GameContext(World, s.Sessions, new PlayerService(s.Players, data, cfg.NewPlayer), data, cfg.Lottery, s.Registry, s.Guilds, s.Mail);
         Tcp = new TcpServer("GAME", new IPEndPoint(IPAddress.Parse(cfg.Network.BindIp), portOverride ?? cfg.Game.Port), cfg.Limits,
             c => new GameHandler(c, ctx));
     }

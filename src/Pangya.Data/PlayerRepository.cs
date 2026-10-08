@@ -70,7 +70,7 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
     }
 
     /// <summary>strict: cada item alterado/apagado tem de existir na conta (senão exceção = rollback).</summary>
-    static async Task ApplyInAsync(System.Data.Common.DbConnection c, System.Data.Common.DbTransaction tx, long accountId, PlayerChanges ch, bool strict)
+    internal static async Task ApplyInAsync(System.Data.Common.DbConnection c, System.Data.Common.DbTransaction tx, long accountId, PlayerChanges ch, bool strict)
     {
         foreach (var it in ch.Added)
             await c.ExecuteAsync("""

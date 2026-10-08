@@ -47,11 +47,6 @@ public sealed partial class GameHandler
             case CLockerChangePw: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x179).U32(0)); return true;
             case CLockerLock: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x178).U32(0).U8(0)); return true;
             case CGiftPage or CGiftList: p.Skip(p.Remaining); conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0)); return true;
-            case CMailList: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x140).U32(1).U32(1).U32(0)); return true;
-            case CMailRead: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x143).U8(1)); return true;
-            case CMailDelete: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x15C)); return true;
-            case CMailTake: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x145).U8(1)); return true;
-            case CMailSend: p.Skip(p.Remaining); conn.Send(new PacketWriter(0x13F).U8(1)); return true;
             case CUpgrade: await UpgradeAsync(p.U8(), p.U8(), p.U32()); p.Skip(p.Remaining); return true;
             case CUserInfo: await UserInfoAsync(p.U32(), p.Remaining > 0 ? p.U8() : (byte)5); return true;
             case CMascotMessage: await MascotMessageAsync(p.U32(), p.Str(64)); return true;

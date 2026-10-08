@@ -19,12 +19,57 @@ public sealed partial class GameHandler
         switch (p.Id)
         {
             case CBuy: await BuyAsync(p); return true;
-            case CGift: p.Skip(p.Remaining); conn.Send(new PacketWriter(SGiftResult).U32((uint)ShopCode.Fail)); return true;   // presentes: ainda não
+            case CGift: await GiftAsync(p); return true;
             case CCookieQuery: conn.Send(new PacketWriter(SCookie).U64((ulong)Player.Cookie)); return true;
             case CShopOpen: return true;
             case CEquip: await EquipAsync(p); return true;
             default: return false;
         }
+    }
+
+    /// <summary>
+    /// 0x1F presente da loja: str nick, u32 uid do destino, str mensagem, u8 modo, u16 n, n × sBuyItem. Com o correio
+    /// ligado (KR) vira carta: cobra do comprador e cria a carta numa transação; 0x68 u32 0, u64 pang, u64 cookie.
+    /// Só itens sem prazo que o correio entrega (peças, club sets, bolas, usáveis); o destino não pode já ter a peça/club.
+    /// </summary>
+    async Task GiftAsync(PacketReader p)
+    {
+        p.Str(32);
+        long to = p.U32();
+        string text = p.Str(256);
+        p.U8();
+        int n = p.U16();
+        var reqs = new List<BuyRequest>(n);
+        for (int i = 0; i < n && p.Remaining >= 0x10; i++)
+        {
+            var b = p.Struct<sBuyItem>();
+            reqs.Add(new BuyRequest((int)b.TypeCode, b.DayCount, (int)Math.Clamp(b.ItemCount, 1, 9999)));
+        }
+        p.Skip(p.Remaining);
+        var code = ShopCode.Ok;
+        var receiver = to == Player.AccountId || ctx.Mail == null ? null : ctx.World.Find(to)?.Player ?? await ctx.Players.LoadAsync(to);
+        if (receiver == null) code = ShopCode.Fail;
+        var attach = new List<(int, int)>();
+        foreach (var r in reqs)
+        {
+            if (code != ShopCode.Ok) break;
+            var g = Item.GroupOf(r.TypeId);
+            if (g is not (ItemGroup.Part or ItemGroup.ClubSet or ItemGroup.Ball or ItemGroup.Usable)) code = ShopCode.NotForSale;
+            else if (g is ItemGroup.Part or ItemGroup.ClubSet && receiver!.FindType(r.TypeId) != null) code = ShopCode.AlreadyOwned;
+            else attach.Add((r.TypeId, g is ItemGroup.Ball or ItemGroup.Usable ? r.Quantity : 1));
+        }
+        long pang = 0, cookie = 0;
+        if (code == ShopCode.Ok) (code, pang, cookie) = ctx.Shop.Quote(Player, reqs);
+        if (code != ShopCode.Ok) { conn.Send(new PacketWriter(SGiftResult).U32((uint)code)); return; }
+        var items = new List<Domain.Mail.MailItem>(attach.Count);
+        foreach (var (tid, qty) in attach) items.Add(new Domain.Mail.MailItem { TypeId = tid, Quantity = qty });
+        var ch = new PlayerChanges { Pang = Player.Pang - pang, Cookie = Player.Cookie - cookie };
+        await ctx.Mail!.Store.SendAsync(to, Player.AccountId, Player.Nickname, text, items, ch);
+        Player.Pang -= pang;
+        Player.Cookie -= cookie;
+        conn.Send(new PacketWriter(SGiftResult).U32(0).U64((ulong)Player.Pang).U64((ulong)Player.Cookie));
+        NotifyNewMail(to);
+        Log.Info($"{conn} presenteou {receiver!.Login} com {items.Count} item(ns) ({pang} pang, {cookie} cookie)");
     }
 
     /// <summary>0x1D: u8 aluguel, u16 n, n × sBuyItem. Resposta 0xA8 (itens) + 0x66 (código; se 0: pang e cookie novos).</summary>

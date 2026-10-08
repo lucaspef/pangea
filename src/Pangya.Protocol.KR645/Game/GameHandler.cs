@@ -9,8 +9,11 @@ namespace Pangya.Protocol.KR645.Game;
 
 /// <summary>Serviços do game server (um por processo).</summary>
 public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players, IGameData data,
-    Core.Config.LotteryConfig? lottery = null, Domain.Servers.IServerRegistry? registry = null, Domain.Guilds.IGuildStore? guilds = null)
+    Core.Config.LotteryConfig? lottery = null, Domain.Servers.IServerRegistry? registry = null, Domain.Guilds.IGuildStore? guilds = null,
+    Domain.Mail.IMailStore? mail = null)
 {
+    /// <summary>Correio (null sem banco de correio).</summary>
+    public Domain.Mail.MailService? Mail { get; } = mail == null ? null : new(mail, players.Store, data);
     /// <summary>Guildas (null nos testes antigos: sem guilda).</summary>
     public Domain.Guilds.GuildService? Guilds { get; } = guilds == null ? null : new(guilds);
     readonly System.Collections.Concurrent.ConcurrentDictionary<uint, (GameHandler From, GameHandler To, int Room)> invites = new();
@@ -97,7 +100,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             Log.Debug($"{conn} pacote 0x{p.Id:X4} antes do login: ignorado");
             return;
         }
-        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p) || await HandleGuildAsync(p)) return;
+        if (await HandleRoomAsync(p) || HandlePlay(p) || await HandleShopAsync(p) || await HandleMyRoomAsync(p) || await HandleLotteryAsync(p) || HandleGm(p) || await HandleSocialAsync(p) || await HandleTradeAsync(p) || await HandleBoxesAsync(p) || await HandleGuildAsync(p) || await HandleMailAsync(p)) return;
         switch (p.Id)
         {
             case CLogin: await LoginAsync(p); break;
@@ -206,6 +209,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0));   // caixa de presentes vazia (modo 1)
         SendCards();
         conn.Send(TutorialPacket(p.Tutorial));                             // missões do tutorial feitas
+        _ = SendUnreadMailAsync();                                          // cartas não lidas (botão de presente pisca)
         conn.Send(new PacketWriter(SCookie).U64((ulong)p.Cookie));
     }
 
