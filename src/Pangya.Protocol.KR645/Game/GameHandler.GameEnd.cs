@@ -21,7 +21,7 @@ public sealed partial class GameHandler
 
     sealed record PendingEnd(uint Pang, uint Bonus, int Holes, bool Finished, (int Course, int Score)? Course, int PangRate, int ExpRate,
         Rewards.ExpInput ExpIn, (int RoomTid, int Kind)? Trophy, IReadOnlyList<int> AwardItems,
-        IReadOnlyList<(int TypeId, int Count)> Treasure);
+        IReadOnlyList<(int TypeId, int Count)> Treasure, byte[]? TreasureBoxes);
     PendingEnd? pendingEnd;
 
     /// <summary>
@@ -31,7 +31,7 @@ public sealed partial class GameHandler
     /// </summary>
     public int BeginGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished, (int Course, int Score)? course = null,
         int players = 1, int position = 0, bool positionPenalty = true, int coursePlayed = 0, (int RoomTid, int Kind)? trophy = null,
-        IReadOnlyList<int>? awardItems = null, IReadOnlyList<(int TypeId, int Count)>? treasure = null)
+        IReadOnlyList<int>? awardItems = null, IReadOnlyList<(int TypeId, int Count)>? treasure = null, byte[]? treasureBoxes = null)
     {
         var p = player!;
         var now = DateTime.UtcNow;
@@ -40,7 +40,7 @@ public sealed partial class GameHandler
         int expRate = CardService.ActiveRate(p, ctx.Data.Cards, CardInfo.AbilityExpRate, now);
         var expIn = new Rewards.ExpInput(players, ctx.Data.CourseStars(coursePlayed), position, positionPenalty, p.Level);
         var end = new PendingEnd(reportedPang, reportedBonus, holes, finished, course, pangRate, expRate, expIn,
-            finished ? trophy : null, finished ? awardItems ?? [] : [], finished ? treasure ?? [] : []);
+            finished ? trophy : null, finished ? awardItems ?? [] : [], finished ? treasure ?? [] : [], finished ? treasureBoxes : null);
         if (Interlocked.Exchange(ref pendingEnd, end) is { } stale) _ = FinishAsync(stale);     // partida anterior ainda aberta
         _ = Task.Delay(EndWait).ContinueWith(_ => FinishGameEnd(end), TaskScheduler.Default);
         var (_, exp) = Rewards.Compute(reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards, pangRate, expRate, expIn);
@@ -60,6 +60,7 @@ public sealed partial class GameHandler
         var p = player!;
         try
         {
+            if (e.TreasureBoxes != null) conn.Send(e.TreasureBoxes);           // caixas do Treasure Hunter de novo (ver TreasureDraw)
             var stats = lastGameStats;
             lastGameStats = null;
             int levelBefore = p.Level;
@@ -149,7 +150,9 @@ public sealed partial class GameHandler
         foreach (var (tid, id, count) in lines)
             w.U32((uint)p.AccountId).U32((uint)tid).U32((uint)id).U16((ushort)count).U8(0).I32(0).U16(0);
         conn.Send(w);
-        Log.Info($"{conn} treasure hunter: {lines.Count} prêmio(s), +{pang} pang");
+        var got = new System.Text.StringBuilder();
+        foreach (var (tid, _, count) in lines) got.Append($" 0x{tid:X8}x{count}");
+        Log.Info($"{conn} treasure hunter: {lines.Count} prêmio(s):{got}");
         return pang > 0;
     }
 

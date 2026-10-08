@@ -78,10 +78,13 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
 
     /// <summary>
     /// Fim de jogo: 0x12A com o total e 0x12B (u8 n, n × {u32 uid do dono, u32 tid, u16 qtd, u8 0}) com as caixas
-    /// sorteadas, em rodízio entre os humanos que terminaram. Vai antes do 0xF8/0x64. A entrega (0x12C) é na fase 2.
+    /// sorteadas, em rodízio entre os humanos que terminaram. Vai antes do 0xF8/0x64 e de novo quando cada cliente avisa
+    /// o fim (0x06, como o GB): o cliente só abre a tela das caixas se a marca do 0x12B ainda estiver ligada quando a
+    /// premiação roda. A entrega (0x12C) é na fase 2. boxes = o 0x12B pronto para reenviar (null = sem caixas).
     /// </summary>
-    Dictionary<uint, List<(int TypeId, int Count)>> TreasureDraw()
+    Dictionary<uint, List<(int TypeId, int Count)>> TreasureDraw(out byte[]? boxes)
     {
+        boxes = null;
         var byOwner = new Dictionary<uint, List<(int, int)>>();
         if (!TreasureOn) return byOwner;
         var cfg = treasure!;
@@ -104,6 +107,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
             list.Add((tid, count));
             w.U32(owner).U32((uint)tid).U16((ushort)count).U8(0);
         }
+        boxes = w.Body.ToArray();
         All(w);
         Log.Info($"sala {room.Index}: treasure hunter {points} pontos, {prizes.Count} caixa(s)");
         return byOwner;
@@ -116,7 +120,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     /// </summary>
     public void GameEnd(GameEnd end)
     {
-        var treasure = TreasureDraw();
+        var treasure = TreasureDraw(out var treasureBoxes);
         // recompensa de cada humano (calculada agora, gravada quando o cliente mandar o 0x06): o EXP vai no registro
         var exp = new Dictionary<uint, int>();
         foreach (var r in end.Results)
@@ -124,7 +128,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
                 exp[r.Guid] = h.BeginGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false },
                     end.Kind == GameEndKind.Stroke ? (room.CoursePlayed, r.Score) : null,   // match/skins/team: placar não é vs par
                     players: end.Results.Count, position: Math.Max(r.Rank - 1, 0), positionPenalty: true, coursePlayed: room.CoursePlayed,
-                    treasure: treasure.GetValueOrDefault(r.Guid));
+                    treasure: treasure.GetValueOrDefault(r.Guid), treasureBoxes: treasureBoxes);
 
         var won = new List<(uint, IReadOnlyList<int>)>(end.Results.Count);     // 0xF8 antes do placar: itens ganhos
         foreach (var r in end.Results) won.Add((r.Guid, room.Field?.WonBy(r.Guid) ?? []));
