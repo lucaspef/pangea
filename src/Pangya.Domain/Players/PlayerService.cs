@@ -18,7 +18,7 @@ public interface IGameData
     IReadOnlyDictionary<int, Shop.CardInfo> Cards { get; }
     /// <summary>Mapas que o cliente oferece, na ordem da tela de escolha (só os ativos nos dados).</summary>
     IReadOnlyList<byte> Courses { get; }
-    /// <summary>Estrelas do curso para a EXP (GB: 1 + dificuldade/10 do Course.iff; 1 se não existir).</summary>
+    /// <summary>Estrelas do curso para a EXP (dificuldade 1..5 do Course.iff; 1 se não existir).</summary>
     float CourseStars(int course);
     /// <summary>Receitas da Caixa Mágica, na posição Index (= uiNumber-1, o índice que o cliente manda).</summary>
     IReadOnlyList<Shop.MagicBoxRecipe> MagicBox { get; }

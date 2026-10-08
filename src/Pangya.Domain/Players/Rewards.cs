@@ -11,14 +11,14 @@ public static class Rewards
     public readonly record struct Reward(long Pang, int Exp, int LevelsUp);
 
     /// <summary>
-    /// Entrada da fórmula de EXP do servidor GB (Versus.requestFinishExpGame / Tourney): jogadores na partida, estrelas do
-    /// curso (1 + dificuldade/10 do Course.iff), posição final (0 = 1º), se a posição desconta 10% por lugar (VS sim,
+    /// Entrada da fórmula de EXP (Versus.requestFinishExpGame / Tourney do GB): jogadores na partida, estrelas do
+    /// curso (dificuldade 1..5 do Course.iff), posição final (0 = 1º), se a posição desconta 10% por lugar (VS sim,
     /// torneio não) e o nível do jogador (70 = máximo: não ganha EXP).
     /// </summary>
     public readonly record struct ExpInput(int Players, float Stars, int Position, bool PositionPenalty, int Level);
 
     /// <summary>
-    /// EXP = jogadores × buracos × estrelas × (1 + EXP% dos cards/itens) × taxa do servidor, × (1 − 0,1 × posição) no VS;
+    /// EXP = estrelas × buracos × jogadores × (1 + EXP% dos cards/itens) × taxa do servidor, × (1 − 0,1 × posição) no VS;
     /// 0 para quem saiu ou está no nível máximo. Truncado a cada passo, como o GB.
     /// </summary>
     public static int Exp(ExpInput e, int holes, bool finished, int expRate, RewardConfig cfg)

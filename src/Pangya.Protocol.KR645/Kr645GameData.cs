@@ -57,7 +57,7 @@ public sealed class Kr645GameData : IGameData
     public float CourseStars(int course)
     {
         foreach (var c in Iff.Courses)
-            if (c.c.TypeId == (0x28000000u | (uint)(course & 0xFF))) return 1 + c.Difficulty / 10f;
+            if (c.c.TypeId == (0x28000000u | (uint)(course & 0xFF))) return Math.Max(c.Difficulty, 1u);
         return 1;
     }
 

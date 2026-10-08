@@ -13,12 +13,12 @@ public class GbExpFormulaTests
     [Fact]
     public void PlayersHolesStarsAndPosition()
     {
-        var e = new Rewards.ExpInput(Players: 2, Stars: 1.3f, Position: 0, PositionPenalty: true, Level: 10);
-        Assert.Equal(23, Rewards.Exp(e, 9, true, 0, Cfg));                         // 2 × 9 × 1,3 = 23,4
-        Assert.Equal(20, Rewards.Exp(e with { Position = 1 }, 9, true, 0, Cfg));    // 2º lugar: × 0,9
-        Assert.Equal(34, Rewards.Exp(e, 9, true, 50, Cfg));                        // geleia branca +50%
-        Assert.Equal(46, Rewards.Exp(e, 9, true, 0, new RewardConfig { ExpRate = 200 }));   // servidor 2×
-        Assert.Equal(23, Rewards.Exp(e with { Position = 3, PositionPenalty = false }, 9, true, 0, Cfg));   // torneio
+        var e = new Rewards.ExpInput(Players: 4, Stars: 4, Position: 0, PositionPenalty: true, Level: 10);
+        Assert.Equal(48, Rewards.Exp(e, 3, true, 0, Cfg));                         // 4 estrelas × 3 buracos × 4 jogadores
+        Assert.Equal(43, Rewards.Exp(e with { Position = 1 }, 3, true, 0, Cfg));    // 2º lugar: × 0,9 (43,2)
+        Assert.Equal(72, Rewards.Exp(e, 3, true, 50, Cfg));                        // geleia branca +50%
+        Assert.Equal(96, Rewards.Exp(e, 3, true, 0, new RewardConfig { ExpRate = 200 }));   // servidor 2×
+        Assert.Equal(48, Rewards.Exp(e with { Position = 3, PositionPenalty = false }, 3, true, 0, Cfg));   // torneio
         Assert.Equal(0, Rewards.Exp(e with { Level = 70 }, 9, true, 0, Cfg));       // nível máximo
         Assert.Equal(0, Rewards.Exp(e, 9, false, 0, Cfg));                         // saiu
     }
@@ -28,7 +28,8 @@ public class GbExpFormulaTests
     {
         var d = Pangya.Protocol.KR645.Kr645GameData.Load(TestEnv.Config.Data.IffPath);
         float s = d.CourseStars(0);
-        Assert.InRange(s, 1f, 2.5f);
+        Assert.Equal(1f, s);                                                      // Blue Lagoon: 1 estrela
+        Assert.Equal(3f, d.CourseStars(3) - 2);                                   // Wind Hill: 5
         Assert.Equal(1f, d.CourseStars(0x7E));                                     // curso inexistente
     }
 }
