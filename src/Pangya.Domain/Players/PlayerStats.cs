@@ -43,6 +43,8 @@ public sealed class PlayerStats
     public float LongestChipIn { get; set; }
     public long TotalScore { get; set; }
     public long Games { get; set; }
+    /// <summary>Pang ganho em partidas (ranking "획득팡"), somado a cada recompensa.</summary>
+    public long PangEarned { get; set; }
     /// <summary>Troféus do torneio: [faixa × 3 + (ouro 0, prata 1, bronze 2)] (Trophy).</summary>
     public int[] Trophies { get; set; } = new int[Trophy.Count];
 

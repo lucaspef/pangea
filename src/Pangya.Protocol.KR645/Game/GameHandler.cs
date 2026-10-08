@@ -31,6 +31,9 @@ public sealed class GameContext(GameWorld world, SessionService sessions, Player
 
     public (GameHandler From, GameHandler To, int Room)? TakeInvite(uint id) => invites.TryRemove(id, out var v) ? v : null;
 
+    /// <summary>Ranking do mesmo processo (endereço do 0xA0); null = botão Ranking mostra "manutenção".</summary>
+    public Ranking.RankingContext? Ranking { get; set; }
+
     /// <summary>Auditoria das ações de GM (null nos testes que não usam).</summary>
     public Domain.Admin.AuditLog? Audit { get; set; }
 
@@ -169,7 +172,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
             .Struct(PlayerStructs.UserInfo(player!))
             .Struct(PlayerStructs.SystemTime(DateTime.Now))       // hora do servidor (loja, validade de itens)
             .U8(0).U8(0).U16(0xFFFF).U16(0xFFFF).U16(0)           // flag, ?, papel: jogadas (-1 = sem limite), bônus (-1), faltam
-            .U32(0).U32(0).U32(0).U32(0)                          // flagBlock, controlServerService, ?, serverProperty
+            .U32(0).U32(ctx.Ranking == null ? RankingOff : 0u).U32(0).U32(0)   // flagBlock, controlServerService, ?, serverProperty
             .Struct(myGuildInfo);                                 // GUILD_USER_INFO (o RSS do guildId != 0 é inofensivo)
         conn.Send(w);
     }

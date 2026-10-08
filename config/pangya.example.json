@@ -2,11 +2,12 @@
 {
   // Portas de desenvolvimento (não colidem com o emulador Python em 80/10101/20201).
   // Num servidor de verdade: Web 80, Login 10101, Game 20201.
-  "Run": ["web", "login", "game", "messenger"],
+  "Run": ["web", "login", "game", "messenger", "ranking"],
   "Game": { "Id": 30201, "Name": "PangYa C#", "Port": 30201, "MaxUsers": 1000, "Channels": [ { "Name": "Canal 1", "MaxUsers": 100 } ] },
   "Web": { "Port": 30080, "AutoRegister": false },
   "Login": { "Ports": [30101], "ServerUid": 10101 },
   "Messenger": { "Id": 30303, "Name": "Messenger", "Port": 30303, "MaxUsers": 3000 },
+  "Ranking": { "Id": 30474, "Name": "Ranking", "Port": 30474, "RefreshHour": 5 },
   "Network": {
     "BindIp": "0.0.0.0",
     "PublicIp": "127.0.0.1"

@@ -6,11 +6,14 @@ namespace Pangya.Protocol.KR645.Game;
 /// <summary>
 /// O que o game server faz pelo mensageiro (docs/protocolo/SPEC-messenger.md §7): 0x88 -> 0xFA (lista de mensageiros;
 /// o cliente apaga a do login a cada queda do MSN), 0x3C/0x11F (lista de amigos pelo game, para correio e presente) e o
-/// status "jogando" dos amigos.
+/// status "jogando" dos amigos. E pelo ranking (SPEC-ranking.md §4.3): 0x47 -> 0xA0 (endereço).
 /// </summary>
 public sealed partial class GameHandler
 {
-    const ushort CMessengerServers = 0x88, CMessengerRelay = 0x3C, SMessengerServers = 0xFA, SRelayResult = 0x93, SNotes = 0xB0;
+    const ushort CMessengerServers = 0x88, CMessengerRelay = 0x3C, SMessengerServers = 0xFA, SRelayResult = 0x93, SNotes = 0xB0,
+        CRankingButton = 0x47, SRankingAddress = 0xA0;
+    /// <summary>controlServerService: o botão Ranking só mostra "랭킹 관련 부분 점검중입니다." (sem servidor de ranking).</summary>
+    const uint RankingOff = 0x10000;
     const ushort RelayFriendList = 0x11F, RelayNote = 0x111;
 
     async ValueTask<bool> HandleMessengerAsync(PacketReader p)
@@ -23,6 +26,10 @@ public sealed partial class GameHandler
                 return true;
             case CMessengerRelay:
                 await RelayAsync(p);
+                return true;
+            case CRankingButton:                                             // botão Ranking -> 0xA0 str IP, u32 porta
+                p.Skip(p.Remaining);
+                if (ctx.Ranking is { } rk) conn.Send(new PacketWriter(SRankingAddress).Str(rk.Address).U32((uint)rk.Port));
                 return true;
             default: return false;
         }

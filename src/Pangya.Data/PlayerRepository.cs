@@ -28,14 +28,7 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
             Level = p.Level, Exp = p.Exp, Pang = p.Pang, Cookie = p.Cookie, Flags = p.Flags, LockerPang = p.LockerPang,
             Equip = JsonSerializer.Deserialize<Equipment>(p.Equip, Json) ?? new(),
         };
-        var stats = JsonNode.Parse(p.Stats);
-        if (stats?["totals"] is JsonObject totals && totals.Deserialize<PlayerStats>(Json) is { } t) player.Stats = t;
-        if (stats?["school"] is JsonValue school && school.TryGetValue<int>(out var sc)) player.School = sc;
-        if (stats?["tutorial"] is JsonArray tut)
-            for (int i = 0; i < Math.Min(tut.Count, player.Tutorial.Length); i++) player.Tutorial[i] = tut[i]?.GetValue<int>() ?? 0;
-        if (stats?["courses"] is JsonObject courses)
-            foreach (var (k, v) in courses)
-                if (int.TryParse(k, out var course) && v != null && v.Deserialize<CourseRecord>(Json) is { } rec) player.Courses[course] = rec;
+        ApplyStats(player, p.Stats);
         foreach (var i in items)
             player.Add(new Item
             {
@@ -43,6 +36,19 @@ public sealed class PlayerRepository(Db db) : IPlayerStore
                 Attrs = JsonNode.Parse(i.Attrs)?.AsObject() ?? [],
             });
         return player;
+    }
+
+    /// <summary>players.stats (jsonb): totais, escola, tutorial e recordes por curso.</summary>
+    internal static void ApplyStats(Player player, string json)
+    {
+        var stats = JsonNode.Parse(json);
+        if (stats?["totals"] is JsonObject totals && totals.Deserialize<PlayerStats>(Json) is { } t) player.Stats = t;
+        if (stats?["school"] is JsonValue school && school.TryGetValue<int>(out var sc)) player.School = sc;
+        if (stats?["tutorial"] is JsonArray tut)
+            for (int i = 0; i < Math.Min(tut.Count, player.Tutorial.Length); i++) player.Tutorial[i] = tut[i]?.GetValue<int>() ?? 0;
+        if (stats?["courses"] is JsonObject courses)
+            foreach (var (k, v) in courses)
+                if (int.TryParse(k, out var course) && v != null && v.Deserialize<CourseRecord>(Json) is { } rec) player.Courses[course] = rec;
     }
 
     public async Task<int[]> NewIdsAsync(int count)

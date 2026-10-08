@@ -1,6 +1,6 @@
 // Pangya.Server — roda os servidores num processo.
-//   Pangya.Server [--config arquivo.json] [web] [login] [game] [messenger]   (sem nomes: usa "Run" da configuração;
-//                                              o messenger precisa do game no mesmo processo)
+//   Pangya.Server [--config arquivo.json] [web] [login] [game] [messenger] [ranking]   (sem nomes: usa "Run";
+//                                              messenger e ranking precisam do game no mesmo processo)
 //   Pangya.Server [--config ...] server-add <id> <tipo> <nome> <endereço> <porta> [máx]   servidor fixo na lista
 //   Pangya.Server [--config ...] server-remove <id>
 //   Pangya.Server [--config ...] account-create <login> <senha> <nickname>              conta pronta para jogar
@@ -150,12 +150,15 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
     }
 
     var names = rest.Count > 0 ? rest.ToArray() : cfg.Run;
-    // o mensageiro confere quem está jogando no game server deste processo
+    // mensageiro e ranking conferem quem está jogando no game server deste processo
     GameServer? game = Array.IndexOf(names, "game") >= 0 ? new GameServer(s) : null;
-    if (Array.IndexOf(names, "messenger") >= 0 && game == null)
-        throw new ArgumentException("o mensageiro precisa do game no mesmo processo (rode \"game\" junto)");
+    foreach (var needsGame in new[] { "messenger", "ranking" })
+        if (Array.IndexOf(names, needsGame) >= 0 && game == null)
+            throw new ArgumentException($"{needsGame} precisa do game no mesmo processo (rode \"game\" junto)");
     var messenger = Array.IndexOf(names, "messenger") >= 0 ? new Pangya.Messenger.MessengerServer(s, game!.World) : null;
     if (game != null && messenger != null) game.Context.Messenger = messenger.Context;
+    var ranking = Array.IndexOf(names, "ranking") >= 0 ? new Pangya.Ranking.RankingServer(s, game!.World) : null;
+    if (game != null && ranking != null) game.Context.Ranking = ranking.Context;
     var tasks = new Task[names.Length];
     for (int i = 0; i < names.Length; i++)
         tasks[i] = names[i] switch
@@ -164,7 +167,8 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
             "login" => LoginServer.RunAsync(s, ct),
             "game" => game!.RunAsync(ct),
             "messenger" => messenger!.RunAsync(ct),
-            _ => throw new ArgumentException($"servidor desconhecido: {names[i]} (use web, login, game, messenger)"),
+            "ranking" => ranking!.RunAsync(ct),
+            _ => throw new ArgumentException($"servidor desconhecido: {names[i]} (use web, login, game, messenger, ranking)"),
         };
     await Task.WhenAll(tasks);
 });

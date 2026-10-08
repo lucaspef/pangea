@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Ranking: telas de ranking do cliente. Roda no processo do game (endereço no 0xA0, confere quem pede). -->
+  <ItemGroup>
+    <ProjectReference Include="..\Pangya.Data\Pangya.Data.csproj" />
+    <ProjectReference Include="..\Pangya.Protocol.KR645\Pangya.Protocol.KR645.csproj" />
+  </ItemGroup>
+</Project>

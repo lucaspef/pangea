@@ -56,6 +56,7 @@ public static class Rewards
         // totais do perfil: só partida terminada; os contadores vêm do último 0x31/0x06 do cliente, limitados por buraco
         var totals = finished && holes > 0 ? PlayerStats.After(p.Stats, stats, holes, course?.Score) : null;
         if (totals != null && trophy is { Kind: > Trophy.None } t) Trophy.Add(totals.Trophies, t.RoomTid, t.Kind);
+        if (totals != null) totals.PangEarned += pang;                          // ranking de pang ganho
         Dictionary<int, CourseRecord>? courses = null;
         if (finished && holes > 0 && course is { } c)
         {

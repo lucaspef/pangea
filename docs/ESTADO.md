@@ -22,7 +22,11 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
   Guilda: colegas na aba "길드" (online, posição), chat de guilda (0x25), 0x39/0x3A ao entrar/sair/expulsar.
   Falta: convites/seguir amigo em outro game server (0x24/0x26), troca de nick (0x32). Vários processos exigiriam
   Redis (PLANO); hoje o mensageiro roda junto do game.
-- ⬜ Ranking (fase 8).
+- ✅ Ranking (fase 8, SPEC-ranking.md), porta 30474, no processo do game: botão Ranking (0x47 -> 0xA0), páginas de 12
+  (geral, por curso, recordes; 4 classes de nível), minha posição, ficha com o personagem e as 5 posições do geral,
+  busca por nick/posição, setas de subida/descida pelo retrato anterior. Retrato ao subir e todo dia às 05:00
+  (`Ranking.RefreshHour`). As fórmulas de pontos não existem nas fontes: as daqui são propostas (Domain/Ranking).
+  Sem servidor de ranking, o botão mostra "manutenção" na hora.
 
 ## Salas e partida
 - ✅ Stroke, dupla, match, pang battle, torneio, approach, Wiz City (moedas, caixas → Spin Cube).

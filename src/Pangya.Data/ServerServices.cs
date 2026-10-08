@@ -20,6 +20,7 @@ public sealed class ServerServices : IAsyncDisposable
     public Pangya.Domain.Mail.IMailStore Mail { get; }
     public Pangya.Domain.Messenger.IFriendStore Friends { get; }
     public Pangya.Domain.Messenger.INoteStore Notes { get; }
+    public Pangya.Domain.Ranking.IRankingStore Ranking { get; }
     public Pangya.Domain.Admin.AuditLog Audit { get; }
 
     public ServerServices(PangyaConfig config)
@@ -35,6 +36,7 @@ public sealed class ServerServices : IAsyncDisposable
         Mail = new MailRepository(Db);
         Friends = new FriendRepository(Db);
         Notes = new NoteRepository(Db);
+        Ranking = new RankingRepository(Db);
         Audit = new Pangya.Domain.Admin.AuditLog(new AuditRepository(Db));
     }
 

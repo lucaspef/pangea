@@ -23,6 +23,7 @@ public sealed class PangyaConfig
     public NewPlayerConfig NewPlayer { get; set; } = new();
     public LotteryConfig Lottery { get; set; } = new();
     public MessengerConfig Messenger { get; set; } = new();
+    public RankingConfig Ranking { get; set; } = new();
 
     static readonly JsonSerializerOptions Json = new()
     {
@@ -121,6 +122,19 @@ public sealed class MessengerConfig
     public int Port { get; set; } = 30303;
     public int MaxUsers { get; set; } = 3000;
     public int MaxFriends { get; set; } = 50;
+}
+
+/// <summary>
+/// Ranking (docs/protocolo/SPEC-ranking.md). Roda no processo do game (que manda o endereço no 0xA0 e confirma quem
+/// pede). O cliente só aceita IP numérico (Network.PublicIp). Retrato recalculado ao subir e todo dia na hora RefreshHour.
+/// </summary>
+public sealed class RankingConfig
+{
+    public int Id { get; set; } = 30474;
+    public string Name { get; set; } = "Ranking";
+    public int Port { get; set; } = 30474;
+    /// <summary>Hora local (0..23) do recálculo diário.</summary>
+    public int RefreshHour { get; set; } = 5;
 }
 
 /// <summary>Recompensa de fim de partida (o pang informado pelo cliente é limitado por buraco).</summary>

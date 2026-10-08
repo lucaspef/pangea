@@ -7,6 +7,7 @@
     <Project Path="src/Pangya.Messenger/Pangya.Messenger.csproj" />
     <Project Path="src/Pangya.Login/Pangya.Login.csproj" />
     <Project Path="src/Pangya.Protocol.KR645/Pangya.Protocol.KR645.csproj" />
+    <Project Path="src/Pangya.Ranking/Pangya.Ranking.csproj" />
     <Project Path="src/Pangya.Server/Pangya.Server.csproj" />
     <Project Path="src/Pangya.Web/Pangya.Web.csproj" />
   </Folder>
