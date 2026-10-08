@@ -154,6 +154,7 @@ public sealed partial class GameHandler
             shop.Items.AddRange(items);
             shop.SaleType = saleType;
             shop.State = TradeState.Open;
+            Reserve(shop);
             shop.VisitCount = 0;
             SetShopState(r, me, TradeState.Open);
             var w = new PacketWriter(STradePublished, 32 + items.Count * 0xAA).U32((uint)TradeCode.Ok).U32(saleType)
@@ -188,9 +189,19 @@ public sealed partial class GameHandler
         foreach (var v in shop.Visitors)
             if (r.Find(v)?.Session is GameHandler h) h.visitingShop = 0;
         me.TradeTitle = "";
+        Player.Reserved = new Dictionary<int, int>();                        // itens livres de novo
         SetShopState(r, me, TradeState.None);
         InGameOutput.Broadcast(r, new PacketWriter(STradeClosed).U32((uint)TradeCode.Ok).Str(Player.Nickname).U32(me.Guid));
         Log.Info($"{conn} fechou a loja (renda {shop.Income} pang)");
+    }
+
+    /// <summary>Prende no inventário do dono o que ainda está à venda (correio, apagar, materiais... respeitam).</summary>
+    static void Reserve(PersonalShop shop)
+    {
+        var map = new Dictionary<int, int>();
+        foreach (var t in shop.Items)
+            if (t.Quantity > 0) map[t.ItemId] = map.GetValueOrDefault(t.ItemId) + t.Quantity;
+        shop.Owner.Player.Reserved = map;
     }
 
     void LeaveVisitedShopLocked()
@@ -283,6 +294,7 @@ public sealed partial class GameHandler
                 return;
             }
             PersonalShopRules.Commit(seller, Player, t.Seller, t.Buyer);
+            Reserve(shop);
             long total = item!.Price * qty;
             shop.Income += total;
             bool soldOut = true;

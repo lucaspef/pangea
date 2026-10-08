@@ -253,6 +253,15 @@ public class StrokeGame : RoomGame
         p.Strokes[HoleIndex]++;
     }
 
+    /// <summary>Vento posto por GM (/wind): vale para as próximas tacadas do buraco (0..8, direção 0..255).</summary>
+    public void SetWind(byte strength, byte direction)
+    {
+        if (Over) return;
+        WindStrength = Math.Min(strength, (byte)8);
+        WindDirection = direction;
+        Out.Wind(WindStrength, WindDirection);
+    }
+
     /// <summary>Vento novo: sorteado uma vez por buraco.</summary>
     void NewWind()
     {

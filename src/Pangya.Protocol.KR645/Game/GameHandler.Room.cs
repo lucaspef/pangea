@@ -45,7 +45,7 @@ public sealed partial class GameHandler
             case CChat: await ChatAsync(p.Str(32), p.Str(256)); return true;
             case CGameOptions: p.Skip(p.Remaining); return true;           // opções e macros: sem resposta
             case CRoomAction: RoomAction(p); return true;
-            case CAvatarData: p.Skip(p.Remaining); return true;            // lounge: pedido de dados do avatar (opcional)
+            case CAvatarData: LoungeSpState(p.U32()); p.Skip(p.Remaining); return true;   // lounge: estado SP do avatar
             default: return false;
         }
     }
@@ -56,7 +56,7 @@ public sealed partial class GameHandler
 
     /// <summary>Minha entrada na lista de usuários de quem está na lista de salas (eu inclusive, se estiver).</summary>
     void LobbyUser(byte sub) =>
-        Lobby(new PacketWriter(RoomPackets.SLobbyUsers).U8(sub).U8(1).Struct(RoomPackets.BriefUser(Player, (ushort)(room?.Index ?? 0xFFFF))));
+        Lobby(new PacketWriter(RoomPackets.SLobbyUsers).U8(sub).U8(1).Struct(RoomPackets.BriefUser(Player, (ushort)(room?.Index ?? 0xFFFF), GmVisibleState)));
 
     /// <summary>Lista completa do meu canal (no lobby e em salas), com a sala de cada um.</summary>
     void SendLobbyUsers()
@@ -65,7 +65,7 @@ public sealed partial class GameHandler
         foreach (var s in ctx.World.Online)
             if (s is GameHandler h && h.player != null && h.channel == channel && list.Count < MaxLobbyUsers) list.Add(h);
         var w = new PacketWriter(RoomPackets.SLobbyUsers, 8 + list.Count * 0xC4).U8(LobbyUserAdd).U8((byte)list.Count);
-        foreach (var h in list) w.Struct(RoomPackets.BriefUser(h.Player, (ushort)(h.room?.Index ?? 0xFFFF)));
+        foreach (var h in list) w.Struct(RoomPackets.BriefUser(h.Player, (ushort)(h.room?.Index ?? 0xFFFF), h.GmVisibleState));
         conn.Send(w);
     }
 

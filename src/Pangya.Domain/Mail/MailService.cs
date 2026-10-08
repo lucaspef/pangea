@@ -87,9 +87,9 @@ public sealed class MailService(IMailStore store, IPlayerStore players, IGameDat
             if (from.Find(id) is not { Location: ItemLocation.Inventory } it || it.TypeId != tid) return (MailCode.NotYours, []);
             if (!seenTid.Add(tid)) return (MailCode.CannotAttach, []);
             if (it.Group == ItemGroup.Card || !data.CanTrade(tid) || it.ExpiresAt != null || tid == Item.BasicBall
-                || PlayerActions.IsEquipped(from, it)) return (MailCode.CannotAttach, []);
+                || PlayerActions.IsBusy(from, it)) return (MailCode.CannotAttach, []);
             int qty = it.IsConsumable ? count : 1;
-            if (qty < 1 || qty > MaxPerItem || (it.IsConsumable && qty > it.Quantity)) return (MailCode.NotEnough, []);
+            if (qty < 1 || qty > MaxPerItem || (it.IsConsumable && qty > PlayerActions.Free(from, it))) return (MailCode.NotEnough, []);
             var after = it.Clone();
             after.Quantity = it.IsConsumable ? it.Quantity - qty : 0;
             if (after.Quantity == 0) ch.Removed.Add(it.Id); else ch.Updated.Add(after);

@@ -75,4 +75,56 @@ public class LoungeTests(DbFixture fx)
         await a.SendAsync(new PacketWriter(0x0E).U32((uint)aId));                     // lounge não tem partida
         Assert.Equal(1, (await a.ExpectAsync(0x7D)).U8());
     }
+
+    [Fact]
+    public async Task SpItemTogglesForTheRoomAndNeedsThePiece()
+    {
+        _ = fx;
+        await using var env = await GameEnv.StartAsync();
+        const int GiantRing = 0x70010081;                                    // 거인의 반지 (SpecialPrizeItem: gigante 2.0)
+        Assert.Equal((0, 2f), env.Data.SpItems[GiantRing]);
+        var (a, aId) = await EnterAsync(env);
+        var (b, bId) = await EnterAsync(env);
+        await using var _a = a;
+        await using var _b = b;
+
+        await a.SendAsync(new PacketWriter(0x08).U8(0).U32(0).U32(0).U8(30).U8(2).U8(5).U8(0).U8(0).Str("lounge").Str(""));
+        var enter = await a.ExpectAsync(0x47);
+        enter.U8(); enter.U8();
+        ushort index = enter.Struct<sRoomInfo>().roomGuid;
+        await a.SendAsync(new PacketWriter(0x63).U8(4).F32(0).F32(0).F32(0));
+        await b.SendAsync(new PacketWriter(0x09).U16(index).Str(""));
+        await b.ExpectAsync(0x47);
+        await b.SendAsync(new PacketWriter(0x63).U8(4).F32(5).F32(5).F32(0));
+        await Task.Delay(100);
+
+        await a.SendAsync(new PacketWriter(0x0C).U8(6).U32(999).U32(0));      // sem o anel: nada
+        await a.SendAsync(new PacketWriter(0xED).U32((uint)aId));
+        var st = await a.ExpectAsync(0x19B);
+        Assert.Equal(((uint)aId, 1f), (st.U32(), st.F32()));
+
+        var pa = env.Game.World.Find(aId)!.Player;                           // equipa o anel no personagem (em memória)
+        var ring = new Pangya.Domain.Players.Item { Id = 777001, TypeId = GiantRing, Quantity = 1 };
+        pa.Items[ring.Id] = ring;
+        pa.Character!.Attrs["aux"] = new System.Text.Json.Nodes.JsonArray(GiantRing, 0, 0, 0, 0);
+
+        await a.SendAsync(new PacketWriter(0x0C).U8(6).U32(999).U32(0));      // guid do pacote é ignorado
+        foreach (var c in new[] { a, b })
+        {
+            PacketReader on;
+            do on = await c.ExpectAsync(0x49); while (on.U8() != 6);
+            Assert.Equal(((uint)aId, 0u, 2f), (on.U32(), on.U32(), on.F32()));
+        }
+        await b.SendAsync(new PacketWriter(0xED).U32((uint)aId));             // quem chega pergunta o estado
+        var state = await b.ExpectAsync(0x19B);
+        Assert.Equal(((uint)aId, 2f, 1f), (state.U32(), state.F32(), state.F32()));
+
+        await a.SendAsync(new PacketWriter(0x0C).U8(6).U32(0).U32(0));        // recarga de 1 s: ignorado
+        await Task.Delay(1100);
+        await a.SendAsync(new PacketWriter(0x0C).U8(6).U32(0).U32(0));        // desliga
+        PacketReader off;
+        do off = await b.ExpectAsync(0x49); while (off.U8() != 6);
+        Assert.Equal(((uint)aId, 0u, 1f), (off.U32(), off.U32(), off.F32()));
+        _ = bId;
+    }
 }

@@ -16,6 +16,29 @@ public class PersonalShopRuleTests
         Assert.Equal(TradeCode.BadTitle, PersonalShopRules.CheckTitle("   "));
         Assert.Equal(TradeCode.BadTitle, PersonalShopRules.CheckTitle(new string('x', 32)));
     }
+
+    [Fact]
+    public async Task ItemsOnSaleAreLockedAndEquippedOnesCannotBeSold()
+    {
+        var p = new Player { AccountId = 1 };
+        var balls = new Item { Id = 10, TypeId = 0x14000001, Quantity = 10 };
+        var club = new Item { Id = 11, TypeId = 0x10000007, Quantity = 1 };
+        p.Items[balls.Id] = balls;
+        p.Items[club.Id] = club;
+        p.Reserved = new Dictionary<int, int> { [10] = 4, [11] = 1 };
+        Assert.Equal((6, 0), (PlayerActions.Free(p, balls), PlayerActions.Free(p, club)));
+        Assert.True(PlayerActions.IsBusy(p, club));
+        Assert.False(PlayerActions.IsBusy(p, balls));
+        var actions = new PlayerActions(null!, null!);                       // recusa antes de gravar
+        Assert.Null(await actions.DeleteItemAsync(p, club.TypeId, 1));
+        Assert.Null(await actions.DeleteItemAsync(p, balls.TypeId, 7));       // só 6 livres
+
+        var buyer = new Player { AccountId = 2, Pang = 1000 };
+        var t = new TradeItem { Index = 0, TypeId = club.TypeId, ItemId = club.Id, Quantity = 1, Price = 10 };
+        Assert.NotNull(PersonalShopRules.Transfer(p, buyer, t, 1, 99));
+        p.Equip.ClubSetId = club.Id;                                          // equipou depois de anunciar
+        Assert.Null(PersonalShopRules.Transfer(p, buyer, t, 1, 99));
+    }
 }
 
 /// <summary>Loja pessoal no lounge de ponta a ponta (dois jogadores).</summary>
@@ -72,6 +95,8 @@ public class PersonalShopTests(DbFixture fx)
         var pub = await a.ExpectAsync(0xE9);
         Assert.Equal((1u, 1u), (pub.U32(), pub.U32()));
         Assert.Equal(1u, (await b.ExpectAsync(0xE1)).U32());                // ícone da loja para os outros
+        var seller = env.Game.World.Find(aId)!.Player;
+        Assert.Equal(4, seller.Reserved[stack]);                              // preso no inventário enquanto à venda
 
         await b.SendAsync(new PacketWriter(0x77).U32((uint)aId));
         var shop = await b.ExpectAsync(0xE4);
@@ -98,6 +123,7 @@ public class PersonalShopTests(DbFixture fx)
         var sa = (await env.Players.LoadAsync(aId))!;
         var sb = (await env.Players.LoadAsync(bId))!;
         Assert.Equal((8, 1200L), (sa.FindType(tid)!.Quantity, sa.Pang));
+        Assert.Equal(2, seller.Reserved[stack]);
         Assert.Equal((2, 300L), (sb.FindType(tid)!.Quantity, sb.Pang));
 
         await b.SendAsync(new PacketWriter(0x7D).U32((uint)aId).Struct(new sTradeItem { iIndex = 0, iNum = 3 }));
@@ -114,6 +140,7 @@ public class PersonalShopTests(DbFixture fx)
         var closed = await b.ExpectAsync(0xE2);
         Assert.Equal(1u, closed.U32());
         Assert.Empty(env.Game.World.Rooms.Get(index)!.Shops);
+        Assert.Empty(seller.Reserved);
         Assert.Equal(1400L, (await env.Players.LoadAsync(aId))!.Pang);
         Assert.Equal(100L, (await env.Players.LoadAsync(bId))!.Pang);
     }

@@ -61,8 +61,18 @@ public sealed class PlayerActions(IPlayerStore store, IGameData data)
     {
         if (it.Group is ItemGroup.Character or ItemGroup.Caddie or ItemGroup.Mascot or ItemGroup.Card or ItemGroup.Furniture) return false;
         var e = p.Equip;
-        return !IsEquipped(p, it) && it.TypeId != e.BallTypeId && Array.IndexOf(e.ItemSlots, it.TypeId) < 0;
+        return !IsEquipped(p, it) && !p.Reserved.ContainsKey(it.Id) && it.TypeId != e.BallTypeId && Array.IndexOf(e.ItemSlots, it.TypeId) < 0;
     }
+
+    /// <summary>Unidades livres do objeto (fora da loja pessoal): pilha = quantidade − à venda; objeto único = 0 ou 1.</summary>
+    public static int Free(Player p, Item it)
+    {
+        int have = it.IsConsumable ? it.Quantity : 1;
+        return Math.Max(have - p.Reserved.GetValueOrDefault(it.Id), 0);
+    }
+
+    /// <summary>Em uso ou inteiro à venda na loja pessoal: não pode sair do inventário nem virar material.</summary>
+    public static bool IsBusy(Player p, Item it) => IsEquipped(p, it) || Free(p, it) == 0;
 
     /// <summary>Objeto em uso: club set, caddie, mascote ou personagem equipados, ou peça vestida por algum personagem.</summary>
     public static bool IsEquipped(Player p, Item it)
@@ -83,9 +93,10 @@ public sealed class PlayerActions(IPlayerStore store, IGameData data)
     {
         if (count <= 0 || tid == Item.BasicBall || p.FindType(tid) is not { } it) return null;
         if (it.Group is ItemGroup.Character or ItemGroup.Caddie or ItemGroup.Mascot || IsEquipped(p, it)) return null;
+        bool stack = it.Group is ItemGroup.Ball or ItemGroup.Usable or ItemGroup.Card;
+        if (stack ? Math.Min(count, it.Quantity) > Free(p, it) : Free(p, it) == 0) return null;   // à venda na loja pessoal
         var edit = it.Clone();
         var ch = new PlayerChanges();
-        bool stack = it.Group is ItemGroup.Ball or ItemGroup.Usable or ItemGroup.Card;
         edit.Quantity = stack ? Math.Max(it.Quantity - count, 0) : 0;
         if (edit.Quantity == 0)
         {

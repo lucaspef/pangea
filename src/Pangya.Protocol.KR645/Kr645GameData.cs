@@ -127,6 +127,20 @@ public sealed class Kr645GameData : IGameData
         return salable.TryGetValue(typeId, out var s) && s is 1 or 3;
     }
 
+    Dictionary<int, (int Ability, float Rate)>? spItems;
+
+    public IReadOnlyDictionary<int, (int Ability, float Rate)> SpItems
+    {
+        get
+        {
+            if (spItems != null) return spItems;
+            var d = new Dictionary<int, (int, float)>();
+            foreach (var x in Iff.Archive.Table<Iff.sSpecialPrizeItem>("SpecialPrizeItem.iff"))
+                if (x.ability <= 4) d[(int)x.typeId] = ((int)x.ability, x.rate);
+            return spItems = d;
+        }
+    }
+
     public float CourseStars(int course)
     {
         foreach (var c in Iff.Courses)

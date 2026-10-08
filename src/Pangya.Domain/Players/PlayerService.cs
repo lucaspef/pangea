@@ -26,6 +26,8 @@ public interface IGameData
     (int[] Stats, int DriveUp) PlayStats(Player p);
     /// <summary>Pode ir para a loja pessoal (IFF_ITEM_COMMON.IsSalable 1 ou 3, como o cliente filtra).</summary>
     bool CanTrade(int typeId);
+    /// <summary>Itens SP do lounge (SpecialPrizeItem.iff): typeid -> (efeito 0..4, multiplicador).</summary>
+    IReadOnlyDictionary<int, (int Ability, float Rate)> SpItems { get; }
     /// <summary>Estrelas do curso para a EXP (dificuldade 1..5 do Course.iff; 1 se não existir).</summary>
     float CourseStars(int course);
     /// <summary>Receitas da Caixa Mágica, na posição Index (= uiNumber-1, o índice que o cliente manda).</summary>

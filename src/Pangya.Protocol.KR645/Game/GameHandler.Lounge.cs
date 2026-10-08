@@ -63,6 +63,7 @@ public sealed partial class GameHandler
                     if (!Finite(x, z, a)) return;
                     (me.X, me.Z, me.Angle) = (x, z, a);
                     w.F32(x).F32(z).F32(a);
+                    if (!loungeReady && r.Weather is { } weather) conn.Send(WeatherPacket(weather));   // a cena do lounge já existe
                     loungeReady = true;
                     break;
                 }
@@ -84,4 +85,75 @@ public sealed partial class GameHandler
     }
 
     static bool Finite(float a, float b, float c) => float.IsFinite(a) && float.IsFinite(b) && float.IsFinite(c);
+
+    // ------------------------------------------------------------------ itens SP (SPEC-lounge-sp.md)
+
+    const byte QuickSpItem = 6;
+    const ushort SSpState = 0x19B;
+    const int SpKinds = 5, SpShine = 3;
+    static readonly TimeSpan SpCooldown = TimeSpan.FromSeconds(1);
+
+    /// <summary>A peça (24 partes) ou anel (5) equipado no personagem atual tem o efeito <paramref name="kind"/> e é do jogador.</summary>
+    bool HasSpItem(int kind, out float rate)
+    {
+        rate = 1;
+        if (Player.Character is not { } c) return false;
+        var sp = ctx.Data.SpItems;
+        var parts = c.IntArray("parts", 24);
+        var aux = c.IntArray("aux", 5);
+        foreach (var arr in new[] { parts, aux })
+            foreach (var tid in arr)
+                if (tid != 0 && sp.TryGetValue(tid, out var e) && e.Ability == kind && Player.FindType(tid) != null)
+                {
+                    rate = MathF.Max(MathF.Floor(e.Rate), 1);                 // o cliente trunca o f32 para inteiro
+                    return true;
+                }
+        return false;
+    }
+
+    static PacketWriter SpPacket(uint guid, int kind, float value) =>
+        new PacketWriter(SQuickEquip).U8(QuickSpItem).U32(guid).U32((uint)kind).F32(value);
+
+    /// <summary>
+    /// 0x0C u8 6, u32 guid (ignorado), u32 efeito: comando de chat /거인, /왕머리, /광속, /반짝이 no lounge. Confere a peça
+    /// equipada, alterna o efeito (brilho: sempre o efeito) e manda 0x49 u8 6, u32 guid, u32 efeito, f32 valor à sala toda.
+    /// </summary>
+    void LoungeSpItem(uint kind)
+    {
+        lock (Rooms.Sync)
+        {
+            var r = room;
+            if (!IsLounge(r) || !loungeReady || r!.Find(this) is not { } me || kind >= SpKinds) return;
+            if (me.SpLastUse != 0 && System.Diagnostics.Stopwatch.GetElapsedTime(me.SpLastUse) < SpCooldown) return;
+            if (!HasSpItem((int)kind, out float rate)) { Log.Info($"{conn} item SP {kind} recusado: sem a peça equipada"); return; }
+            me.SpLastUse = System.Diagnostics.Stopwatch.GetTimestamp();
+            float value = rate;
+            if (kind != SpShine) me.SpValues[kind] = value = me.SpValues[kind] == 1 ? rate : 1;
+            InGameOutput.Broadcast(r, SpPacket(me.Guid, (int)kind, value));
+        }
+    }
+
+    /// <summary>0xED u32 guid: estado SP de um avatar que acabou de aparecer -> 0x19B u32 guid, 5 × f32 (só ao pedinte).</summary>
+    void LoungeSpState(uint guid)
+    {
+        lock (Rooms.Sync)
+        {
+            if (!IsLounge(room) || room!.Find(guid) is not { } who) return;
+            var w = new PacketWriter(SSpState).U32(guid);
+            foreach (var v in who.SpValues) w.F32(v);
+            conn.Send(w);
+        }
+    }
+
+    /// <summary>Trocou a roupa no lounge: efeitos sem a peça desligam (0x49 sub 6 com 1).</summary>
+    void LoungeSpRecheckLocked()
+    {
+        if (!IsLounge(room) || room!.Find(this) is not { } me) return;
+        for (int k = 0; k < SpKinds; k++)
+            if (me.SpValues[k] != 1 && !HasSpItem(k, out _))
+            {
+                me.SpValues[k] = 1;
+                InGameOutput.Broadcast(room, SpPacket(me.Guid, k, 1));
+            }
+    }
 }

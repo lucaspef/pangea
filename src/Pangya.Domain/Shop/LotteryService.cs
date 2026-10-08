@@ -47,7 +47,7 @@ public sealed class LotteryService(ShopService shop, IGameData data, LotteryConf
     {
         Item? best = null;
         foreach (var it in p.Items.Values)
-            if (it.Location == ItemLocation.Inventory && it.Quantity > 0 && CouponKind(it.TypeId) == kind && (best == null || it.Id < best.Id))
+            if (it.Location == ItemLocation.Inventory && PlayerActions.Free(p, it) > 0 && CouponKind(it.TypeId) == kind && (best == null || it.Id < best.Id))
                 best = it;
         return best;
     }

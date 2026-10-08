@@ -78,10 +78,14 @@ public static class RoomPackets
         return s;
     }
 
-    public static sBriefUserInfo BriefUser(Player p, ushort roomIndex = 0xFFFF)
+    /// <summary>
+    /// Entrada da lista do lobby (0x44). dwIdentity leva só os bits de GM (0x04/0x10): com eles o cliente esconde o GM de
+    /// quem não é GM a menos que state bit0 (/visible on) esteja ligado (SPEC-chat-gm.md §5).
+    /// </summary>
+    public static sBriefUserInfo BriefUser(Player p, ushort roomIndex = 0xFFFF, ushort state = 1)
     {
         var b = new sBriefUserInfo { dwUid = (uint)p.AccountId, dwGuid = (uint)p.AccountId, roomIndex = roomIndex, level = (byte)p.Level,
-            m_GuildId = (uint)(p.Guild?.Id ?? 0) };
+            m_GuildId = (uint)(p.Guild?.Id ?? 0), dwIdentity = (uint)(p.IdentityFlags & 0x14), state = state };
         if (p.Guild is { } g) Cp949.Write(b.szEmblemName, g.Mark);
         Cp949.Write(b.sNick, p.Nickname);
         return b;

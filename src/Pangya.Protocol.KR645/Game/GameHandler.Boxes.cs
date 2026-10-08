@@ -51,7 +51,7 @@ public sealed partial class GameHandler
     /// <summary>Gasta 1 unidade (pilha; 0 apaga) e soma pang, numa gravação. null = não tem.</summary>
     async Task<Item?> UseOneAsync(Item? it, long pang = 0)
     {
-        if (it is not { Location: ItemLocation.Inventory, Quantity: > 0 }) return null;
+        if (it is not { Location: ItemLocation.Inventory, Quantity: > 0 } || PlayerActions.Free(Player, it) == 0) return null;   // à venda
         var p = Player;
         var left = it.Clone();
         left.Quantity--;

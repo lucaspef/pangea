@@ -247,7 +247,7 @@ public sealed partial class GameHandler
         var slots = Player.Equip.ItemSlots;
         int slot = Array.IndexOf(slots, (int)tid);
         var item = Player.FindType((int)tid);
-        if (slot < 0 || item == null || item.Quantity <= 0)
+        if (slot < 0 || item == null || item.Quantity <= 0 || PlayerActions.Free(Player, item) <= 0)
         {
             Log.Warn($"{conn} uso de item 0x{tid:X8} recusado (não está equipado/não tem)");
             return null;

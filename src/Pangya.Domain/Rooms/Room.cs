@@ -63,6 +63,12 @@ public sealed class RoomPlayer
     public uint State { get; set; }
     /// <summary>Título da loja pessoal (sSlotInfo.strTradeTitle; vazio = sem loja).</summary>
     public string TradeTitle { get; set; } = "";
+    /// <summary>
+    /// Itens SP do lounge (SPEC-lounge-sp.md): valor atual de cada efeito 0..4 (1 = desligado; gigante, cabeça grande,
+    /// velocidade, brilho, luva) e o último uso (recarga).
+    /// </summary>
+    public float[] SpValues { get; } = [1, 1, 1, 1, 1];
+    public long SpLastUse { get; set; }
 }
 
 public sealed class Room
@@ -70,6 +76,8 @@ public sealed class Room
     public int Index { get; init; }
     public RoomSettings Settings { get; } = new();
     public RoomState State { get; set; }
+    /// <summary>Clima posto por GM (/weather: 0 bom, 1 nublado, 2 chuva, 3 neve); null = o do cliente.</summary>
+    public byte? Weather { get; set; }
     /// <summary>Chave de 16 bytes da sala (sRoomInfo.RoomKey): os resultados de tacada vêm cifrados com ela.</summary>
     public byte[] Key { get; } = RandomNumberGenerator.GetBytes(16);
     /// <summary>Participantes em ordem de slot (a ordem importa: connectionRank e ordem do tee).</summary>

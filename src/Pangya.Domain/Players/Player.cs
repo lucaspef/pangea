@@ -92,6 +92,11 @@ public sealed class Player
     public int School { get; set; }
     /// <summary>Missões do tutorial feitas, por categoria (iniciante, básico, avançado; bits do cliente).</summary>
     public int[] Tutorial { get; set; } = new int[3];
+    /// <summary>
+    /// Quantidades presas na loja pessoal do lounge (id do objeto -> unidades à venda). Não vai para o banco. Trocado
+    /// inteiro (nunca alterado no lugar), então quem lê sem o lock da sala vê uma versão completa.
+    /// </summary>
+    public IReadOnlyDictionary<int, int> Reserved { get; set; } = new Dictionary<int, int>();
 
     public const int FlagTutorialDone = 1;
 

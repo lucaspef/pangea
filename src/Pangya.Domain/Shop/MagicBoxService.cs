@@ -69,7 +69,7 @@ public sealed class MagicBoxService(ShopService shop, IGameData data, Random? ra
             {
                 if (tid == Item.BasicBall) return MagicBoxResult.Fail(MagicBoxCode.Invalid);   // a bola básica nunca é gasta
                 var e = d.Edit(it);
-                if (e.Quantity < need) return MagicBoxResult.Fail(MagicBoxCode.Invalid);
+                if (e.Quantity < need || PlayerActions.Free(p, it) < need) return MagicBoxResult.Fail(MagicBoxCode.Invalid);
                 e.Quantity -= need;
                 consumed.Add(new Consumed(tid, id, e.Quantity));
                 continue;
@@ -81,7 +81,7 @@ public sealed class MagicBoxService(ShopService shop, IGameData data, Random? ra
             if (copies.Count < need) return MagicBoxResult.Fail(MagicBoxCode.Invalid);
             for (int k = 0; k < need; k++)
             {
-                if (PlayerActions.IsEquipped(p, copies[k]) || d.IsRemoved(copies[k].Id)) return MagicBoxResult.Fail(MagicBoxCode.Invalid);
+                if (PlayerActions.IsBusy(p, copies[k]) || d.IsRemoved(copies[k].Id)) return MagicBoxResult.Fail(MagicBoxCode.Invalid);
                 d.Remove(copies[k]);
                 consumed.Add(new Consumed(tid, copies[k].Id, 0));
             }

@@ -57,12 +57,18 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - ✅ Avatares aparecem, andam, fazem emote/pose e se veem (0x46 com 0xFFFF, 0x63→0xC2, posição para quem entra depois).
 - ✅ Loja pessoal: abrir, título (com o nick), publicar até 6 itens, visitar, comprar (item e pang das duas contas
   numa transação); venda em pacote recusada com 0x1D7 (SPEC-lounge-loja.md).
-- ⬜ Itens SP (gigante, cabeça grande...), clima, travar itens à venda contra outras operações.
+- ✅ Itens à venda ficam presos: correio, apagar, guardar, Caixa Mágica, cupons/caixas e uso em jogo respeitam a
+  quantidade à venda; item equipado depois de anunciado não é vendido.
+- ✅ Itens SP (`/거인`, `/왕머리`, `/광속`, `/반짝이`; SPEC-lounge-sp.md): conferidos no servidor (peça equipada e dele),
+  liga/desliga para a sala toda (0x49 sub 6), estado para quem chega (0xED -> 0x19B), desliga ao tirar a peça.
+- ✅ Clima do lounge pelo GM (`/weather`), mandado também a quem entra depois.
 - ⬜ Troca direta (0xDB): desligada no cliente KR (conteúdo 0x77); só com patch do exe, se o usuário pedir.
 
 ## GM
 - ✅ Chat azul, `/notice`, `/kick`, `/disconnect`, `/identity` (só na própria tela).
-- ⬜ `/visible`, vento/clima, `/giveitem`, observar.
+- ✅ `/visible` (`/whisper`, `/channel` guardados), `/wind` (partida por turnos), `/weather` (sala/lounge), `/giveitem` e
+  `/goldenbell` (por carta), F10 (tira da sala), `/destroy` (esvazia a sala); resposta "Comando executado." no chat.
+- ⬜ Galeria/espectador (0x3E/0x3F/0x5D), `/itemdrop` (SPEC-gm-comandos.md §3).
 
 ## Administração (fase 9)
 - ✅ Auditoria (`audit_log`): ações de GM no jogo (`gm:*`), do painel (`admin:*`) e da linha de comando (`console`).

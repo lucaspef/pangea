@@ -42,7 +42,8 @@ public sealed class SpinCubeService(ShopService shop, IGameData data, Random? ra
         if (boxTid != SpinCube) return SpinCubeResult.Fail(NotABox);
         var cube = p.FindType(SpinCube);
         var key = p.FindType(LuckyKey);
-        if (cube is not { Quantity: > 0 } || key is not { Quantity: > 0 }) return SpinCubeResult.Fail(Missing);
+        if (cube is not { Quantity: > 0 } || key is not { Quantity: > 0 } || PlayerActions.Free(p, cube) == 0 || PlayerActions.Free(p, key) == 0)
+            return SpinCubeResult.Fail(Missing);
         if (mail != null) return await OpenToMailAsync(p, cube, key);
 
         var d = new ShopDraft(p, shop.Store);

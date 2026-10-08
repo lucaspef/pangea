@@ -85,6 +85,7 @@ public static class PersonalShopRules
         TradeItem t, int qty, int newId)
     {
         if (seller.Find(t.ItemId) is not { Location: ItemLocation.Inventory } src || src.TypeId != t.TypeId) return null;
+        if (PlayerActions.IsEquipped(seller, src)) return null;                // equipado depois de anunciar: não sai
         long total = t.Price * qty;
         var s = new PlayerChanges { Pang = seller.Pang + total };
         var b = new PlayerChanges { Pang = buyer.Pang - total };

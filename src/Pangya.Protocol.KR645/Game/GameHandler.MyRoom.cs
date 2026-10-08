@@ -55,7 +55,13 @@ public sealed partial class GameHandler
             case CCardUse: await CardUseAsync((int)p.U32()); return true;
             case CCardAttach: await CardAttachAsync(p); return true;
             case CCardRemove: await CardRemoveAsync((int)p.U32(), (int)p.U32(), (int)p.U32(), (int)p.U32()); return true;
-            case CQuickEquip or CQuickEquipRoom: await QuickEquipAsync(p.U8(), (int)p.U32()); return true;
+            case CQuickEquip or CQuickEquipRoom:
+            {
+                byte kind = p.U8();
+                if (p.Id == CQuickEquipRoom && kind == QuickSpItem && p.Remaining >= 8) { p.U32(); LoungeSpItem(p.U32()); return true; }
+                await QuickEquipAsync(kind, (int)p.U32());
+                return true;
+            }
             default: return false;
         }
     }
@@ -310,6 +316,7 @@ public sealed partial class GameHandler
             {
                 InGameOutput.Broadcast(room, w);
                 if (room.Find(this) is { } me) InGameOutput.Broadcast(room, RoomPackets.SlotUpdate(room, me), except: this);
+                if (kind == 4) LoungeSpRecheckLocked();                          // tirou a peça SP: efeito desliga
                 return;
             }
         }
