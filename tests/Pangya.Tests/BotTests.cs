@@ -26,13 +26,22 @@ public class BotHoleMemoryTests
         var first = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
         var t1 = Target(first, 0, 0);
         g.Observe(0, 0, 0, t1.X, t1.Z, 0, 0, ShotResult.StateWaterOrOut, putt: false);   // água: a bola volta ao início
-        Assert.Single(g.Hazards);
+        Assert.Equal(3, g.Hazards.Count);                                     // alvo + trecho final da linha
         var second = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
         Assert.True(Dist(Target(second, 0, 0), t1) >= BotGolfer.HazardYards * Y);  // cai longe da água
         g.Observe(0, 0, 0, Target(second, 0, 0).X, Target(second, 0, 0).Z, 0, 0, ShotResult.StateWaterOrOut, putt: false);
         var third = g.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
         Assert.True(Dist(Target(third, 0, 0), t1) >= BotGolfer.HazardYards * Y);
         Assert.True(Dist(Target(third, 0, 0), Target(second, 0, 0)) >= BotGolfer.HazardYards * Y);
+    }
+
+    [Fact]
+    public void WaterAlsoMarksTheEndOfTheShotLine()
+    {
+        var g = Perfect();
+        g.Observe(0, 0, 0, 0, 200 * Y, 0, 0, ShotResult.StateWaterOrOut, putt: false);   // não se sabe onde caiu na linha
+        var t = Target(g.Plan(0, 0, 0, 170 * Y, 0, 0, hole: 0), 0, 0);                  // bandeira mais curta na mesma linha
+        Assert.True(Dist(t, (0f, 170 * Y)) >= BotGolfer.HazardYards * Y);               // não repete mais curto (ex.: Cobra)
     }
 
     [Fact]

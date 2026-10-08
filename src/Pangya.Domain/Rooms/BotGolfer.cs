@@ -382,11 +382,19 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         if (state == ShotResult.StateWaterOrOut || wasBlocked)
         {
             mem.Record(Course, (byte)hole, HoleMark.Hazard, tx, tz);
+            // água/OB: o cliente só devolve o ponto de saída, não onde a bola caiu; ela pode ter caído antes do alvo
+            // (vento, tacada curta, rasante). Marca também o trecho final da linha, para não repetir mais curto.
+            if (state == ShotResult.StateWaterOrOut)
+                foreach (var f in WaterLine)
+                    mem.Record(Course, (byte)hole, HoleMark.Hazard, sx + (tx - sx) * f, sz + (tz - sz) * f);
             if (state != ShotResult.StateWaterOrOut) mem.Record(Course, (byte)hole, cobra ? HoleMark.CobraBlocked : HoleMark.Blocked, tx, tz);
         }
         else if (moved > 10 * ShotModel.UnitsPerYard)
             mem.Record(Course, (byte)hole, HoleMark.Safe, ex, ez);
     }
+
+    /// <summary>Frações da linha saída -> alvo também marcadas como perigo quando a bola cai na água/OB.</summary>
+    static readonly float[] WaterLine = [0.85f, 0.7f];
 
     static float Dist(float ax, float az, float bx, float bz) => MathF.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));
 

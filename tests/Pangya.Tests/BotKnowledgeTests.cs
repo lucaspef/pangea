@@ -54,12 +54,12 @@ public class BotKnowledgeTests
         var g1 = BotGolfer.For(BotLevel.Hard, new Random(1), knowledge: k.For(BotLevel.Hard));
         g1.Course = 5;
         g1.Observe(3, 0, 0, 0, 200 * Y, 0, 0, ShotResult.StateWaterOrOut, putt: false);
-        Assert.Single(g1.Hazards);
+        Assert.Equal(3, g1.Hazards.Count);                                  // alvo + 85 % e 70 % da linha
 
         var g2 = BotGolfer.For(BotLevel.Hard, new Random(2), knowledge: k.For(BotLevel.Hard));
         g2.Course = 5;
         g2.Plan(0, 0, 0, 300 * Y, 0, 0, hole: 3);
-        Assert.Single(g2.Hazards);                                          // partida seguinte: já sabe da água
+        Assert.Equal(3, g2.Hazards.Count);                                         // partida seguinte: já sabe da água
 
         var other = BotGolfer.For(BotLevel.Hard, new Random(3), knowledge: k.For(BotLevel.Hard));
         other.Course = 6;
@@ -69,7 +69,7 @@ public class BotKnowledgeTests
         var normal = BotGolfer.For(BotLevel.Normal, new Random(4), knowledge: k.For(BotLevel.Normal));
         normal.Course = 5;
         normal.Plan(0, 0, 0, 300 * Y, 0, 0, hole: 3);
-        Assert.Single(normal.Hazards);                                      // outro nível: o mapa é o mesmo
+        Assert.Equal(3, normal.Hazards.Count);                                     // outro nível: o mapa é o mesmo
         Assert.Same(g1.Calibration, g2.Calibration);                        // calibração: separada por nível
         Assert.NotSame(g1.Calibration, normal.Calibration);
     }
