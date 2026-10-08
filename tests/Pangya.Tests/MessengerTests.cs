@@ -69,28 +69,39 @@ public class MessengerTests(DbFixture fx)
     }
 
     /// <summary>Jogador no game (já no lobby) e conectado ao mensageiro (hello lido).</summary>
-    static async Task<(Account Acc, TestClient Game, TestClient Msn)> PlayerAsync(Env env, bool login = true)
+    static async Task<(Account Acc, TestClient Game, TestClient Msn)> PlayerAsync(Env env, bool login = true, long? pang = null)
     {
         var (acc, key) = await env.Game.NewPlayerAsync();
+        if (pang is { } pg) await env.Game.S.Players.ApplyAsync(acc.Id, new Pangya.Domain.Players.PlayerChanges { Pang = pg });
         var g = await env.Game.ConnectAsync();
         await GameEnv.SendLoginAsync(g, acc, key);
         await g.ExpectAsync(0x94);
+        var m = login ? await MsnLoginAsync(env, acc) : await MsnConnectAsync(env);
+        return (acc, g, m);
+    }
+
+    static async Task<TestClient> MsnConnectAsync(Env env)
+    {
         var m = await TestClient.ConnectAsync(env.Msn.Tcp.Port);
         var (id, hello) = await m.ReceiveAsync();
         Assert.Equal(0x2C, id);
         hello.U8(); hello.U8();
         m.Key = (int)hello.U32();
-        if (login)
-        {
-            await m.SendAsync(new PacketWriter(0x12).U32((uint)acc.Id).Str(acc.Nickname!));
-            var r = await m.ExpectAsync(0x2D);
-            Assert.Equal((0, (uint)acc.Id), (r.U8(), r.U32()));
-            await m.SendAsync(new PacketWriter(0x23).Zeros(0x4B));
-            await m.SendAsync(new PacketWriter(0x14));
-            var list = await Sub(m, 0x102);
-            Assert.Equal(1, list.U8());                                       // página 1
-        }
-        return (acc, g, m);
+        return m;
+    }
+
+    /// <summary>Hello, 0x12 -> 0x2D ok, 0x23 e 0x14 -> lista (o 0x103 de bilhetes pendentes vem logo depois).</summary>
+    static async Task<TestClient> MsnLoginAsync(Env env, Account acc)
+    {
+        var m = await MsnConnectAsync(env);
+        await m.SendAsync(new PacketWriter(0x12).U32((uint)acc.Id).Str(acc.Nickname!));
+        var r = await m.ExpectAsync(0x2D);
+        Assert.Equal((0, (uint)acc.Id), (r.U8(), r.U32()));
+        await m.SendAsync(new PacketWriter(0x23).Zeros(0x4B));
+        await m.SendAsync(new PacketWriter(0x14));
+        var list = await Sub(m, 0x102);
+        Assert.Equal(1, list.U8());                                           // página 1
+        return m;
     }
 
     /// <summary>Próximo 0x2E com o sub-id pedido (o leitor já passou do sub).</summary>
@@ -241,8 +252,100 @@ public class MessengerTests(DbFixture fx)
         Assert.Equal((1, (ushort)1, (ushort)1), (list.U8(), list.U16(), list.U16()));
         var e = list.Struct<sFriend>();
         Assert.Equal(((uint)b.Id, 0u, 0u), (e.Uid, e.IsAgree, e.IsAccept));
-        await ga.SendAsync(new PacketWriter(0x3C).U16(0x111).U32((uint)b.Id).Str("bilhete").U8(0));
-        var note = await ga.ExpectAsync(0x93);
-        Assert.Equal((0x111, 1u), (note.U16(), note.U32()));
+    }
+
+    [Fact]
+    public async Task GuildMatesListOnlineChatAndLeave()
+    {
+        _ = fx;
+        await using var env = await Env.StartAsync();
+        var (a, keyA) = await env.Game.NewPlayerAsync();
+        var (b, keyB) = await env.Game.NewPlayerAsync();
+        var guilds = env.Game.S.Guilds;
+        string name = "M" + Guid.NewGuid().ToString("N")[..8];
+        int gid = await guilds.CreateAsync(name, name.ToLowerInvariant(), "", a.Id, new Pangya.Domain.Guilds.GuildChange());
+        var join = new Pangya.Domain.Guilds.GuildChange();
+        join.Upserts.Add((b.Id, gid, Pangya.Domain.Guilds.GuildClass.Member, ""));
+        await guilds.ApplyAsync(join);
+
+        async Task<TestClient> InAsync(Account acc, string key)
+        {
+            var g = await env.Game.ConnectAsync();
+            await GameEnv.SendLoginAsync(g, acc, key);
+            await g.ExpectAsync(0x94);
+            return await MsnLoginAsync(env, acc);
+        }
+        var ma = await InAsync(a, keyA);
+        var mb = await InAsync(b, keyB);
+        Assert.Equal((uint)b.Id, (await Sub(ma, 0x10E)).U32());                // colega entrou
+
+        await mb.SendAsync(new PacketWriter(0x14));                             // lista de B: A como colega online
+        var list = await Sub(mb, 0x102);
+        Assert.Equal((1, (ushort)1, (ushort)1), (list.U8(), list.U16(), list.U16()));
+        var e = list.Struct<sFriend>();
+        Assert.Equal(((uint)a.Id, 1u, 0u, 1u, (uint)gid), (e.Uid, e.GuildFriend, e.PangyaFriend, e.IsLogOn, e.dwGuildId));
+
+        await mb.SendAsync(new PacketWriter(0x25).Str("bom dia, guilda"));
+        var line = await Sub(ma, 0x113);
+        Assert.Equal(((uint)b.Id, b.Nickname, "bom dia, guilda", (byte)1), (line.U32(), line.Str(), line.Str(), line.U8()));
+        var echo = await Sub(mb, 0x113);                                        // quem mandou também recebe
+        Assert.Equal((uint)b.Id, echo.U32());
+
+        var leave = new Pangya.Domain.Guilds.GuildChange();
+        leave.Removes.Add(b.Id);
+        await guilds.ApplyAsync(leave);
+        await env.Msn.Context.GuildLeftAsync(gid, b.Id);
+        Assert.Equal((uint)b.Id, (await ma.ExpectAsync(0x3A)).U32());
+        var after = await Sub(mb, 0x102);                                       // B recebe a lista sem a guilda
+        Assert.Equal((1, (ushort)0), (after.U8(), after.U16()));
+    }
+
+    static async Task<PacketReader> NoteResult(TestClient game, uint to, string text)
+    {
+        await game.SendAsync(new PacketWriter(0x3C).U16(0x111).U32(to).Str(text).U8(0));
+        var r = await game.ExpectAsync(0x93);
+        Assert.Equal(0x111, r.U16());
+        return r;
+    }
+
+    [Fact]
+    public async Task NotesCostPangAndArriveByMessengerLobbyOrLater()
+    {
+        _ = fx;
+        await using var env = await Env.StartAsync();
+        var (a, ga, _) = await PlayerAsync(env, pang: 1000);
+        var (b, _, mb) = await PlayerAsync(env);
+        var r = await NoteResult(ga, (uint)b.Id, "oi, bora jogar?");
+        Assert.Equal((0u, 990ul), (r.U32(), r.U64()));
+        Assert.Equal(990, (await env.Game.S.Players.LoadAsync(a.Id))!.Pang);
+        var notes = await Sub(mb, 0x103);                                       // B está no mensageiro: chega na hora
+        Assert.Equal(1, notes.U8());
+        var n = notes.Struct<sNoteInfo>();
+        Assert.Equal(((uint)a.Id, a.Nickname, "oi, bora jogar?", (byte)1), (n.uid, Cp949.Read(n.sNick), Cp949.Read(n.sNote), n.bReply));
+
+        Assert.Equal((uint)Pangya.Domain.Messenger.NoteCode.Myself, (await NoteResult(ga, (uint)a.Id, "eu")).U32());
+        Assert.Equal((uint)Pangya.Domain.Messenger.NoteCode.Failed, (await NoteResult(ga, 0x7FFFFFF0, "ninguem")).U32());
+        var (_, gpoor, _) = await PlayerAsync(env, pang: 5);
+        Assert.Equal((uint)Pangya.Domain.Messenger.NoteCode.NoPang, (await NoteResult(gpoor, (uint)b.Id, "sem pang")).U32());
+
+        var (c, gc, _) = await PlayerAsync(env, login: false);                  // C só no game (fora de sala): 0xB0
+        Assert.Equal(0u, (await NoteResult(ga, (uint)c.Id, "pelo lobby")).U32());
+        var lobby = await gc.ExpectAsync(0xB0);
+        Assert.Equal(1, lobby.U8());
+        var ln = lobby.Struct<sNoteInfo>();
+        Assert.Equal("pelo lobby", Cp949.Read(ln.sNote));
+
+        var (d, keyD) = await env.Game.NewPlayerAsync();                         // D offline: fica para o próximo login
+        Assert.Equal(0u, (await NoteResult(ga, (uint)d.Id, "quando voltar")).U32());
+        Assert.Equal(1, await env.Game.S.Notes.UndeliveredAsync(d.Id));
+        var gd = await env.Game.ConnectAsync();
+        await GameEnv.SendLoginAsync(gd, d, keyD);
+        await gd.ExpectAsync(0x94);
+        var md = await MsnLoginAsync(env, d);
+        var pending = await Sub(md, 0x103);
+        Assert.Equal(1, pending.U8());
+        var pn = pending.Struct<sNoteInfo>();
+        Assert.Equal("quando voltar", Cp949.Read(pn.sNote));
+        Assert.Equal(0, await env.Game.S.Notes.UndeliveredAsync(d.Id));
     }
 }

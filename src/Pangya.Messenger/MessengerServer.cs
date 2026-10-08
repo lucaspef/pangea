@@ -25,7 +25,8 @@ public sealed class MessengerServer
     {
         services = s;
         var cfg = s.Config;
-        Context = new MessengerContext(new FriendService(s.Friends, cfg.Messenger.MaxFriends), uid => world.Find(uid), cfg.Game.Id);
+        Context = new MessengerContext(new FriendService(s.Friends, cfg.Messenger.MaxFriends), uid => world.Find(uid), cfg.Game.Id, s.Notes,
+            s.Guilds);
         Tcp = new TcpServer("MSN", new IPEndPoint(IPAddress.Parse(cfg.Network.BindIp), portOverride ?? cfg.Messenger.Port), cfg.Limits,
             c => new MessengerHandler(c, Context));
     }

@@ -132,19 +132,31 @@ public sealed partial class GameHandler
                 return true;
             }
             case CGuildWithdraw: await AnswerAndPushAsync(reply, await g.WithdrawAsync(me, (int)p.U32()), me); return true;
-            case CGuildLeave: await AnswerAndPushAsync(reply, await g.LeaveAsync(me, (int)p.U32()), me); return true;
+            case CGuildLeave:
+            {
+                int gid = (int)p.U32();
+                var code = await g.LeaveAsync(me, gid);
+                await AnswerAndPushAsync(reply, code, me);
+                if (code == GuildCode.Ok && ctx.Messenger != null) await ctx.Messenger.GuildLeftAsync(gid, me);   // 0x3A aos colegas
+                return true;
+            }
             case CGuildApprove or CGuildReject:
             {
                 int gid = (int)p.U32();
                 long target = p.U32();
-                await AnswerAndPushAsync(reply, await g.AnswerRequestAsync(me, gid, target, approve: p.Id == CGuildApprove), target);
+                bool approve = p.Id == CGuildApprove;
+                var code = await g.AnswerRequestAsync(me, gid, target, approve);
+                await AnswerAndPushAsync(reply, code, target);
+                if (code == GuildCode.Ok && approve && ctx.Messenger != null) await ctx.Messenger.GuildJoinedAsync(target);   // 0x39
                 return true;
             }
             case CGuildKick:
             {
                 int gid = (int)p.U32();
                 long target = p.U32();
-                await AnswerAndPushAsync(reply, await g.KickAsync(me, gid, target), target);
+                var code = await g.KickAsync(me, gid, target);
+                await AnswerAndPushAsync(reply, code, target);
+                if (code == GuildCode.Ok && ctx.Messenger != null) await ctx.Messenger.GuildLeftAsync(gid, target);
                 return true;
             }
             case CGuildClass:

@@ -19,6 +19,7 @@ public sealed class ServerServices : IAsyncDisposable
     public Pangya.Domain.Guilds.IGuildStore Guilds { get; }
     public Pangya.Domain.Mail.IMailStore Mail { get; }
     public Pangya.Domain.Messenger.IFriendStore Friends { get; }
+    public Pangya.Domain.Messenger.INoteStore Notes { get; }
 
     public ServerServices(PangyaConfig config)
     {
@@ -32,6 +33,7 @@ public sealed class ServerServices : IAsyncDisposable
         Guilds = new GuildRepository(Db);
         Mail = new MailRepository(Db);
         Friends = new FriendRepository(Db);
+        Notes = new NoteRepository(Db);
     }
 
     public ValueTask DisposeAsync() => Db.DisposeAsync();

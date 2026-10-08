@@ -3,6 +3,7 @@ using Pangya.Core.Logging;
 using Pangya.Core.Net;
 using Pangya.Core.Text;
 using Pangya.Domain.Game;
+using Pangya.Domain.Guilds;
 using Pangya.Domain.Messenger;
 
 namespace Pangya.Protocol.KR645.Messenger;
@@ -11,9 +12,29 @@ namespace Pangya.Protocol.KR645.Messenger;
 /// Serviços do mensageiro (um por processo): amizades no banco e quem está conectado, em memória. Roda junto do game
 /// server: findGame confirma que o uid do login está jogando (o 0x12 não tem chave nenhuma) e diz onde ele está.
 /// </summary>
-public sealed class MessengerContext(FriendService friends, Func<long, IGameSession?> findGame, int gameServerId)
+public sealed class MessengerContext(FriendService friends, Func<long, IGameSession?> findGame, int gameServerId, INoteStore? notes = null,
+    IGuildStore? guilds = null)
 {
-    public const ushort SSub = 0x2E, SubList = 0x102;
+    public const ushort SSub = 0x2E, SubList = 0x102, SubNotes = 0x103, SGuildJoined = 0x39, SGuildLeft = 0x3A;
+    public INoteStore? Notes { get; } = notes;
+    public IGuildStore? Guilds { get; } = guilds;
+
+    /// <summary>u8 n, n × sNoteInfo (0x6D): corpo do 0x2E/0x103 (MSN) e do 0xB0 (game, só no lobby). Substitui a lista do cliente.</summary>
+    public static PacketWriter NoteList(PacketWriter w, List<Note> notes)
+    {
+        int n = Math.Min(notes.Count, 255);
+        w.U8((byte)n);
+        for (int i = 0; i < n; i++)
+        {
+            var x = notes[i];
+            var info = new sNoteInfo { uid = (uint)x.SenderId, bReply = (byte)(x.SenderId != 0 ? 1 : 0) };
+            Cp949.Write(info.sNick, x.SenderNick);
+            Cp949.Write(info.sNote, x.Text);
+            Cp949.Write(info.sTime, x.CreatedAt.ToLocalTime().ToString("yy-MM-dd HH:mm"));
+            w.Struct(info);
+        }
+        return w;
+    }
     const int PageSize = 30, FriendSize = 0x8D;
     /// <summary>Status do 0x115/0x1D: 0 jogando, 1 ausente, 3 ocupado, 4 online.</summary>
     public const byte StatusPlaying = 0, StatusAway = 1, StatusBusy = 3, StatusOnline = 4;
@@ -78,46 +99,145 @@ public sealed class MessengerContext(FriendService friends, Func<long, IGameSess
         e.IsAgree = f.State != FriendState.Pending ? 1u : 0;
         e.IsBlock = f.Blocked ? 1u : 0;
         e.IsBlocked = f.BlockedMe ? 1u : 0;
-        if (other != null && accepted && !f.BlockedMe)
-        {
-            e.IsLogOn = 1;
-            e.State = other.Status;
-            e.userPosition = PositionOf(f.AccountId);
-            e.IsPlay = other.Status == StatusPlaying ? 1u : 0;
-            e.IsDive = other.Status == StatusAway ? 1u : 0;
-            e.IsBusy = other.Status == StatusBusy ? 1u : 0;
-        }
+        if (other != null && accepted && !f.BlockedMe) SetOnline(ref e, other);
         else if (forceOnline) e.IsLogOn = 1;
         return e;
     }
 
-    /// <summary>0x2E/0x102 em páginas de 30: u8 página (1 limpa a lista), u16 total, u16 n, n × sFriend.</summary>
+    void SetOnline(ref sFriend e, MessengerHandler other)
+    {
+        e.IsLogOn = 1;
+        e.State = other.Status;
+        e.userPosition = PositionOf(other.AccountId);
+        e.IsPlay = other.Status == StatusPlaying ? 1u : 0;
+        e.IsDive = other.Status == StatusAway ? 1u : 0;
+        e.IsBusy = other.Status == StatusBusy ? 1u : 0;
+    }
+
+    /// <summary>
+    /// Colega de guilda na lista (bit GuildFriend, aba "길드"), com a guilda e o emblema. IsAccept/IsAgree ligados para o
+    /// 0x10E acender o colega como acende um amigo.
+    /// </summary>
+    void MarkGuild(ref sFriend e, Guild g, MessengerHandler? other)
+    {
+        e.GuildFriend = 1;
+        e.dwGuildId = (uint)g.Id;
+        Cp949.Write(e.szEmblemName, g.Mark);
+        if (e.PangyaFriend == 0) { e.IsAccept = 1; e.IsAgree = 1; }
+        if (other != null && e.IsLogOn == 0) SetOnline(ref e, other);
+    }
+
+    /// <summary>Minha guilda (só membro de verdade, não pedido pendente) e os outros membros.</summary>
+    public async Task<(Guild Guild, List<GuildMember> Others)?> GuildOfAsync(long uid)
+    {
+        if (Guilds == null || await Guilds.MembershipAsync(uid) is not { } m || !GuildClass.IsMember(m.Class)) return null;
+        if (await Guilds.GetAsync(m.GuildId) is not { } g) return null;
+        var (all, _) = await Guilds.MembersAsync(g.Id, 1, GuildService.MaxMembers * 4);
+        var others = new List<GuildMember>(all.Count);
+        foreach (var x in all) if (x.AccountId != uid && GuildClass.IsMember(x.Class)) others.Add(x);
+        return (g, others);
+    }
+
+    /// <summary>
+    /// 0x2E/0x102 em páginas de 30: u8 página (1 limpa a lista), u16 total, u16 n, n × sFriend. Amigos e colegas de
+    /// guilda na mesma lista (quem é os dois vira uma entrada com os dois bits).
+    /// </summary>
     public async Task<List<PacketWriter>> ListPagesAsync(long owner)
     {
-        var list = await Friends.Store.ListAsync(owner);
-        int pages = Math.Max(1, (list.Count + PageSize - 1) / PageSize);
+        var entries = new List<sFriend>();
+        var index = new Dictionary<long, int>();
+        foreach (var f in await Friends.Store.ListAsync(owner))
+        {
+            index[f.AccountId] = entries.Count;
+            entries.Add(Entry(f));
+        }
+        if (await GuildOfAsync(owner) is { } mine)
+            foreach (var m in mine.Others)
+            {
+                var other = Find(m.AccountId);
+                if (index.TryGetValue(m.AccountId, out int i))
+                {
+                    var e = entries[i];
+                    MarkGuild(ref e, mine.Guild, other);
+                    entries[i] = e;
+                    continue;
+                }
+                var g = new sFriend
+                {
+                    Uid = (uint)m.AccountId, Guid = (uint)m.AccountId, userPosition = OfflinePosition, State = 5, Channel = 0xFF,
+                    GameLevel = (byte)(m.Class == GuildClass.Master ? 1 : 0),
+                };
+                Cp949.Write(g.NickName, m.Nickname);
+                MarkGuild(ref g, mine.Guild, other);
+                entries.Add(g);
+            }
+        int pages = Math.Max(1, (entries.Count + PageSize - 1) / PageSize);
         var result = new List<PacketWriter>(pages);
         for (int page = 0; page < pages; page++)
         {
-            int from = page * PageSize, n = Math.Min(PageSize, list.Count - from);
-            var w = Sub(SubList, 8 + n * FriendSize).U8((byte)(page + 1)).U16((ushort)list.Count).U16((ushort)n);
-            for (int i = 0; i < n; i++) w.Struct(Entry(list[from + i]));
+            int from = page * PageSize, n = Math.Min(PageSize, entries.Count - from);
+            var w = Sub(SubList, 8 + n * FriendSize).U8((byte)(page + 1)).U16((ushort)entries.Count).U16((ushort)n);
+            for (int i = 0; i < n; i++) w.Struct(entries[from + i]);
             result.Add(w);
         }
         return result;
+    }
+
+    /// <summary>Quem deve saber da minha presença: amigos aceitos que eu não bloqueei e colegas de guilda, online no MSN.</summary>
+    public async Task<List<MessengerHandler>> AudienceAsync(long uid)
+    {
+        var list = new List<MessengerHandler>();
+        var seen = new HashSet<long> { uid };
+        foreach (var f in await Friends.Store.ListAsync(uid))
+            if (f.State == FriendState.Accepted && !f.Blocked && Find(f.AccountId) is { } h && seen.Add(f.AccountId)) list.Add(h);
+        if (await GuildOfAsync(uid) is { } mine)
+            foreach (var m in mine.Others)
+                if (Find(m.AccountId) is { } h && seen.Add(m.AccountId)) list.Add(h);
+        return list;
+    }
+
+    /// <summary>0x39 GUILD_USER_MSN_LIST aos membros online: alguém entrou na guilda (aprovado). E a lista nova para ele.</summary>
+    public async Task GuildJoinedAsync(long uid)
+    {
+        if (await GuildOfAsync(uid) is not { } mine || await Guilds!.MembershipAsync(uid) is not { } me) return;
+        string nick = me.Nickname;
+        var info = new GUILD_USER_MSN_LIST { userUID = (uint)uid, guildUID = (uint)mine.Guild.Id, online = (byte)(Find(uid) != null ? 1 : 0) };
+        Cp949.Write(info.userID, nick);                                       // o login nunca sai do servidor
+        Cp949.Write(info.nickname, nick);
+        foreach (var m in mine.Others)
+            if (Find(m.AccountId) is { } h) h.Connection.Send(new PacketWriter(SGuildJoined, 0x40).Struct(info));
+        await RefreshListAsync(uid);
+    }
+
+    /// <summary>0x3A u32 uid aos membros online: alguém saiu ou foi expulso. guildId = a guilda de onde saiu.</summary>
+    public async Task GuildLeftAsync(int guildId, long uid)
+    {
+        if (Guilds == null) return;
+        var (members, _) = await Guilds.MembersAsync(guildId, 1, GuildService.MaxMembers * 4);
+        foreach (var m in members)
+            if (m.AccountId != uid && GuildClass.IsMember(m.Class) && Find(m.AccountId) is { } h)
+                h.Connection.Send(new PacketWriter(SGuildLeft).U32((uint)uid));
+        await RefreshListAsync(uid);
+    }
+
+    async Task RefreshListAsync(long uid)
+    {
+        if (Find(uid) is not { } h) return;
+        foreach (var page in await ListPagesAsync(uid)) h.Connection.Send(page);
     }
 }
 
 /// <summary>
 /// Mensageiro do cliente 645 (docs/protocolo/SPEC-messenger.md): hello 0x2C, login 0x12 -> 0x2D, lista 0x14 -> 0x2E/0x102,
-/// amizade (0x17..0x1C, 0x1F), presença (0x1D, 0x23 -> 0x10E/0x10F/0x115/0x123) e conversa (0x1E -> 0x113/0x114).
+/// amizade (0x17..0x1C, 0x1F), presença (0x1D, 0x23 -> 0x10E/0x10F/0x115/0x123), conversa (0x1E -> 0x113/0x114) e chat
+/// de guilda (0x25 -> 0x113 com 1). Amigos e colegas de guilda na mesma lista.
 /// Respostas no 0x2E com sub-id. Tudo conferido no servidor: o cliente só manda uid e nick.
 /// </summary>
 public sealed class MessengerHandler(Connection conn, MessengerContext ctx) : IConnectionHandler
 {
     // C->S
     const ushort CLogin = 0x12, CListFor = 0x13, CList = 0x14, CLogout = 0x16, CLookup = 0x17, CRequest = 0x18, CAccept = 0x19,
-        CBlock = 0x1A, CUnblock = 0x1B, CRemove = 0x1C, CStatus = 0x1D, CChat = 0x1E, CAlias = 0x1F, CPosition = 0x23;
+        CBlock = 0x1A, CUnblock = 0x1B, CRemove = 0x1C, CStatus = 0x1D, CChat = 0x1E, CAlias = 0x1F, CPosition = 0x23, CGuildChat = 0x25;
     // S->C
     const ushort SHello = 0x2C, SLogin = 0x2D;
     // sub-ids do 0x2E
@@ -179,6 +299,7 @@ public sealed class MessengerHandler(Connection conn, MessengerContext ctx) : IC
             case CChat: await ChatAsync(p.U32(), p.Str(256)); break;
             case CAlias: await AliasAsync(p.U32(), p.Str(32)); break;
             case CPosition: p.Skip(p.Remaining); await PositionAsync(); break;   // a posição vem da sessão de jogo
+            case CGuildChat: await GuildChatAsync(p.Str(256)); break;
             default:
                 Log.Info($"{conn} MSN: pacote 0x{p.Id:X4} sem tratamento ({p.Remaining} bytes)");
                 p.Skip(p.Remaining);
@@ -221,14 +342,20 @@ public sealed class MessengerHandler(Connection conn, MessengerContext ctx) : IC
         await SendListAsync();
         if (Listed) return;
         Listed = true;
-        await NotifyFriendsAsync(() => Sub(SubLogOn).U32((uint)AccountId));
-        await NotifyFriendsAsync(PositionPacket);
-        foreach (var f in await ctx.Friends.Store.ListAsync(AccountId))
-            if (f.State == FriendState.Accepted && !f.BlockedMe && ctx.Find(f.AccountId) is { } h && h != this)
-            {
-                conn.Send(h.PositionPacket());
-                if (h.Status != MessengerContext.StatusOnline) conn.Send(Sub(SubStatus).U32(h.Status).U32((uint)h.AccountId));
-            }
+        if (ctx.Notes is { } notes && await notes.UndeliveredAsync(AccountId) > 0)       // bilhetes que chegaram offline
+        {
+            var recent = await notes.RecentAsync(AccountId, NoteService.ListSize);
+            await notes.MarkDeliveredAsync(AccountId);
+            conn.Send(MessengerContext.NoteList(Sub(MessengerContext.SubNotes, 512), recent));
+        }
+        var audience = await ctx.AudienceAsync(AccountId);
+        foreach (var h in audience)
+        {
+            h.Connection.Send(Sub(SubLogOn).U32((uint)AccountId));
+            h.Connection.Send(PositionPacket());
+            conn.Send(h.PositionPacket());                                   // e a posição/status deles para mim
+            if (h.Status != MessengerContext.StatusOnline) conn.Send(Sub(SubStatus).U32(h.Status).U32((uint)h.AccountId));
+        }
     }
 
     async Task SendListAsync()
@@ -239,13 +366,26 @@ public sealed class MessengerHandler(Connection conn, MessengerContext ctx) : IC
     /// <summary>0x2E/0x123: u32 0, u32 uid, sUserPosition.</summary>
     PacketWriter PositionPacket() => Sub(SubPosition, 8 + 0x4B).U32(0).U32((uint)AccountId).Struct(ctx.PositionOf(AccountId));
 
-    /// <summary>Manda a cada amigo aceito e online (que eu não bloqueei) um pacote novo de <paramref name="build"/>.</summary>
+    /// <summary>Manda um pacote novo de <paramref name="build"/> a cada amigo aceito (que eu não bloqueei) e colega de guilda online.</summary>
     async Task NotifyFriendsAsync(Func<PacketWriter> build)
     {
-        foreach (var f in await ctx.Friends.Store.ListAsync(AccountId))
-            if (f.State == FriendState.Accepted && !f.Blocked && ctx.Find(f.AccountId) is { } h && h != this)
-                h.Connection.Send(build());
+        foreach (var h in await ctx.AudienceAsync(AccountId)) h.Connection.Send(build());
     }
+
+    /// <summary>
+    /// 0x25 str msg: chat de guilda -> 0x2E/0x113 (u32 uid, str nick, str msg, u8 1) a todos os membros online,
+    /// inclusive quem mandou (o cliente só mostra a própria linha por esse eco).
+    /// </summary>
+    async Task GuildChatAsync(string msg)
+    {
+        if (msg.Length > MaxChat) msg = msg[..MaxChat];
+        if (msg.Length == 0 || await ctx.GuildOfAsync(AccountId) is not { } mine) return;
+        conn.Send(GuildLine(msg));
+        foreach (var m in mine.Others)
+            if (ctx.Find(m.AccountId) is { } h) h.Connection.Send(GuildLine(msg));
+    }
+
+    PacketWriter GuildLine(string msg) => Sub(SubChat, 16 + msg.Length * 2).U32((uint)AccountId).Str(Nickname).Str(msg).U8(1);
 
     // ------------------------------------------------------------------ amizade
 

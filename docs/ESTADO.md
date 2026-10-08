@@ -17,8 +17,11 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - 🟡 Mensageiro (fase 7, SPEC-messenger.md), porta 30303, no mesmo processo do game (que confirma quem está jogando;
   o login do MSN só tem uid e nick): lista de amigos, procurar/pedir/aceitar/apagar/bloquear/apelido, online/offline,
   posição (canal/sala vinda do game, não do cliente), status ocupado/ausente/jogando, conversa entre amigos;
-  game 0x88 → 0xFA e lista de amigos pelo game (0x3C/0x11F). Falta: bilhetes (0x3C/0x111 responde "falha"),
-  guilda no mensageiro (aba e chat 0x25), convites entre servidores. Vários processos exigiriam Redis (PLANO).
+  game 0x88 → 0xFA e lista de amigos pelo game (0x3C/0x11F). Bilhetes (0x3C/0x111, 10 pang): chegam pelo mensageiro
+  (0x2E/0x103) ou no lobby (0xB0); quem está em sala/offline recebe ao entrar num canal ou abrir o mensageiro.
+  Guilda: colegas na aba "길드" (online, posição), chat de guilda (0x25), 0x39/0x3A ao entrar/sair/expulsar.
+  Falta: convites/seguir amigo em outro game server (0x24/0x26), troca de nick (0x32). Vários processos exigiriam
+  Redis (PLANO); hoje o mensageiro roda junto do game.
 - ⬜ Ranking (fase 8).
 
 ## Salas e partida

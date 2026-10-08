@@ -10,8 +10,10 @@ namespace Pangya.Protocol.KR645.Game;
 /// <summary>Serviços do game server (um por processo).</summary>
 public sealed class GameContext(GameWorld world, SessionService sessions, PlayerService players, IGameData data,
     Core.Config.LotteryConfig? lottery = null, Domain.Servers.IServerRegistry? registry = null, Domain.Guilds.IGuildStore? guilds = null,
-    Domain.Mail.IMailStore? mail = null)
+    Domain.Mail.IMailStore? mail = null, Domain.Messenger.INoteStore? notes = null, Domain.Messenger.IFriendStore? friends = null)
 {
+    /// <summary>Bilhetes do mensageiro (null sem banco de bilhetes).</summary>
+    public Domain.Messenger.NoteService? Notes { get; } = notes == null ? null : new(notes, friends);
     /// <summary>Correio (null sem banco de correio).</summary>
     public Domain.Mail.MailService? Mail { get; } = mail == null ? null : new(mail, players.Store, data);
     /// <summary>Guildas (null nos testes antigos: sem guilda).</summary>
@@ -154,6 +156,8 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         SendPlayerInfo();
         SendChannels();
         SendInventory();
+        await SendUnreadMailAsync();                                        // cartas não lidas (botão de presente pisca)
+        conn.Send(new PacketWriter(SCookie).U64((ulong)player.Cookie));     // último do login
     }
 
     void SendPlayerInfo()
@@ -224,8 +228,6 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0));   // caixa de presentes vazia (modo 1)
         SendCards();
         conn.Send(TutorialPacket(p.Tutorial));                             // missões do tutorial feitas
-        _ = SendUnreadMailAsync();                                          // cartas não lidas (botão de presente pisca)
-        conn.Send(new PacketWriter(SCookie).U64((ulong)p.Cookie));
     }
 
     /// <summary>0x12D limpa + 0x130 pilhas de cards (sCards) + 0x12E limpa + 0x12F cards ativos/encaixados.</summary>
@@ -251,5 +253,6 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
         if (r == ChannelJoinResult.Ok) channel = joined;
         Log.Info($"{conn} canal {id}: {r}");
         conn.Send(new PacketWriter(SEnterChannel).U8((byte)r));
+        if (r == ChannelJoinResult.Ok) _ = DeliverNotesAsync(Player.AccountId, ctx);   // bilhetes que chegaram fora do lobby
     }
 }
