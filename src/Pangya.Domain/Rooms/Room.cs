@@ -86,6 +86,8 @@ public sealed class Room
     public RoomPlayer? Find(IGameSession s) => bySession.GetValueOrDefault(s);
     public RoomPlayer? Find(uint guid) => byGuid.GetValueOrDefault(guid);
     public RoomPlayer? Bot { get; private set; }
+    /// <summary>Dificuldade do bot desta sala (vale na próxima partida).</summary>
+    public BotLevel BotLevel { get; set; } = BotLevel.Normal;
 
     public void Add(RoomPlayer p)
     {

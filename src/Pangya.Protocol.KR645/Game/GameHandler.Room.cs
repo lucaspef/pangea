@@ -187,7 +187,7 @@ public sealed partial class GameHandler
             var botDelay = TimeSpan.FromSeconds(cfg.BotDelaySeconds);
             r.Game = MassGame.IsMass(r.Settings.Mode)
                 ? MassGame.For(r, new MassOutput(r), Rooms.Sync, botDelay)
-                : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, new BotGolfer(Random.Shared, cfg.BotAccuracy)), Rooms.Sync,
+                : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, BotGolfer.For(r.BotLevel, Random.Shared, cfg.BotAccuracy)), Rooms.Sync,
                     botDelay, TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
             InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r, ctx.Data.Cards));
             InGameOutput.Broadcast(r, RoomPackets.GameInit(r));         // o cliente troca para a tela da partida
@@ -196,10 +196,30 @@ public sealed partial class GameHandler
         }
     }
 
-    /// <summary>Chat (0x03 str nick, str texto). Comandos na sala: !bot / !bot off.</summary>
+    /// <summary>
+    /// Chat (0x03 str nick, str texto). Comandos na sala: !bot, !bot off, !bot nível (easy/normal/hard/veryhard/impossible;
+    /// também facil/dificil/muitodificil/impossivel). O cliente nunca manda texto que começa com "/".
+    /// </summary>
     async Task ChatAsync(string _, string text)
     {
         var cmd = text.Trim().ToLowerInvariant();
+        if (cmd.StartsWith("!bot ") && BotGolfer.ParseLevel(cmd[5..]) is { } level)
+        {
+            bool add;
+            lock (Rooms.Sync)
+            {
+                if (room == null || room.State != RoomState.Waiting) return;
+                room.BotLevel = level;
+                add = room.Bot == null;
+                InGameOutput.Broadcast(room, new PacketWriter(0x3F).Str($"Bot: {level}"));
+            }
+            if (add)
+            {
+                var b = await ctx.Players.CreateBotAsync();
+                lock (Rooms.Sync) AddBot(b);
+            }
+            return;
+        }
         if (cmd is "!bot" or "/bot" or "!bot on")
         {
             var bot = await ctx.Players.CreateBotAsync();

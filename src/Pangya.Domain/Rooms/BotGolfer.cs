@@ -56,6 +56,9 @@ public static class ShotModel
     }
 }
 
+/// <summary>Dificuldade do bot (escolhida na sala com "!bot nível").</summary>
+public enum BotLevel { Easy, Normal, Hard, VeryHard, Impossible }
+
 /// <summary>Tacada escolhida pelo bot: taco (+0x25), força 0..1 (barra = 140 + 360 × força) e mira (+0x19).</summary>
 public readonly record struct BotShot(int Club, float Power, float Aim)
 {
@@ -110,8 +113,35 @@ public sealed class ShotCalibration
 ///   Assim nunca repete a tacada que já falhou;
 /// - erro aleatório de mira e força conforme <see cref="Accuracy"/> (1 = perfeito).
 /// </summary>
-public sealed class BotGolfer(Random rng, float accuracy = 0.85f)
+public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind = true, bool remembers = true)
 {
+    /// <summary>
+    /// Bot de um nível: precisão (erro de mira/força), se compensa o vento e se usa a memória do buraco.
+    /// Normal usa a precisão da configuração (Game.BotAccuracy).
+    /// </summary>
+    public static BotGolfer For(BotLevel level, Random rng, float normalAccuracy = 0.85f) => level switch
+    {
+        BotLevel.Easy => new(rng, 0.55f, readsWind: false, remembers: false),
+        BotLevel.Hard => new(rng, 0.93f),
+        BotLevel.VeryHard => new(rng, 0.98f),
+        BotLevel.Impossible => new(rng, 1f),
+        _ => new(rng, normalAccuracy),
+    };
+
+    /// <summary>Nível pelo nome do chat (pt/en, sem acento); null = desconhecido.</summary>
+    public static BotLevel? ParseLevel(string s) => s.Replace(" ", "").Replace("_", "").ToLowerInvariant() switch
+    {
+        "easy" or "facil" or "fácil" => BotLevel.Easy,
+        "normal" or "medio" or "médio" => BotLevel.Normal,
+        "hard" or "dificil" or "difícil" => BotLevel.Hard,
+        "veryhard" or "muitodificil" or "muitodifícil" => BotLevel.VeryHard,
+        "impossible" or "impossivel" or "impossível" => BotLevel.Impossible,
+        _ => null,
+    };
+
+    public bool ReadsWind { get; } = readsWind;
+    public bool Remembers { get; } = remembers;
+
     public const float PuttYards = 20;
     /// <summary>O putt mira um pouco além do buraco (a bola tem de chegar).</summary>
     const float PuttExtraYards = 1;
@@ -148,6 +178,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f)
     /// </summary>
     public void Observe(int hole, float sx, float sz, float tx, float tz, float ex, float ez, byte state, bool putt)
     {
+        if (!Remembers) return;
         UseHole(hole);
         if (putt || state == ShotResult.StateHoled) return;
         float planned = Dist(sx, sz, tx, tz), moved = Dist(sx, sz, ex, ez);
@@ -224,7 +255,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f)
         }
         else
         {
-            var (wx, wz) = ShotModel.Wind(windStrength, windDirection);
+            var (wx, wz) = ReadsWind ? ShotModel.Wind(windStrength, windDirection) : (0f, 0f);
             wx *= ShotModel.WindFactor;
             wz *= ShotModel.WindFactor;
             float factor = Calibration.DistanceFactor;

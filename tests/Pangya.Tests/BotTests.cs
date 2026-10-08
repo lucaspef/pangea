@@ -60,6 +60,33 @@ public class BotHoleMemoryTests
     }
 }
 
+public class BotLevelTests
+{
+    const float Y = ShotModel.UnitsPerYard;
+
+    [Theory]
+    [InlineData("easy", BotLevel.Easy)] [InlineData("Facil", BotLevel.Easy)] [InlineData("difícil", BotLevel.Hard)]
+    [InlineData("very hard", BotLevel.VeryHard)] [InlineData("muitodificil", BotLevel.VeryHard)] [InlineData("impossivel", BotLevel.Impossible)]
+    [InlineData("normal", BotLevel.Normal)]
+    public void ParsesChatNames(string text, BotLevel level) => Assert.Equal(level, BotGolfer.ParseLevel(text));
+
+    [Fact]
+    public void LevelsChangeAccuracyWindAndMemory()
+    {
+        Assert.Null(BotGolfer.ParseLevel("off"));
+        var easy = BotGolfer.For(BotLevel.Easy, new Random(1));
+        Assert.False(easy.ReadsWind);
+        easy.Observe(0, 0, 0, 0, 200 * Y, 0, 0, ShotResult.StateWaterOrOut, putt: false);
+        Assert.Empty(easy.Hazards);                                         // não lembra da água
+        Assert.Equal(1f, BotGolfer.For(BotLevel.Impossible, new Random(1)).Accuracy);
+        Assert.Equal(0.7f, BotGolfer.For(BotLevel.Normal, new Random(1), 0.7f).Accuracy);
+        Assert.True(BotGolfer.For(BotLevel.Hard, new Random(1)).Accuracy > BotGolfer.For(BotLevel.Normal, new Random(1)).Accuracy);
+        // easy ignora o vento: com vento forte mira igual a sem vento (a menos do erro aleatório, zerado aqui)
+        var e = new BotGolfer(new Random(1), 1, readsWind: false);
+        Assert.Equal(e.Plan(0, 0, 0, 200 * Y, 0, 0).Aim, e.Plan(0, 0, 0, 200 * Y, 8, 64).Aim, 4);
+    }
+}
+
 public class BotGolferTests
 {
     const float Y = ShotModel.UnitsPerYard;
@@ -259,5 +286,32 @@ public class BotBlockTests
         AssertStraight(b, s);
         Assert.Equal(140f, F(b, 0x21));
         Assert.Equal(3000, BinaryPrimitives.ReadInt32LittleEndian(b.AsSpan(0x1D)));
+    }
+}
+
+[Collection("db")]
+public class BotLevelChatTests(DbFixture fx)
+{
+    [Fact]
+    public async Task ChatCommandSetsLevelAndAddsTheBot()
+    {
+        _ = fx;
+        await using var env = await GameEnv.StartAsync();
+        var (acc, key) = await env.NewPlayerAsync();
+        await using var c = await env.ConnectAsync();
+        await GameEnv.SendLoginAsync(c, acc, key);
+        await c.ExpectAsync(0x94);
+        await c.SendAsync(new Pangya.Core.Net.PacketWriter(0x08).U8(0).U32(60000).U32(0).U8(4).U8(0).U8(3).U8(0).U8(0).Str("t").Str(""));
+        await c.ExpectAsync(0x46);
+        await c.SendAsync(new Pangya.Core.Net.PacketWriter(0x03).Str("x").Str("!bot dificil"));
+        Assert.Equal("Bot: Hard", (await c.ExpectAsync(0x3F)).Str());
+        var slot = await c.ExpectAsync(0x46);
+        Assert.Equal(1, slot.U8());                                          // bot entrou
+        var room = env.Game.World.Rooms.Rooms.First();
+        Assert.Equal(BotLevel.Hard, room.BotLevel);
+        await c.SendAsync(new Pangya.Core.Net.PacketWriter(0x03).Str("x").Str("!bot impossivel"));
+        Assert.Equal("Bot: Impossible", (await c.ExpectAsync(0x3F)).Str());   // muda o nível sem outro bot
+        Assert.Equal(BotLevel.Impossible, room.BotLevel);
+        Assert.NotNull(room.Bot);
     }
 }
