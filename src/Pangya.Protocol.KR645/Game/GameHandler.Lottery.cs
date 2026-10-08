@@ -29,6 +29,7 @@ public sealed partial class GameHandler
                 return true;
             case CScratchReload: return true;                                       // cartões comprados na web: não há
             case CMagicBox: await MagicBoxAsync(p); return true;
+            case COpenBox: await OpenBoxAsync(p.Remaining >= 4 ? p.U32() : 0); return true;
             default: return false;
         }
     }

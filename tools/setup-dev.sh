@@ -27,9 +27,12 @@ fi
 for db in pangya pangya_test; do
   [ -n "$(psql_q "select 1 from pg_database where datname='$db'")" ] || psql_q "create database $db owner pangya"
 done
-# dados do jogo (pangya.iff extraído do projectg642.pak do cliente; cópia somente leitura do emulador Python)
+# dados do jogo: o pangya.iff que o cliente usa (o do último pak de correção; tools/sync-iff.py só lê a pasta do
+# cliente). Sem a pasta do cliente, a cópia do emulador Python (extraída do projectg642.pak, sem as correções).
+GAME_DIR=${GAME_DIR:-/mnt/e/dev/pangya-test/KR642}
 IFF_SOURCE=${IFF_SOURCE:-/root/pangya-server-work/emu/data/pangya.iff}
 mkdir -p data
-[ -f data/pangya.iff ] || cp "$IFF_SOURCE" data/pangya.iff
+if [ -d "$GAME_DIR" ]; then python3 tools/sync-iff.py "$GAME_DIR" data/pangya.iff
+else [ -f data/pangya.iff ] || cp "$IFF_SOURCE" data/pangya.iff; fi
 
 echo "setup-dev: ok (bancos pangya e pangya_test; config em config/pangya.json e config/test.json)"

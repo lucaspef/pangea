@@ -248,6 +248,6 @@ public class FieldItemTests
         Assert.Null(f.Take(100, 1, FieldItems.Box, 1, 1, rng));   // tipo errado para o índice
         Assert.Null(f.Take(100, 1, FieldItems.Coin, 999, 1, rng)); // índice inexistente
         var box = f.Take(100, 3, FieldItems.Box, 0, 2, rng);
-        Assert.Contains(box!.Value.ItemTypeId, FieldItems.BoxItems);
+        Assert.Equal(FieldItems.BoxPrize, box!.Value.ItemTypeId);                 // caixa = 1 Spin Cube
     }
 }

@@ -276,6 +276,7 @@ public sealed partial class GameHandler
                 (existing != null ? ch.Updated : ch.Added).Add(it);
                 touched[tid] = it;
             }
+            if (tid == Domain.Shop.SpinCubeService.SpinCube && it.Quantity >= Domain.Shop.SpinCubeService.MaxCubes) continue;   // até 50 cubos
             it.Quantity++;
         }
         await ctx.Players.Store.ApplyAsync(p.AccountId, ch);

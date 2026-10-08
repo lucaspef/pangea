@@ -10,8 +10,8 @@ public sealed class FieldItems
 {
     public const byte WizCity = 0x13;
     public const int Coin = 0, Box = 1;
-    /// <summary>Consumíveis que uma caixa pode dar [suposição do emulador].</summary>
-    public static readonly int[] BoxItems = [0x18000000, 0x18000001, 0x18000002, 0x18000003, 0x18000004, 0x18000005, 0x18000006, 0x18000009];
+    /// <summary>A caixa do campo dá 1 Spin Cube (aberto depois no My Room com uma Lucky Key; Shop.SpinCubeService).</summary>
+    public const int BoxPrize = Shop.SpinCubeService.SpinCube;
 
     readonly HashSet<(uint, byte, uint)> taken = [];
     public uint Seed { get; }
@@ -36,11 +36,11 @@ public sealed class FieldItems
         return f;
     }
 
-    /// <summary>Um item reportado; devolve o prêmio (pang &gt; 0, ou typeid do item da caixa) ou null se inválido/repetido.</summary>
+    /// <summary>Um item reportado; devolve o prêmio (pang &gt; 0, ou o Spin Cube da caixa) ou null se inválido/repetido.</summary>
     public (int Pang, int ItemTypeId)? Take(uint guid, byte hole, int type, uint index, int texture, Random rng)
     {
         if (!PerHole.TryGetValue(hole, out var types) || index >= types.Length || types[index] != type) return null;
         if (!taken.Add((guid, hole, index))) return null;
-        return type == Coin ? (rng.Next(1, (texture == 1 ? 50 : 200) + 1), 0) : (0, BoxItems[rng.Next(BoxItems.Length)]);
+        return type == Coin ? (rng.Next(1, (texture == 1 ? 50 : 200) + 1), 0) : (0, BoxPrize);
     }
 }

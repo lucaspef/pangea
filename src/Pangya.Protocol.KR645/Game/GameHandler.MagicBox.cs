@@ -7,8 +7,27 @@ namespace Pangya.Protocol.KR645.Game;
 /// <summary>Caixa Mágica da caddie (docs/protocolo/SPEC-tiki-craft.md §1): 0x7E -> 0xA5/0x71 (inventário) + 0xED.</summary>
 public sealed partial class GameHandler
 {
-    const ushort CMagicBox = 0x7E, SMagicBox = 0xED;
+    const ushort CMagicBox = 0x7E, SMagicBox = 0xED, COpenBox = 0xF1, SOpenBox = 0x1A2;
     const int RecycleItemSize = 0x50;
+
+    /// <summary>
+    /// 0xF1 u32 caixa (My Room) -> 0xA5 cubo e chave, prêmio (0xC6 pang / 0x71 ou 0xA5 item), 0x1A2 u32 código, u32 caixa,
+    /// u32 prêmio, u32 quantidade. O cliente trava a tela até o 0x1A2, então sempre responde.
+    /// </summary>
+    async Task OpenBoxAsync(uint boxTid)
+    {
+        var r = await ctx.SpinCube.OpenAsync(Player, (int)boxTid);
+        Log.Info($"{conn} abrir caixa {boxTid:X8}: código {r.Code}" + (r.Code == 0 ? $", prêmio {r.PrizeTypeId:X8} x{r.PrizeQty}" : ""));
+        if (r.Code != 0) { conn.Send(new PacketWriter(SOpenBox).U32(r.Code).U32(boxTid).U32(0).U32(0)); return; }
+        var w = new PacketWriter(SItemCounts, 32).U8((byte)r.Consumed.Count);
+        foreach (var c in r.Consumed) w.U32((uint)c.TypeId).U32((uint)c.Id).U16((ushort)c.Count);
+        conn.Send(w);
+        if (r.PrizeTypeId == Domain.Shop.SpinCubeService.PangPouch) conn.Send(PangUpdate());
+        else if (r.Item is { } g && Player.Find(g.Id) is { } it)
+            conn.Send(r.NewItem ? new PacketWriter(SItems).U16(1).U16(1).Struct(PlayerStructs.ItemInfo(it))
+                : new PacketWriter(SItemCounts).U8(1).U32((uint)it.TypeId).U32((uint)it.Id).U16((ushort)it.Quantity));
+        conn.Send(new PacketWriter(SOpenBox).U32(0).U32(boxTid).U32((uint)r.PrizeTypeId).U32((uint)r.PrizeQty));
+    }
 
     /// <summary>
     /// 0x7E u16 receita, u8 vezes, u8 n, n × {u32 tid, u32 id}. O 0xED não mexe no inventário do cliente, então os

@@ -195,6 +195,6 @@ public class IffTests
     public void WrongRecordTypeIsRejected()
     {
         var a = Pangya.Core.Iff.IffArchive.Load(Path.Combine(TestEnv.Root, "data/pangya.iff"));
-        Assert.Throws<InvalidDataException>(() => a.Table<Iff.sItem>("Item.iff"));   // header 645 (200 bytes) != dados 642 (196)
+        Assert.Throws<InvalidDataException>(() => a.Table<Iff.sCourse>("Item.iff"));   // registro de outra tabela (tamanho diferente)
     }
 }
