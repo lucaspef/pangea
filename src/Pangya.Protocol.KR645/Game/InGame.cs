@@ -248,7 +248,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
             Log.Info($"sala {room.Index}: alcance da especial 0x{special:X2} do bot agora ×{golfer.Calibration.SpecialFactor(special):F2}");
         // memória do buraco para o bot: onde a tacada devia cair (mira × distância prevista) e onde parou
         float planned = ShotModel.Distance(shotByBot ? ShotModel.RangeYards(shotClub, golfer.PowerStat, driveUp: golfer.DriveUp, powerShot: lastBotPowerShot)
-            : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor * golfer.Calibration.SpecialFactor(special);
+            : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.ClubFactor(shotClub) * golfer.Calibration.SpecialFactor(special);
         var (ux, uz) = ShotModel.Direction(shotAim);
         golfer.Observe(Game.Hole, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
             r.State, putt: shotClub >= ShotModel.Putter1, cobra: special == Special.Cobra);

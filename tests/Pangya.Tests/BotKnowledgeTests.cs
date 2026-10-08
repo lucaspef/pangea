@@ -116,6 +116,25 @@ public class BotKnowledgeTests
     }
 
     [Fact]
+    public void ClubThatFallsShortIsReplacedByALongerOne()
+    {
+        var g = new BotGolfer(new Random(1), accuracy: 1);
+        float yards = ShotModel.RangeYards(5) * 0.95f;                      // o ferro 5 alcança, com folga pequena
+        Assert.Equal(5, g.ClubFor(yards));
+        for (int i = 0; i < 6; i++)                                         // o ferro 5 vem caindo 15% curto
+        {
+            float d = ShotModel.Distance(ShotModel.RangeYards(5), 500);
+            Assert.True(g.Calibration.Observe(5, 500, 0, 0, 0, 0, d * 0.85f, 0, 0, 2, learnDistance: true));
+        }
+        Assert.InRange(g.Calibration.ClubFactor(5), 0.84f, 0.87f);
+        Assert.True(g.ClubFor(yards) < 5);                                  // taco maior
+        Assert.Equal(g.Calibration.DistanceFactor, g.Calibration.ClubFactor(7));   // os outros: o fator geral
+
+        var back = ShotCalibration.FromJson(g.Calibration.ToJson());        // gravado com a calibração
+        Assert.Equal(g.Calibration.ClubFactor(5), back.ClubFactor(5), 4);
+    }
+
+    [Fact]
     public async Task RepositoryRoundTripsThroughTheDatabase()
     {
         await using var s = new ServerServices(TestEnv.Config);

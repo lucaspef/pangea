@@ -102,6 +102,7 @@ public static class Special
 /// </summary>
 public sealed class ShotCalibration
 {
+    const float ClubAlpha = 0.4f, MinClub = 0.7f, MaxClub = 1.3f;
     const float Alpha = 0.3f, MinUnits = 10 * ShotModel.UnitsPerYard, MaxAngle = 0.3f;
     public float DistanceFactor { get; private set; } = 1;
     public float AimOffset { get; private set; }
@@ -109,12 +110,22 @@ public sealed class ShotCalibration
     /// <summary>Muda a cada ajuste (para gravar só o que mudou).</summary>
     public int Version { get; private set; }
     readonly Dictionary<byte, float> special = [];
+    /// <summary>Fator de distância aprendido de cada taco (só depois de uma tacada com ele; antes vale o geral).</summary>
+    readonly Dictionary<int, float> clubs = [];
+
+    /// <summary>
+    /// Alcance real do taco em relação ao modelo: se o ferro 5 vem caindo curto, o fator dele fica &lt; 1 e o bot passa a
+    /// pegar um taco maior para a mesma distância (e um menor se vem passando).
+    /// </summary>
+    public float ClubFactor(int club) => clubs.TryGetValue(club, out var f) ? f : DistanceFactor;
 
     public System.Text.Json.Nodes.JsonObject ToJson()
     {
         var sp = new System.Text.Json.Nodes.JsonObject();
         foreach (var (k, f) in special) sp[k.ToString(System.Globalization.CultureInfo.InvariantCulture)] = f;
-        return new() { ["distance"] = DistanceFactor, ["aim"] = AimOffset, ["samples"] = Samples, ["special"] = sp };
+        var cl = new System.Text.Json.Nodes.JsonObject();
+        foreach (var (k, f) in clubs) cl[k.ToString(System.Globalization.CultureInfo.InvariantCulture)] = f;
+        return new() { ["distance"] = DistanceFactor, ["aim"] = AimOffset, ["samples"] = Samples, ["special"] = sp, ["clubs"] = cl };
     }
 
     /// <summary>Calibração gravada (valores fora das faixas voltam para dentro).</summary>
@@ -129,6 +140,10 @@ public sealed class ShotCalibration
         if (o["special"] is System.Text.Json.Nodes.JsonObject sp)
             foreach (var (k, v) in sp)
                 if (byte.TryParse(k, out var kind) && kind != Special.None) c.special[kind] = Math.Clamp(JsonNum.F(v, Special.Initial(kind)), 0.9f, 1.8f);
+        if (o["clubs"] is System.Text.Json.Nodes.JsonObject cl)
+            foreach (var (k, v) in cl)
+                if (int.TryParse(k, out var club) && club is >= 0 and < ShotModel.Putter1)
+                    c.clubs[club] = Math.Clamp(JsonNum.F(v, c.DistanceFactor), MinClub, MaxClub);
         return c;
     }
 
@@ -143,7 +158,7 @@ public sealed class ShotCalibration
         byte windStrength, byte windDirection, byte state, int powerStat, int driveUp, int powerShot)
     {
         if (kind == Special.None || club >= ShotModel.Putter1 || state is ShotResult.StateWaterOrOut or ShotResult.StateHoled) return false;
-        float d = ShotModel.Distance(ShotModel.RangeYards(club, powerStat, driveUp: driveUp, powerShot: powerShot), bar) * DistanceFactor;
+        float d = ShotModel.Distance(ShotModel.RangeYards(club, powerStat, driveUp: driveUp, powerShot: powerShot), bar) * ClubFactor(club);
         var (wx, wz) = ShotModel.Wind(windStrength, windDirection);
         float ax = endX - startX - wx * ShotModel.WindFactor, az = endZ - startZ - wz * ShotModel.WindFactor;
         float aLen = MathF.Sqrt(ax * ax + az * az);
@@ -168,7 +183,12 @@ public sealed class ShotCalibration
         float ratio = aLen / d, err = ShotModel.AngleDiff(ShotModel.AimTo(ax, az), aim);
         if (ratio is < 0.5f or > 2f || MathF.Abs(err) > MaxAngle) return false;
         AimOffset = Math.Clamp(AimOffset + Alpha * (err - AimOffset), -0.15f, 0.15f);
-        if (learnDistance) DistanceFactor = Math.Clamp(DistanceFactor + Alpha * (ratio - DistanceFactor), 0.8f, 1.25f);
+        if (learnDistance)
+        {
+            float cf = ClubFactor(club);
+            clubs[club] = Math.Clamp(cf + ClubAlpha * (ratio - cf), MinClub, MaxClub);
+            DistanceFactor = Math.Clamp(DistanceFactor + Alpha * (ratio - DistanceFactor), 0.8f, 1.25f);
+        }
         Samples++;
         Version++;
         return true;
@@ -364,7 +384,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         if (CanCobra)
         {
             float cobraReach = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp, powerShot: 1)
-                * Calibration.DistanceFactor * Calibration.SpecialFactor(Special.Cobra) * ShotModel.UnitsPerYard;
+                * Calibration.ClubFactor(ShotModel.Driver) * Calibration.SpecialFactor(Special.Cobra) * ShotModel.UnitsPerYard;
             var low = dist <= cobraReach ? (pinX, pinZ) : (x + (pinX - x) * cobraReach / dist, z + (pinZ - z) * cobraReach / dist);
             if (!NearHazard(low.Item1, low.Item2) || OnlyBlockedNear(low.Item1, low.Item2)) { cobra = true; return low; }
         }
@@ -397,7 +417,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     float MaxReachYards()
     {
         int ps = AvailablePowerShot();
-        float r = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp, powerShot: ps) * Calibration.DistanceFactor;
+        float r = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp, powerShot: ps) * Calibration.ClubFactor(ShotModel.Driver);
         return ps > 0 ? r * Calibration.SpecialFactor(BestSpecial()) : r;
     }
 
@@ -441,9 +461,9 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
             var (wx, wz) = ReadsWind ? ShotModel.Wind(windStrength, windDirection) : (0f, 0f);
             wx *= ShotModel.WindFactor;
             wz *= ShotModel.WindFactor;
-            float factor = Calibration.DistanceFactor;
+            float factor = Calibration.ClubFactor(ShotModel.Driver);          // power shot: só no driver
             float need = MathF.Sqrt((dx - wx) * (dx - wx) + (dz - wz) * (dz - wz)) / ShotModel.UnitsPerYard;   // já com o vento
-            club = ClubFor(need / factor);
+            club = ClubFor(need);                                            // pelo alcance aprendido de cada taco
             if (cautious) club = Math.Min(club + 2, ShotModel.Iron9);
             if (useCobra && !cautious)                                       // rasante por baixo do obstáculo: driver + PS simples
             {
@@ -459,7 +479,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
                 ps = avail >= 1 && need / factor <= ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: 1) ? (byte)1 : (byte)avail;
                 if (ps > 0 && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps)) special = BestSpecial();
             }
-            float reach = ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps) * factor
+            float reach = ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: ps) * Calibration.ClubFactor(club)
                 * Calibration.SpecialFactor(special);                                                        // alcance real (calibrado)
             if (yards > reach) { dx *= reach / yards; dz *= reach / yards; }    // alvo: até onde o taco alcança
             dx -= wx;
@@ -475,11 +495,11 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps, special, phase, impact);
     }
 
-    /// <summary>O taco mais curto que alcança (1W..9I); longe demais = driver.</summary>
+    /// <summary>O taco mais curto que alcança (1W..9I, com o alcance aprendido de cada um); longe demais = driver.</summary>
     public int ClubFor(float yards)
     {
         for (int c = ShotModel.Iron9; c > ShotModel.Driver; c--)
-            if (ShotModel.RangeYards(c, PowerStat, driveUp: DriveUp) >= yards) return c;
+            if (ShotModel.RangeYards(c, PowerStat, driveUp: DriveUp) * Calibration.ClubFactor(c) >= yards) return c;
         return ShotModel.Driver;
     }
 }
