@@ -1,5 +1,6 @@
 using Pangya.Core.Logging;
 using Pangya.Core.Net;
+using Pangya.Domain.Game;
 using Pangya.Domain.Players;
 using Pangya.Domain.Shop;
 
@@ -19,7 +20,8 @@ public sealed partial class GameHandler
     static readonly TimeSpan EndWait = TimeSpan.FromSeconds(20);
 
     sealed record PendingEnd(uint Pang, uint Bonus, int Holes, bool Finished, (int Course, int Score)? Course, int PangRate, int ExpRate,
-        Rewards.ExpInput ExpIn, (int RoomTid, int Kind)? Trophy, IReadOnlyList<int> AwardItems);
+        Rewards.ExpInput ExpIn, (int RoomTid, int Kind)? Trophy, IReadOnlyList<int> AwardItems,
+        IReadOnlyList<(int TypeId, int Count)> Treasure);
     PendingEnd? pendingEnd;
 
     /// <summary>
@@ -29,7 +31,7 @@ public sealed partial class GameHandler
     /// </summary>
     public int BeginGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished, (int Course, int Score)? course = null,
         int players = 1, int position = 0, bool positionPenalty = true, int coursePlayed = 0, (int RoomTid, int Kind)? trophy = null,
-        IReadOnlyList<int>? awardItems = null)
+        IReadOnlyList<int>? awardItems = null, IReadOnlyList<(int TypeId, int Count)>? treasure = null)
     {
         var p = player!;
         var now = DateTime.UtcNow;
@@ -38,7 +40,7 @@ public sealed partial class GameHandler
         int expRate = CardService.ActiveRate(p, ctx.Data.Cards, CardInfo.AbilityExpRate, now);
         var expIn = new Rewards.ExpInput(players, ctx.Data.CourseStars(coursePlayed), position, positionPenalty, p.Level);
         var end = new PendingEnd(reportedPang, reportedBonus, holes, finished, course, pangRate, expRate, expIn,
-            finished ? trophy : null, finished ? awardItems ?? [] : []);
+            finished ? trophy : null, finished ? awardItems ?? [] : [], finished ? treasure ?? [] : []);
         if (Interlocked.Exchange(ref pendingEnd, end) is { } stale) _ = FinishAsync(stale);     // partida anterior ainda aberta
         _ = Task.Delay(EndWait).ContinueWith(_ => FinishGameEnd(end), TaskScheduler.Default);
         var (_, exp) = Rewards.Compute(reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards, pangRate, expRate, expIn);
@@ -74,7 +76,8 @@ public sealed partial class GameHandler
                 if (e.Course is { } c) w.U8((byte)c.Course).Struct(PlayerStructs.MapStat(p, c.Course)); else w.U8(0xFF);
                 conn.Send(w.U8(0xFF));
             }
-            if (r.Pang != 0 || r.LevelsUp > 0) conn.Send(new PacketWriter(SPang).U64((ulong)p.Pang).U64(0));
+            bool treasurePang = e.Treasure.Count > 0 && await DeliverTreasureAsync(e.Treasure);
+            if (r.Pang != 0 || r.LevelsUp > 0 || treasurePang) conn.Send(new PacketWriter(SPang).U64((ulong)p.Pang).U64(0));
         }
         catch (Exception ex) { Log.Error($"{conn} falha ao gravar a recompensa", ex); }
     }
@@ -118,6 +121,48 @@ public sealed partial class GameHandler
         conn.Send(new PacketWriter(SLevelUp).U8(1).U8((byte)to).U8(0));       // sLevelUpDone {feito, nível, tipo}
         if (ctx.Mail != null) conn.Send(new PacketWriter(SNewMail));           // carta nova: o cliente pede a lista
         Log.Info($"{conn} presentes de nível {from + 1}..{to} enviados{(ctx.Mail != null ? " pelo correio" : "")}");
+    }
+
+    /// <summary>
+    /// Entrega do Treasure Hunter: grava os prêmios e manda 0x12C (u8 n, n × {u32 uid, u32 tid, u32 id do item, u16 qtd
+    /// ganha, u8 0, i32 0, u16 0}); o cliente soma no inventário dele (pang no saldo). true = ganhou pang.
+    /// </summary>
+    async Task<bool> DeliverTreasureAsync(IReadOnlyList<(int TypeId, int Count)> prizes)
+    {
+        var p = Player;
+        var w = new PacketWriter(STreasureGifts);
+        var lines = new List<(int Tid, int Id, int Count)>(prizes.Count);
+        long pang = 0;
+        foreach (var (tid, count) in prizes)
+        {
+            if (tid == TreasureHunter.PangTid) { pang += count; lines.Add((tid, 0, count)); continue; }
+            var (code, granted) = await ctx.Shop.GiveAsync(p, tid, count);
+            if (code == ShopCode.Ok && granted.Count > 0) lines.Add((tid, granted[0].Id, count));
+            else Log.Info($"{conn} treasure hunter: 0x{tid:X8} x{count} não entregue ({code})");
+        }
+        if (pang > 0)
+        {
+            p.Pang += pang;
+            await ctx.Players.Store.ApplyAsync(p.AccountId, new PlayerChanges { Pang = p.Pang });
+        }
+        w.U8((byte)lines.Count);
+        foreach (var (tid, id, count) in lines)
+            w.U32((uint)p.AccountId).U32((uint)tid).U32((uint)id).U16((ushort)count).U8(0).I32(0).U16(0);
+        conn.Send(w);
+        Log.Info($"{conn} treasure hunter: {lines.Count} prêmio(s), +{pang} pang");
+        return pang > 0;
+    }
+
+    /// <summary>
+    /// 0x129 sub 1: u8 n, n × {u8 curso, u32 gauge} — barra de cada mapa na escolha de mapa (o cliente só mostra 700..1000).
+    /// O gauge por curso ainda não é simulado: todos cheios, como o GB.
+    /// </summary>
+    static PacketWriter TreasureGauges()
+    {
+        const int Courses = 20, Full = 1000;
+        var w = new PacketWriter(STreasureGaugeList).U8(1).U8(Courses);
+        for (int i = 0; i < Courses; i++) w.U8((byte)i).U32(Full);
+        return w;
     }
 
     /// <summary>Item do troféu do torneio: carta do sistema (sem correio, direto no inventário).</summary>

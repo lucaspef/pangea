@@ -254,7 +254,7 @@ public sealed partial class GameHandler
             }
             r.Game = MassGame.IsMass(r.Settings.Mode)
                 ? MassGame.For(r, new MassOutput(r), Rooms.Sync, botDelay, cfg.Rewards.TrophiesCountBots)
-                : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, golfer, cfg.BotFastForward, TimeSpan.FromSeconds(cfg.BotFastForwardDelaySeconds)), Rooms.Sync,
+                : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, golfer, cfg.BotFastForward, TimeSpan.FromSeconds(cfg.BotFastForwardDelaySeconds), cfg.TreasureHunter), Rooms.Sync,
                     botDelay, TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
             InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r, ctx.Data.Cards));
             if (r.Game is TourneyGame { Pairs.Count: > 0 } tg)          // GuildMatch: pares antes do 0x50 (só o lobby trata)

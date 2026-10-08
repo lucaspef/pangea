@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using Pangya.Core.Logging;
 using Pangya.Core.Net;
+using Pangya.Domain.Game;
 using Pangya.Domain.Rooms;
 
 namespace Pangya.Protocol.KR645.Game;
@@ -9,14 +10,15 @@ namespace Pangya.Protocol.KR645.Game;
 /// Saída da partida para o cliente 645 (docs/protocolo/SPEC-ingame.md): transforma os eventos do
 /// <see cref="StrokeGame"/> em pacotes para os humanos da sala, e monta a tacada do bot.
 /// </summary>
-public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, float botFastForward = 0, TimeSpan botFastForwardDelay = default)
-    : IGameOutput
+public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, float botFastForward = 0, TimeSpan botFastForwardDelay = default,
+    Core.Config.TreasureHunterConfig? treasure = null) : IGameOutput
 {
     // ids S->C
     public const ushort SLoading = 0xA1, SWind = 0x59, SHoleStart = 0x51, STeeReady = 0x8E, SShot = 0x53, SShotResult = 0x62,
         SNextTurn = 0x61, SNextHole = 0x63, SGameEnd = 0x64, STimeOut = 0x5A, SPlayerLeft = 0x5F, SCutIn = 0x192,
         SAim = 0x54, SGauge = 0x55, SPowerShot = 0x56, SClub = 0x57, SUseItem = 0x58, SDrop = 0x5E, SPause = 0x89,
-        STimeBooster = 0xC5, SShotCommand = 0x9A, STeamEnd = 0x8F;
+        STimeBooster = 0xC5, SShotCommand = 0x9A, STeamEnd = 0x8F,
+        STreasurePoints = 0x12A, STreasureBoxes = 0x12B;
 
     public const int ShotLength = 0x2E;     // bloco da tacada (CGolfRule::HitShot)
     public const int ResultLength = 0x25;   // sShotResult
@@ -52,12 +54,60 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     public void NextHole(uint holeWinner)
     {
         botFlight++;
+        if (TreasureOn) All(new PacketWriter(STreasurePoints).U32((uint)TreasurePoints(Game.HoleIndex)));   // antes do placar
         var w = new PacketWriter(SNextHole);
         if (room.Settings.Mode == GameMode.PangBattle) w.U32(holeWinner);
         All(w);
     }
 
     public void PlayerLeft(GamePlayer p) => All(new PacketWriter(SPlayerLeft).U32(p.Guid));
+
+    // ---- Treasure Hunter (SPEC-treasure-hunter.md): stroke e team (tipos 0/1); o cliente ignora nos outros modos
+
+    bool TreasureOn => treasure is { Enabled: true } && room.Settings.Mode is GameMode.Stroke or GameMode.Team;
+
+    /// <summary>Pontos da sala (soma de todos, como o GB) nos buracos já terminados; teto 1000.</summary>
+    int TreasurePoints(int holesDone)
+    {
+        int total = 0;
+        foreach (var p in Game.Players)
+            for (int i = 0; i < Math.Min(holesDone, Game.HoleCount); i++)
+                if (p.Strokes[i] > 0) total += TreasureHunter.HolePoints(p.Strokes[i], Game.ParOf(Game.HoleAt(i)));
+        return Math.Min(total, TreasureHunter.MaxPoints);
+    }
+
+    /// <summary>
+    /// Fim de jogo: 0x12A com o total e 0x12B (u8 n, n × {u32 uid do dono, u32 tid, u16 qtd, u8 0}) com as caixas
+    /// sorteadas, em rodízio entre os humanos que terminaram. Vai antes do 0xF8/0x64. A entrega (0x12C) é na fase 2.
+    /// </summary>
+    Dictionary<uint, List<(int TypeId, int Count)>> TreasureDraw()
+    {
+        var byOwner = new Dictionary<uint, List<(int, int)>>();
+        if (!TreasureOn) return byOwner;
+        var cfg = treasure!;
+        int points = TreasurePoints(Game.HoleCount);
+        All(new PacketWriter(STreasurePoints).U32((uint)points));
+        var owners = new List<uint>();
+        foreach (var p in Game.Players)
+            if (!p.IsBot && !p.Left) owners.Add(p.Guid);
+        var data = PlayerStructs.Data;
+        int n = owners.Count == 0 ? 0 : TreasureHunter.BoxCount(points, cfg.RatePercent, Random.Shared);
+        var prizes = TreasureHunter.Draw(n, cfg.Prizes,
+            tid => ((uint)tid >> 26) == 6 && (data == null || data.Exists(tid)), Random.Shared);   // 0x18..0x1B: o cliente soma
+        if (prizes.Count == 0) return byOwner;
+        var w = new PacketWriter(STreasureBoxes).U8((byte)prizes.Count);
+        for (int i = 0; i < prizes.Count; i++)
+        {
+            uint owner = owners[i % owners.Count];
+            var (tid, count) = prizes[i];
+            if (!byOwner.TryGetValue(owner, out var list)) byOwner[owner] = list = [];
+            list.Add((tid, count));
+            w.U32(owner).U32((uint)tid).U16((ushort)count).U8(0);
+        }
+        All(w);
+        Log.Info($"sala {room.Index}: treasure hunter {points} pontos, {prizes.Count} caixa(s)");
+        return byOwner;
+    }
 
     /// <summary>
     /// Fim: registros de 33 bytes {u32 guid, u8 posição, i8 placar, u8 tacadas, u16, i64 pang, i64 bônus, i64 pang do pang battle}.
@@ -66,13 +116,15 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer, fl
     /// </summary>
     public void GameEnd(GameEnd end)
     {
+        var treasure = TreasureDraw();
         // recompensa de cada humano (calculada agora, gravada quando o cliente mandar o 0x06): o EXP vai no registro
         var exp = new Dictionary<uint, int>();
         foreach (var r in end.Results)
             if (room.Find(r.Guid)?.Session is GameHandler h)
                 exp[r.Guid] = h.BeginGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false },
                     end.Kind == GameEndKind.Stroke ? (room.CoursePlayed, r.Score) : null,   // match/skins/team: placar não é vs par
-                    players: end.Results.Count, position: Math.Max(r.Rank - 1, 0), positionPenalty: true, coursePlayed: room.CoursePlayed);
+                    players: end.Results.Count, position: Math.Max(r.Rank - 1, 0), positionPenalty: true, coursePlayed: room.CoursePlayed,
+                    treasure: treasure.GetValueOrDefault(r.Guid));
 
         var won = new List<(uint, IReadOnlyList<int>)>(end.Results.Count);     // 0xF8 antes do placar: itens ganhos
         foreach (var r in end.Results) won.Add((r.Guid, room.Field?.WonBy(r.Guid) ?? []));

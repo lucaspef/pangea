@@ -76,6 +76,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
     // ids S->C
     const ushort SStatsUpdate = 0x43;
     const ushort SHello = 0x3D, SPlayerInfo = 0x42, SChannels = 0x4B, SEnterChannel = 0x4C, SCharacters = 0x6E, SCaddies = 0x6F,
+        STreasureGifts = 0x12C, STreasureGaugeList = 0x129,
         SEquip = 0x70, SItems = 0x71, SGiftBox = 0x78, SCookie = 0x94, SMascots = 0xDF, SItemCounts = 0xA5,
         SCardsClear = 0x12D, SCardPeriodsClear = 0x12E, SCardPeriods = 0x12F, SCards = 0x130;
 
@@ -239,6 +240,7 @@ public sealed partial class GameHandler(Connection conn, GameContext ctx) : ICon
 
         conn.Send(new PacketWriter(SGiftBox).U8(1).U16(1).U16(0).U16(0));   // caixa de presentes vazia (modo 1)
         SendCards();
+        conn.Send(TreasureGauges());                                       // barras do Treasure Hunter na escolha de mapa
         conn.Send(TutorialPacket(p.Tutorial));                             // missões do tutorial feitas
     }
 

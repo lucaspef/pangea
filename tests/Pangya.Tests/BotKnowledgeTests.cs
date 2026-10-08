@@ -134,13 +134,17 @@ public class BotKnowledgeTests
         Assert.Equal(g.Calibration.ClubFactor(5), back.ClubFactor(5), 4);
     }
 
+}
+
+/// <summary>Repositório do aprendizado do bot no banco de teste (coleção "db": o esquema é recriado nela).</summary>
+[Collection("db")]
+public class BotKnowledgeRepositoryTests(DbFixture fx)
+{
     [Fact]
     public async Task RepositoryRoundTripsThroughTheDatabase()
     {
-        await using var s = new ServerServices(TestEnv.Config);
-        await Migrator.RunAsync(s.Db, CancellationToken.None);
         const byte Course = 250;                                            // mapa que não existe: não colide com partidas de teste
-        var repo = new BotKnowledgeRepository(s.Db);
+        var repo = new BotKnowledgeRepository(fx.Db);
         var mem = new HoleMemory();
         HoleMemory.Add(mem.Hazards, 1.5f, -2.25f);
         HoleMemory.Add(mem.CobraBlocked, 30, 40);

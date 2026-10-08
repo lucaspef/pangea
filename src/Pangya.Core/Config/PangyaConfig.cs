@@ -115,6 +115,37 @@ public sealed class GameConfig
     /// <summary>Espera depois da tacada do bot até acelerar (a bola já em voo; antes disso o cliente volta para 1×).</summary>
     public double BotFastForwardDelaySeconds { get; set; } = 1.5;
     public RewardConfig Rewards { get; set; } = new();
+    public TreasureHunterConfig TreasureHunter { get; set; } = new();
+}
+
+/// <summary>
+/// Treasure Hunter (SPEC-treasure-hunter.md): barra de pontos da partida (stroke/team) e caixas de prêmio no fim.
+/// Prêmios só de itens 0x18..0x1B (o cliente soma no inventário dele); 0x1A000010 = pang.
+/// </summary>
+public sealed class TreasureHunterConfig
+{
+    public bool Enabled { get; set; } = true;
+    /// <summary>Taxa de caixas em % (100 = a tabela do GB).</summary>
+    public int RatePercent { get; set; } = 100;
+    public TreasurePrize[] Prizes { get; set; } =
+    [
+        new() { TypeId = 0x1A000010, Min = 50, Max = 300, Weight = 40 },     // pang
+        new() { TypeId = 0x18000004, Min = 1, Max = 2, Weight = 10 },       // 체력 보조제 (power shot)
+        new() { TypeId = 0x18000006, Min = 1, Max = 1, Weight = 8 },        // 사일런트 윈드
+        new() { TypeId = 0x1A000011, Min = 1, Max = 3, Weight = 10 },       // 타임부스터
+        new() { TypeId = 0x1A000040, Min = 1, Max = 2, Weight = 8 },        // 오토 캘리퍼스
+        new() { TypeId = 0x18000002, Min = 1, Max = 1, Weight = 6 },        // 럭키 팡야
+        new() { TypeId = 0x18000025, Min = 1, Max = 1, Weight = 5 },        // 체력 보충제 (gauge +33)
+        new() { TypeId = 0x18000027, Min = 1, Max = 1, Weight = 3 },        // 체력 강화제 (power shot +15)
+    ];
+}
+
+public sealed class TreasurePrize
+{
+    public int TypeId { get; set; }
+    public int Min { get; set; } = 1;
+    public int Max { get; set; } = 1;
+    public int Weight { get; set; } = 1;
 }
 
 /// <summary>
