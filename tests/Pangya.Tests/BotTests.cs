@@ -187,6 +187,8 @@ public class BotPowerShotTests
         var expected = g.Plan(0, 0, 0, 200 * Y, 0, 64);                      // planejada com 1 m
         Assert.Equal(expected.Aim, windy.Aim, 4);
         Assert.Equal(0, g.Plan(0, 0, 0, 100 * Y, 8, 64).Item);               // curta: não gasta
+        Assert.Equal(0, g.Plan(0, 0, 0, 200 * Y, 8, 0).Item);                // a favor (direção 0 = +Z): ajuda, não corta
+        Assert.Equal(BotItem.SilentWind, g.Plan(0, 0, 0, 200 * Y, 8, 128).Item);   // contra: corta
     }
 
     [Fact]

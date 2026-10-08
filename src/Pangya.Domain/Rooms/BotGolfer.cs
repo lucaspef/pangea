@@ -501,9 +501,10 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         else
         {
             var c = Choose(dx, dz, windStrength, windDirection, cautious, useCobra);
-            // vento forte numa tacada longa: Silent Wind (vento 1 m só nesta tacada), se não precisa de item de power shot
+            // vento forte contra ou de lado numa tacada longa: Silent Wind (vento 1 m só nesta tacada), se não precisa de
+            // item de power shot. Vento a favor ajuda (leva a bola por cima da água): esse não se corta
             if (c.Item == 0 && ReadsWind && windStrength + 1 >= BotItem.SilentWindMeters && yards > BotItem.SilentWindMinYards
-                && Has(BotItem.SilentWind))
+                && !Tailwind(dx, dz, windStrength, windDirection) && Has(BotItem.SilentWind))
             {
                 var calm = Choose(dx, dz, 0, windDirection, cautious, useCobra);
                 if (calm.Item == 0) c = calm with { Item = BotItem.SilentWind };
@@ -524,6 +525,16 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         // putt e tacada especial saem limpos (fase 4); o resto com o erro natural do impacto
         var (phase, impact) = club >= ShotModel.Putter1 || special != Special.None ? (BotShot.PhasePangya, 0f) : DrawImpact();
         return new BotShot(club, Math.Clamp(power, 0.01f, 1f), aim, ps, special, phase, impact, item);
+    }
+
+    /// <summary>Vento mais a favor do que de lado/contra: componente na direção da tacada ≥ metade da força.</summary>
+    static bool Tailwind(float dx, float dz, byte windStrength, byte windDirection)
+    {
+        var (wx, wz) = ShotModel.Wind(windStrength, windDirection);
+        float len = MathF.Sqrt(dx * dx + dz * dz);
+        if (len < 1e-3f) return false;
+        float along = (wx * dx + wz * dz) / len;
+        return along >= 0.5f * (windStrength + 1);
     }
 
     /// <summary>
