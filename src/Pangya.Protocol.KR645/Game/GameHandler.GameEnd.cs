@@ -19,17 +19,17 @@ public sealed partial class GameHandler
     static readonly TimeSpan EndWait = TimeSpan.FromSeconds(20);
 
     sealed record PendingEnd(uint Pang, uint Bonus, int Holes, bool Finished, (int Course, int Score)? Course, int PangRate, int ExpRate,
-        Rewards.ExpInput ExpIn, (int RoomTid, int Kind)? Trophy, int AwardItem);
+        Rewards.ExpInput ExpIn, (int RoomTid, int Kind)? Trophy, IReadOnlyList<int> AwardItems);
     PendingEnd? pendingEnd;
 
     /// <summary>
     /// Fase 1: deixa a recompensa pendente e devolve o EXP a mostrar (0 para quem saiu ou está no nível máximo).
-    /// players/position/positionPenalty/coursePlayed alimentam a fórmula de EXP do GB (Rewards.Exp). trophy/awardItem:
+    /// players/position/positionPenalty/coursePlayed alimentam a fórmula de EXP do GB (Rewards.Exp). trophy/awardItems:
     /// troféu do torneio que entra na contagem do perfil e o item do prêmio (vai por carta).
     /// </summary>
     public int BeginGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished, (int Course, int Score)? course = null,
         int players = 1, int position = 0, bool positionPenalty = true, int coursePlayed = 0, (int RoomTid, int Kind)? trophy = null,
-        int awardItem = 0)
+        IReadOnlyList<int>? awardItems = null)
     {
         var p = player!;
         var now = DateTime.UtcNow;
@@ -38,7 +38,7 @@ public sealed partial class GameHandler
         int expRate = CardService.ActiveRate(p, ctx.Data.Cards, CardInfo.AbilityExpRate, now);
         var expIn = new Rewards.ExpInput(players, ctx.Data.CourseStars(coursePlayed), position, positionPenalty, p.Level);
         var end = new PendingEnd(reportedPang, reportedBonus, holes, finished, course, pangRate, expRate, expIn,
-            finished ? trophy : null, finished ? awardItem : 0);
+            finished ? trophy : null, finished ? awardItems ?? [] : []);
         if (Interlocked.Exchange(ref pendingEnd, end) is { } stale) _ = FinishAsync(stale);     // partida anterior ainda aberta
         _ = Task.Delay(EndWait).ContinueWith(_ => FinishGameEnd(end), TaskScheduler.Default);
         var (_, exp) = Rewards.Compute(reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards, pangRate, expRate, expIn);
@@ -67,7 +67,7 @@ public sealed partial class GameHandler
                 Log.Info($"{conn} recompensa: +{r.Pang} pang, +{r.Exp} EXP{(r.LevelsUp > 0 ? $", subiu {r.LevelsUp} nível(is) -> {p.Level}" : "")}");
             if (e.Trophy is { Kind: > Trophy.None } t) Log.Info($"{conn} troféu {t.Kind} (1 ouro, 2 prata, 3 bronze) da sala {t.RoomTid:X8}");
             if (r.LevelsUp > 0) await LevelUpGiftsAsync(levelBefore, p.Level);
-            if (e.AwardItem != 0) await AwardItemAsync(e.AwardItem);
+            foreach (var tid in e.AwardItems) await AwardItemAsync(tid);
             if (e.Finished && e.Holes > 0)                                  // 0x43: totais, EXP/nível novos, troféus e o registro do curso
             {
                 var w = new PacketWriter(SStatsUpdate, 0x160).Struct(PlayerStructs.Statistics(p)).Struct(PlayerStructs.Trophies(p));
@@ -154,7 +154,7 @@ public sealed partial class GameHandler
     /// Nunca nos outros modos: no campo o 0x77 manda o cliente de volta à sala.
     /// </summary>
     public void SendMassResult(int exp, IReadOnlyList<int> items, bool guild, int matchTid = 0, int myTrophy = 0,
-        IReadOnlyList<Domain.Rooms.TourneyAward>? awards = null)
+        IReadOnlyList<Domain.Rooms.TourneyAward>? awards = null, IReadOnlyList<Domain.Rooms.TourneyMedal>? medals = null)
     {
         var cc = new PacketWriter(SMyItemsWon).U8(0).U16((ushort)items.Count);
         foreach (var tid in items) cc.U32((uint)tid);
@@ -166,6 +166,9 @@ public sealed partial class GameHandler
         if (awards != null)
             foreach (var a in awards)
                 if (a.Position < 6) slots[6 + a.Position] = (a.Player.Guid, (uint)a.ItemTid);
+        if (medals != null)
+            foreach (var m in medals)
+                if (m.Slot is >= 0 and < Domain.Rooms.Medal.Count) slots[m.Slot] = (m.Player.Guid, (uint)m.ItemTid);
         foreach (var (guid, tid) in slots) w.U32(guid).U32(tid);
         conn.Send(w);
     }

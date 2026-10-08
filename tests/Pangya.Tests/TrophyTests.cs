@@ -140,6 +140,29 @@ public class TourneyTrophyTests
     }
 
     [Fact]
+    public void EighteenPlayersGetMedals()
+    {
+        var (g, o, _) = Setup(18, 18, 30);
+        g.Players[5].BestDrive = 280;
+        g.Players[9].BestDrive = 300;                                        // melhor drive
+        g.Players[2].BestLongPutt = 12;
+        for (int h = 0; h < 18; h++)
+            for (int i = 0; i < g.Players.Count; i++)
+                Hole(g, g.Players[i], i == 7 && h < 9 ? 5 : 4);                 // 7: bogeys na ida, par na volta
+        Assert.True(g.Over);
+        var medals = o.Result!.Medals;
+        TourneyMedal? Of(int slot) { foreach (var m in medals) if (m.Slot == slot) return m; return null; }
+        Assert.NotNull(Of(Medal.Lucky));
+        Assert.Equal(100u, Of(Medal.Speediest)!.Value.Player.Guid);           // o primeiro a terminar
+        Assert.Equal(109u, Of(Medal.BestDrive)!.Value.Player.Guid);
+        Assert.Equal(102u, Of(Medal.BestLongPutt)!.Value.Player.Guid);
+        Assert.Null(Of(Medal.BestChipIn));                                   // ninguém fez chip-in
+        Assert.Equal(107u, Of(Medal.BestRecovery)!.Value.Player.Guid);        // melhorou 9 tacadas na volta
+        foreach (var m in medals) Assert.InRange(m.ItemTid, TourneyGame.AwardItemBase, TourneyGame.AwardItemBase + 14);
+        Assert.Contains(Of(Medal.BestDrive)!.Value.ItemTid, o.Result.ItemsOf(g.Players[9]));
+    }
+
+    [Fact]
     public void FewPlayersOrShortGameGiveNoTrophy()
     {
         var (g, o, _) = Setup(9, 18, 10);

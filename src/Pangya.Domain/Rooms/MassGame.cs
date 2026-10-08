@@ -22,6 +22,12 @@ public sealed class MassPlayer(RoomPlayer rp)
     public byte ResultState { get; set; }
     public bool Finished { get; set; }
     public bool Left { get; set; }
+    /// <summary>Quando terminou o último buraco (Stopwatch; medalha "mais rápido").</summary>
+    public long FinishedAt { get; set; }
+    /// <summary>Melhores da partida pelo 0x31 do cliente (já limitados): drive, chip-in e putt (jardas).</summary>
+    public float BestDrive { get; set; }
+    public float BestChipIn { get; set; }
+    public float BestLongPutt { get; set; }
     public long LastProgress { get; set; } = Stopwatch.GetTimestamp();
     // approach
     public int ShotTimeMs { get; set; } = -1;
@@ -37,15 +43,35 @@ public readonly record struct ApproachEntry(uint Guid, uint Uid, bool Left, byte
 /// <summary>Premiado do torneio: posição (0 = 1º), troféu (Trophy.Gold..Bronze) e item sorteado.</summary>
 public readonly record struct TourneyAward(MassPlayer Player, int Position, int Trophy, int ItemTid);
 
-/// <summary>Troféu da sala (Match.iff; 0 = modo sem troféu) e premiados.</summary>
-public sealed record TourneyResult(int MatchTid, List<TourneyAward> Awards)
+/// <summary>Medalha do torneio: posição no 0x77 (<see cref="Medal"/>) e item sorteado.</summary>
+public readonly record struct TourneyMedal(MassPlayer Player, int Slot, int ItemTid);
+
+/// <summary>Medalhas, na ordem do 0x77 (m_awardItem[0..5]).</summary>
+public static class Medal
 {
-    public static readonly TourneyResult Empty = new(0, []);
+    public const int Lucky = 0, Speediest = 1, BestDrive = 2, BestChipIn = 3, BestLongPutt = 4, BestRecovery = 5, Count = 6;
+    /// <summary>Só a partir deste número de jogadores (GB Tourney.requestMakeMedal).</summary>
+    public const int MinPlayers = 18;
+}
+
+/// <summary>Troféu da sala (Match.iff; 0 = modo sem troféu), premiados e medalhas.</summary>
+public sealed record TourneyResult(int MatchTid, List<TourneyAward> Awards, List<TourneyMedal> Medals)
+{
+    public static readonly TourneyResult Empty = new(0, [], []);
 
     public int TrophyOf(MassPlayer p)
     {
         foreach (var a in Awards) if (a.Player == p) return a.Trophy;
         return 0;
+    }
+
+    /// <summary>Itens que o jogador ganhou (troféu e medalhas).</summary>
+    public List<int> ItemsOf(MassPlayer p)
+    {
+        var list = new List<int>();
+        foreach (var a in Awards) if (a.Player == p) list.Add(a.ItemTid);
+        foreach (var m in Medals) if (m.Player == p) list.Add(m.ItemTid);
+        return list;
     }
 }
 
@@ -183,7 +209,58 @@ public sealed class TourneyGame : MassGame
         var awards = new List<TourneyAward>(kinds.Length);
         for (int i = 0; i < kinds.Length && i < ranked.Count; i++)
             awards.Add(new TourneyAward(ranked[i], i, kinds[i], AwardItemBase + Rng.Next(AwardItemCount)));
-        return new TourneyResult(MatchTid, awards);
+        return new TourneyResult(MatchTid, awards, Medals(ranked));
+    }
+
+    /// <summary>
+    /// Medalhas (só com 18+ jogadores, GB requestMakeMedal): sorte = sorteio; mais rápido = terminou primeiro; melhor
+    /// drive, chip-in e putt longo = maiores valores do 0x31 do cliente (limitados); recuperação (18 buracos) = maior
+    /// melhora dos 9 últimos sobre os 9 primeiros. Quem não fez bogey vem antes, como no GB. Sem valor (0) não há medalha.
+    /// </summary>
+    List<TourneyMedal> Medals(List<MassPlayer> eligible)
+    {
+        var medals = new List<TourneyMedal>();
+        if (eligible.Count < Medal.MinPlayers) return medals;
+        void Give(int slot, MassPlayer? p) { if (p != null) medals.Add(new TourneyMedal(p, slot, AwardItemBase + Rng.Next(AwardItemCount))); }
+        Give(Medal.Lucky, eligible[Rng.Next(eligible.Count)]);
+        Give(Medal.Speediest, Best(eligible, p => -(double)p.FinishedAt));
+        Give(Medal.BestDrive, Best(eligible, p => p.BestDrive));
+        Give(Medal.BestChipIn, Best(eligible, p => p.BestChipIn));
+        Give(Medal.BestLongPutt, Best(eligible, p => p.BestLongPutt));
+        if (HoleCount == 18) Give(Medal.BestRecovery, Best(eligible, p => Recovery(p)));
+        return medals;
+    }
+
+    /// <summary>Quem tem o maior valor (0 = sem valor, fica de fora), preferindo quem não fez bogey.</summary>
+    MassPlayer? Best(List<MassPlayer> list, Func<MassPlayer, double> value)
+    {
+        MassPlayer? best = null;
+        bool bestGood = false;
+        double bestValue = 0;
+        foreach (var p in list)
+        {
+            double v = value(p);
+            if (v == 0) continue;
+            bool good = NoBogey(p);
+            if (best == null || (good && !bestGood) || (good == bestGood && v > bestValue)) (best, bestGood, bestValue) = (p, good, v);
+        }
+        return best;
+    }
+
+    bool NoBogey(MassPlayer p)
+    {
+        for (int i = 0; i < HoleCount; i++)
+            if (p.Strokes[i] > ParOf(HoleAt(i))) return false;
+        return true;
+    }
+
+    /// <summary>Tacadas acima do par nos 9 primeiros menos nos 9 últimos (positivo = melhorou).</summary>
+    int Recovery(MassPlayer p)
+    {
+        int first = 0, last = 0;
+        for (int i = 0; i < 9; i++) first += p.Strokes[i] - ParOf(HoleAt(i));
+        for (int i = 9; i < 18; i++) last += p.Strokes[i] - ParOf(HoleAt(i));
+        return Math.Max(first - last, 0);
     }
 
     public override void Loaded(MassPlayer p)
@@ -240,6 +317,7 @@ public sealed class TourneyGame : MassGame
         if (p.HoleIndex >= HoleCount)
         {
             p.Finished = true;
+            p.FinishedAt = Stopwatch.GetTimestamp();
             last = AllDone();
             if (!last) Output.RivalState(p, 2);                     // o último sai no EndGame, depois do resultado
         }

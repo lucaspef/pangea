@@ -33,7 +33,9 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - ✅ Troféus do torneio: troféu da sala pela média de nível (Match.iff 0x2C0x0000), ouro/prata/bronze por posição
   (18 buracos com 10+ jogadores, 9 buracos com 15+), contagem no perfil (0x43/0x151/salas), item do prêmio por carta.
   Bots não contam como jogadores, a não ser com `Game.Rewards.TrophiesCountBots: true` (para testar sozinho).
-- ⬜ Medalhas do torneio (18+ jogadores), Treasure Hunter, ladder do match, entrar em partida em andamento.
+- ✅ Medalhas do torneio (18+ jogadores): sorte, mais rápido, melhor drive, chip-in, putt longo e recuperação (18
+  buracos), com item por carta; drive/chip-in/putt vêm do 0x31 do cliente, limitados por buraco.
+- ⬜ Treasure Hunter, ladder do match, entrar em partida em andamento.
 
 ## Bot
 - ✅ Mira e força como o oponente do cliente; memória do buraco (água, OB, obstáculos, rota segura dos outros).
@@ -42,7 +44,8 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 - ✅ Power shot simples/duplo com gauge espelhado (0x56 antes da tacada).
 - ✅ Tomahawk (hard+) e Spike (very hard+) com power shot quando nem o duplo alcança; alcance aprendido por tipo
   (começa em ×1,25).
-- ⬜ Cobra, efeito/curva, erro por fase/impacto (SPEC-bot-especiais.md).
+- ✅ Cobra (very hard+): por baixo de um obstáculo que já barrou a bola naquela linha; se o Cobra também bater, desiste.
+- ⬜ Efeito/curva, erro por fase/impacto (SPEC-bot-especiais.md).
 
 ## Itens, loja e economia
 - ✅ Loja (pang/cookie, pacotes), equipamento, armário, upgrades, cards (efeitos que dependem do servidor), mascote.

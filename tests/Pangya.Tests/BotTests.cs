@@ -119,6 +119,27 @@ public class BotPowerShotTests
     }
 
     [Fact]
+    public void CobraGoesUnderAnObstacleThatBlockedTheLine()
+    {
+        var vh = Charged(BotLevel.VeryHard);
+        Assert.Equal(Special.None, vh.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0).Special);
+        vh.Observe(0, 0, 0, 0, 200 * Y, 0, 50 * Y, 2, putt: false);            // barrada a 50 de 200 jardas: obstáculo
+        var s = vh.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0);
+        Assert.Equal((ShotModel.Driver, (byte)1, Special.Cobra), (s.Club, s.PowerShot, s.Special));
+        Assert.Equal(0f, s.Aim, 2);                                          // mesma linha
+        vh.Observe(0, 0, 0, 0, 200 * Y, 0, 60 * Y, 2, putt: false, cobra: true);   // o Cobra também bateu: desiste
+        Assert.Equal(Special.None, vh.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0).Special);
+
+        var water = Charged(BotLevel.VeryHard);
+        water.Observe(0, 0, 0, 0, 200 * Y, 0, 0, ShotResult.StateWaterOrOut, putt: false);
+        Assert.Equal(Special.None, water.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0).Special);   // água: Cobra não resolve
+        var hard = Charged(BotLevel.Hard);
+        hard.Observe(0, 0, 0, 0, 200 * Y, 0, 50 * Y, 2, putt: false);
+        Assert.Equal(Special.None, hard.Plan(0, 0, 0, 200 * Y, 0, 0, hole: 0).Special);    // hard não tem Cobra
+        Assert.Equal(Special.Cobra, InGameOutput.BotBlock(null, new BotShot(0, 1, 0, 1, Special.Cobra))[0x11]);
+    }
+
+    [Fact]
     public void SpecialRangeIsLearnedAndTheLongerOneIsUsed()
     {
         var vh = Charged(BotLevel.VeryHard);

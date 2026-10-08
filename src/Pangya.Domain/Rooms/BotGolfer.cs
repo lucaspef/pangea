@@ -75,13 +75,18 @@ public readonly record struct BotShot(int Club, float Power, float Aim, byte Pow
 
 /// <summary>
 /// Flags de tacada especial do bloco (+0x11; SPEC-bot-especiais.md §2.2). Tomahawk e Spike precisam de power shot armado
-/// e saem com a velocidade ×1,3; Spike só com madeira. (Cobra: rasante para passar sob árvores; o bot não usa.)
+/// e saem com a velocidade ×1,3; Spike e Cobra só com madeira. Cobra: rasante que só sobe perto do fim (passa sob
+/// galhos); o bot usa quando a linha direta já foi barrada por um obstáculo.
 /// </summary>
 public static class Special
 {
     public const byte None = 0, Tomahawk = 0x10, Cobra = 0x20, Spike = 0x40;
     /// <summary>Chute inicial do alcance em relação à tacada normal com o mesmo power shot (velocidade ×1,3 ≈ +25 %).</summary>
     public const float InitialFactor = 1.25f;
+    /// <summary>Cobra: alcance ≈ o nominal (sobe 100 jd antes do fim; SPEC-bot-especiais.md §6).</summary>
+    public const float CobraInitialFactor = 1f;
+
+    public static float Initial(byte kind) => kind == Cobra ? CobraInitialFactor : InitialFactor;
 }
 
 /// <summary>
@@ -101,7 +106,7 @@ public sealed class ShotCalibration
     readonly Dictionary<byte, float> special = [];
 
     /// <summary>Alcance de uma tacada especial do bot em relação à normal (aprendido; começa em Special.InitialFactor).</summary>
-    public float SpecialFactor(byte kind) => kind == Special.None ? 1 : special.GetValueOrDefault(kind, Special.InitialFactor);
+    public float SpecialFactor(byte kind) => kind == Special.None ? 1 : special.GetValueOrDefault(kind, Special.Initial(kind));
 
     /// <summary>
     /// Tacada especial do bot: só ajusta o fator daquele tipo (a distância real comparada à prevista pela tacada normal
@@ -188,8 +193,8 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     {
         BotLevel.Easy => new(rng, 0.55f, readsWind: false, remembers: false),
         BotLevel.Hard => new(rng, 0.93f, maxPowerShot: 2, specials: Special.Tomahawk),
-        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike),
-        BotLevel.Impossible => new(rng, 1f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike),
+        BotLevel.VeryHard => new(rng, 0.98f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra),
+        BotLevel.Impossible => new(rng, 1f, maxPowerShot: 2, specials: Special.Tomahawk | Special.Spike | Special.Cobra),
         _ => new(rng, normalAccuracy, maxPowerShot: 1),
     };
 
@@ -224,7 +229,7 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
     /// <summary>Tacada que parou antes desta fração do previsto bateu em algo (árvore, parede): o caminho é perigo.</summary>
     const float BlockedFraction = 0.4f;
     int memoryHole = -1;
-    readonly List<(float X, float Z)> safe = [], hazards = [];
+    readonly List<(float X, float Z)> safe = [], hazards = [], blocked = [], cobraBlocked = [];
 
     /// <summary>Perigos e lugares seguros conhecidos no buraco atual (para testes e log).</summary>
     public IReadOnlyList<(float X, float Z)> Hazards => hazards;
@@ -236,44 +241,73 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         memoryHole = hole;
         safe.Clear();
         hazards.Clear();
+        blocked.Clear();
+        cobraBlocked.Clear();
     }
 
     /// <summary>
     /// Resultado de uma tacada de qualquer jogador no buraco: (sx, sz) saída, (tx, tz) onde a tacada deveria cair
     /// (mira × distância prevista), (ex, ez) onde parou. Água/OB (a bola volta ao ponto de saída) e tacada barrada
-    /// marcam o ponto previsto como perigo; bola parada em jogo marca um lugar seguro. Putts não contam.
+    /// marcam o ponto previsto como perigo; bola parada em jogo marca um lugar seguro. Putts não contam. A tacada barrada
+    /// (obstáculo) também marca o ponto como "barrado": dá para passar por baixo com Cobra, a não ser que um Cobra já
+    /// tenha sido barrado ali (cobra = a tacada observada foi um Cobra).
     /// </summary>
-    public void Observe(int hole, float sx, float sz, float tx, float tz, float ex, float ez, byte state, bool putt)
+    public void Observe(int hole, float sx, float sz, float tx, float tz, float ex, float ez, byte state, bool putt, bool cobra = false)
     {
         if (!Remembers) return;
         UseHole(hole);
         if (putt || state == ShotResult.StateHoled) return;
         float planned = Dist(sx, sz, tx, tz), moved = Dist(sx, sz, ex, ez);
-        if (state == ShotResult.StateWaterOrOut || (planned > 30 * ShotModel.UnitsPerYard && moved < planned * BlockedFraction))
+        bool wasBlocked = planned > 30 * ShotModel.UnitsPerYard && moved < planned * BlockedFraction;
+        if (state == ShotResult.StateWaterOrOut || wasBlocked)
+        {
             hazards.Add((tx, tz));
+            if (state != ShotResult.StateWaterOrOut) (cobra ? cobraBlocked : blocked).Add((tx, tz));
+        }
         else if (moved > 10 * ShotModel.UnitsPerYard)
             safe.Add((ex, ez));
     }
 
     static float Dist(float ax, float az, float bx, float bz) => MathF.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));
 
-    bool NearHazard(float x, float z)
+    bool NearHazard(float x, float z) => Near(hazards, x, z);
+
+    static bool Near(List<(float X, float Z)> list, float x, float z)
     {
-        foreach (var (hx, hz) in hazards)
+        foreach (var (hx, hz) in list)
             if (Dist(x, z, hx, hz) < HazardYards * ShotModel.UnitsPerYard) return true;
         return false;
     }
 
+    /// <summary>Todo perigo perto do ponto é obstáculo (não água/OB) que ainda não barrou um Cobra.</summary>
+    bool OnlyBlockedNear(float x, float z)
+    {
+        foreach (var (hx, hz) in hazards)
+            if (Dist(x, z, hx, hz) < HazardYards * ShotModel.UnitsPerYard && !Near(blocked, hx, hz)) return false;
+        return Near(blocked, x, z) && !Near(cobraBlocked, x, z);
+    }
+
+    bool CanCobra => (Specials & Special.Cobra) != 0 && AvailablePowerShot() > 0;
+
     /// <summary>
     /// Alvo da tacada longa: direto (bandeira ou o mais longe que o maior taco alcança na linha dela) se não cai perto
-    /// de um perigo; senão o lugar seguro que mais aproxima da bandeira; senão lay-ups (mais curto e/ou desviado).
+    /// de um perigo; Cobra na mesma linha se o perigo é só um obstáculo que barrou a bola (e o nível tem Cobra); senão o
+    /// lugar seguro que mais aproxima da bandeira; senão lay-ups (mais curto e/ou desviado).
     /// </summary>
-    (float X, float Z) Target(float x, float z, float pinX, float pinZ)
+    (float X, float Z) Target(float x, float z, float pinX, float pinZ, out bool cobra)
     {
+        cobra = false;
         float reach = MaxReachYards() * ShotModel.UnitsPerYard;
         float dist = Dist(x, z, pinX, pinZ);
         var direct = dist <= reach ? (pinX, pinZ) : (x + (pinX - x) * reach / dist, z + (pinZ - z) * reach / dist);
         if (hazards.Count == 0 || !NearHazard(direct.Item1, direct.Item2)) return direct;
+        if (CanCobra)
+        {
+            float cobraReach = ShotModel.RangeYards(ShotModel.Driver, PowerStat, driveUp: DriveUp, powerShot: 1)
+                * Calibration.DistanceFactor * Calibration.SpecialFactor(Special.Cobra) * ShotModel.UnitsPerYard;
+            var low = dist <= cobraReach ? (pinX, pinZ) : (x + (pinX - x) * cobraReach / dist, z + (pinZ - z) * cobraReach / dist);
+            if (!NearHazard(low.Item1, low.Item2) || OnlyBlockedNear(low.Item1, low.Item2)) { cobra = true; return low; }
+        }
 
         (float X, float Z)? best = null;
         float bestLeft = dist - 20 * ShotModel.UnitsPerYard;                  // tem de avançar pelo menos 20 jardas
@@ -325,9 +359,10 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
         if (hole >= 0) UseHole(hole);
         float dx = pinX - x, dz = pinZ - z;
         float yards = MathF.Sqrt(dx * dx + dz * dz) / ShotModel.UnitsPerYard;
+        bool useCobra = false;
         if (yards > PuttYards)
         {
-            var (tx, tz) = Target(x, z, pinX, pinZ);
+            var (tx, tz) = Target(x, z, pinX, pinZ, out useCobra);
             (dx, dz) = (tx - x, tz - z);
             yards = MathF.Sqrt(dx * dx + dz * dz) / ShotModel.UnitsPerYard;
             if (yards <= PuttYards) yards = PuttYards + 1;                    // lay-up curto ainda é tacada, não putt
@@ -350,9 +385,15 @@ public sealed class BotGolfer(Random rng, float accuracy = 0.85f, bool readsWind
             float need = MathF.Sqrt((dx - wx) * (dx - wx) + (dz - wz) * (dz - wz)) / ShotModel.UnitsPerYard;   // já com o vento
             club = ClubFor(need / factor);
             if (cautious) club = Math.Min(club + 2, ShotModel.Iron9);
+            if (useCobra && !cautious)                                       // rasante por baixo do obstáculo: driver + PS simples
+            {
+                club = ShotModel.Driver;
+                ps = 1;
+                special = Special.Cobra;
+            }
             // power shot só no driver quando nem ele alcança: o menor que resolve (simples antes do duplo); se nem o
             // maior power shot alcança e o nível permite, Tomahawk/Spike (precisam do power shot armado)
-            if (club == ShotModel.Driver && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp))
+            if (special == Special.None && club == ShotModel.Driver && need / factor > ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp))
             {
                 int avail = AvailablePowerShot();
                 ps = avail >= 1 && need / factor <= ShotModel.RangeYards(club, PowerStat, driveUp: DriveUp, powerShot: 1) ? (byte)1 : (byte)avail;

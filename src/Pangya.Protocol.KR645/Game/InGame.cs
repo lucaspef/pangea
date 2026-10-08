@@ -106,7 +106,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         if (shot.PowerShot == 0) return TimeSpan.Zero;
         All(new PacketWriter(SPowerShot).U32(bot.Guid).U8(shot.PowerShot));
         Log.Info($"sala {room.Index}: bot arma power shot {shot.PowerShot} (gauge {golfer.Gauge:F0})" +
-                 (shot.Special != 0 ? $" para {(shot.Special == Special.Spike ? "Spike" : "Tomahawk")}" : ""));
+                 (shot.Special != 0 ? $" para {(shot.Special == Special.Spike ? "Spike" : shot.Special == Special.Cobra ? "Cobra" : "Tomahawk")}" : ""));
         return PowerShotCharge;
     }
 
@@ -164,7 +164,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         BinaryPrimitives.WriteSingleLittleEndian(s[0x0C..], 0f);
         b[0x10] = 4;
         BinaryPrimitives.WriteUInt32LittleEndian(s[0x11..], 0);
-        if (shot.PowerShot > 0 && (shot.Special == Special.Tomahawk || (shot.Special == Special.Spike && shot.Club <= 2)))
+        if (shot.PowerShot > 0 && (shot.Special == Special.Tomahawk || (shot.Special is Special.Spike or Special.Cobra && shot.Club <= 2)))
             b[0x11] = shot.Special;
         BinaryPrimitives.WriteSingleLittleEndian(s[0x19..], shot.Aim);
         b[0x25] = (byte)shot.Club;
@@ -227,7 +227,7 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
             : ShotModel.RangeYards(shotClub), shotBar) * golfer.Calibration.DistanceFactor * golfer.Calibration.SpecialFactor(special);
         var (ux, uz) = ShotModel.Direction(shotAim);
         golfer.Observe(Game.HoleIndex, shotStartX, shotStartZ, shotStartX + ux * planned, shotStartZ + uz * planned, r.X, r.Z,
-            r.State, putt: shotClub >= ShotModel.Putter1);
+            r.State, putt: shotClub >= ShotModel.Putter1, cobra: special == Special.Cobra);
         var cal = golfer.Calibration;
         Log.Info($"sala {room.Index} resultado {r.Guid}: pos=({r.X:F1},{r.Y:F1},{r.Z:F1}) estado={r.State} " +
                  $"direção real={ShotModel.AimTo(dx, dz):F4} (mira {shotAim:F4}) distância={MathF.Sqrt(dx * dx + dz * dz):F1} " +

@@ -53,6 +53,13 @@ public sealed partial class GameHandler
                 // estatística acumulada da partida (0x31 a cada buraco, 0x06 no fim): a última vale no fim do jogo
                 if (p.Remaining >= 0xEB) lastGameStats = PlayerStructs.GameStats(p.Struct<sPangYaUserStatistics>());
                 p.Skip(p.Remaining);
+                if (lastGameStats is { } gs)                                    // torneio: melhores da partida para as medalhas
+                    lock (Rooms.Sync)
+                        if (room?.Game is MassGame { Over: false } mass && room.Find(this) is { } me && mass.Find(me.Guid) is { } mp)
+                        {
+                            var sane = gs.Sane(Math.Max(mp.HoleIndex, 1));
+                            (mp.BestDrive, mp.BestChipIn, mp.BestLongPutt) = (sane.Longest, sane.LongestChipIn, sane.LongestPuttIn);
+                        }
                 if (p.Id == CGameStats) FinishGameEnd();                       // a tela de resultado já abriu: 0x43/0xC6 agora
                 return true;
             case CTurnClock or CTeamHoleIn or CMatchHoleIn:                // relógio / pose: sem resposta
