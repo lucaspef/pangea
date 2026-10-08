@@ -27,9 +27,9 @@ public class LevelAndRewardTests
     [Fact]
     public void RewardIsCappedAndOnlyForFinishers()
     {
-        var cfg = new RewardConfig { ExpPerHole = 2, MaxPangPerHole = 100 };
-        Assert.Equal((250L, 6), Rewards.Compute(200, 50, 3, true, cfg));
-        Assert.Equal((300L, 6), Rewards.Compute(999_999, 999_999, 3, true, cfg));   // pang informado é limitado
+        var cfg = new RewardConfig { MaxPangPerHole = 100 };
+        Assert.Equal((250L, 3), Rewards.Compute(200, 50, 3, true, cfg));
+        Assert.Equal((300L, 3), Rewards.Compute(999_999, 999_999, 3, true, cfg));   // pang informado é limitado
         Assert.Equal((0L, 0), Rewards.Compute(200, 0, 3, false, cfg));                // saiu antes: nada
     }
 }

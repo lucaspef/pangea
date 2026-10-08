@@ -78,7 +78,8 @@ public sealed class MassOutput(Room room) : IMassOutput
         foreach (var p in players)                                      // recompensa de quem terminou (humanos)
             if (p.RoomPlayer.Session is GameHandler h)
             {
-                int exp = h.BeginGameEnd(p.Pang, p.Bonus, Game.HoleCount, p.Finished, Game is ApproachGame ? null : (room.CoursePlayed, p.Score));
+                int exp = h.BeginGameEnd(p.Pang, p.Bonus, Game.HoleCount, p.Finished, Game is ApproachGame ? null : (room.CoursePlayed, p.Score),
+                    players: Game.Players.Count, positionPenalty: false, coursePlayed: room.CoursePlayed);   // torneio: sem desconto por posição
                 h.SendMassResult(exp, room.Field?.WonBy(p.Guid) ?? [], room.Settings.Mode == GameMode.GuildMatch);
             }
     }

@@ -54,6 +54,13 @@ public sealed class Kr645GameData : IGameData
         }
     }
 
+    public float CourseStars(int course)
+    {
+        foreach (var c in Iff.Courses)
+            if (c.c.TypeId == (0x28000000u | (uint)(course & 0xFF))) return 1 + c.Difficulty / 10f;
+        return 1;
+    }
+
     Dictionary<int, CardInfo>? cards;
 
     public IReadOnlyDictionary<int, CardInfo> Cards

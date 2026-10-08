@@ -108,7 +108,8 @@ public sealed class GameConfig
 /// <summary>Recompensa de fim de partida (o pang informado pelo cliente é limitado por buraco).</summary>
 public sealed class RewardConfig
 {
-    public int ExpPerHole { get; set; } = 2;
+    /// <summary>Taxa de EXP do servidor em % (100 = normal), como a taxa do servidor GB.</summary>
+    public int ExpRate { get; set; } = 100;
     public int MaxPangPerHole { get; set; } = 1000;
 }
 

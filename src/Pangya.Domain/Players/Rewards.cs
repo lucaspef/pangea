@@ -11,16 +11,37 @@ public static class Rewards
     public readonly record struct Reward(long Pang, int Exp, int LevelsUp);
 
     /// <summary>
-    /// Pang = (informado + bônus) limitado por buraco e depois × (1 + pang%/100); EXP × (1 + exp%/100). Os % vêm dos cards
-    /// especiais em vigor (o cliente só mostra o pang multiplicado na tela; EXP é só do servidor).
+    /// Entrada da fórmula de EXP do servidor GB (Versus.requestFinishExpGame / Tourney): jogadores na partida, estrelas do
+    /// curso (1 + dificuldade/10 do Course.iff), posição final (0 = 1º), se a posição desconta 10% por lugar (VS sim,
+    /// torneio não) e o nível do jogador (70 = máximo: não ganha EXP).
+    /// </summary>
+    public readonly record struct ExpInput(int Players, float Stars, int Position, bool PositionPenalty, int Level);
+
+    /// <summary>
+    /// EXP = jogadores × buracos × estrelas × (1 + EXP% dos cards/itens) × taxa do servidor, × (1 − 0,1 × posição) no VS;
+    /// 0 para quem saiu ou está no nível máximo. Truncado a cada passo, como o GB.
+    /// </summary>
+    public static int Exp(ExpInput e, int holes, bool finished, int expRate, RewardConfig cfg)
+    {
+        if (!finished || holes <= 0 || e.Level >= Levels.Max) return 0;
+        double exp = Math.Floor(Math.Max(e.Players, 1) * holes * Math.Max(e.Stars, 1));
+        exp = Math.Floor(exp * (1 + Math.Max(expRate, 0) / 100.0) * (Math.Max(cfg.ExpRate, 0) / 100.0));
+        if (e.PositionPenalty) exp = Math.Floor(exp * Math.Max(0, 1 - 0.1 * e.Position));
+        return (int)exp;
+    }
+
+    /// <summary>
+    /// Pang = (informado + bônus) limitado por buraco e depois × (1 + pang%/100); EXP pela fórmula do GB (<see cref="Exp"/>).
+    /// Os % vêm dos cards especiais em vigor (o cliente só mostra o pang multiplicado na tela; EXP é só do servidor).
+    /// Sem ExpInput (testes, chamadas antigas): 1 jogador, 1 estrela, 1º lugar.
     /// </summary>
     public static (long Pang, int Exp) Compute(uint reportedPang, uint reportedBonus, int holes, bool finished, RewardConfig cfg,
-        int pangRate = 0, int expRate = 0)
+        int pangRate = 0, int expRate = 0, ExpInput? expIn = null)
     {
         if (!finished || holes <= 0) return (0, 0);
         long pang = Math.Min((long)reportedPang + reportedBonus, (long)cfg.MaxPangPerHole * holes);
-        int exp = cfg.ExpPerHole * holes;
-        return ((long)Math.Round(pang * (1 + Math.Max(pangRate, 0) / 100.0)), (int)Math.Round(exp * (1 + Math.Max(expRate, 0) / 100.0)));
+        int exp = Exp(expIn ?? new ExpInput(1, 1, 0, false, 0), holes, finished, expRate, cfg);
+        return ((long)Math.Round(pang * (1 + Math.Max(pangRate, 0) / 100.0)), exp);
     }
 
     /// <summary>
@@ -28,9 +49,10 @@ public static class Rewards
     /// aplica no jogador. course = (mapa, placar) ou null.
     /// </summary>
     public static async Task<Reward> ApplyAsync(IPlayerStore store, Player p, uint reportedPang, uint reportedBonus, int holes, bool finished,
-        RewardConfig cfg, (int Course, int Score)? course = null, int pangRate = 0, int expRate = 0, GameStats? stats = null)
+        RewardConfig cfg, (int Course, int Score)? course = null, int pangRate = 0, int expRate = 0, GameStats? stats = null,
+        ExpInput? expIn = null)
     {
-        var (pang, exp) = Compute(reportedPang, reportedBonus, holes, finished, cfg, pangRate, expRate);
+        var (pang, exp) = Compute(reportedPang, reportedBonus, holes, finished, cfg, pangRate, expRate, expIn);
         // totais do perfil: só partida terminada; os contadores vêm do último 0x31/0x06 do cliente, limitados por buraco
         var totals = finished && holes > 0 ? PlayerStats.After(p.Stats, stats, holes, course?.Score) : null;
         Dictionary<int, CourseRecord>? courses = null;

@@ -6,14 +6,41 @@ using Pangya.Protocol.KR645;
 
 namespace Pangya.Tests;
 
+public class GbExpFormulaTests
+{
+    static readonly RewardConfig Cfg = new();
+
+    [Fact]
+    public void PlayersHolesStarsAndPosition()
+    {
+        var e = new Rewards.ExpInput(Players: 2, Stars: 1.3f, Position: 0, PositionPenalty: true, Level: 10);
+        Assert.Equal(23, Rewards.Exp(e, 9, true, 0, Cfg));                         // 2 × 9 × 1,3 = 23,4
+        Assert.Equal(20, Rewards.Exp(e with { Position = 1 }, 9, true, 0, Cfg));    // 2º lugar: × 0,9
+        Assert.Equal(34, Rewards.Exp(e, 9, true, 50, Cfg));                        // geleia branca +50%
+        Assert.Equal(46, Rewards.Exp(e, 9, true, 0, new RewardConfig { ExpRate = 200 }));   // servidor 2×
+        Assert.Equal(23, Rewards.Exp(e with { Position = 3, PositionPenalty = false }, 9, true, 0, Cfg));   // torneio
+        Assert.Equal(0, Rewards.Exp(e with { Level = 70 }, 9, true, 0, Cfg));       // nível máximo
+        Assert.Equal(0, Rewards.Exp(e, 9, false, 0, Cfg));                         // saiu
+    }
+
+    [Fact]
+    public void CourseStarsComeFromCourseDifficulty()
+    {
+        var d = Pangya.Protocol.KR645.Kr645GameData.Load(TestEnv.Config.Data.IffPath);
+        float s = d.CourseStars(0);
+        Assert.InRange(s, 1f, 2.5f);
+        Assert.Equal(1f, d.CourseStars(0x7E));                                     // curso inexistente
+    }
+}
+
 public class CardRewardTests
 {
     [Fact]
     public void RatesApplyAfterThePerHoleCap()
     {
-        var cfg = new RewardConfig { ExpPerHole = 2, MaxPangPerHole = 100 };
-        Assert.Equal((300L, 6), Rewards.Compute(500, 0, 3, true, cfg));            // teto 3 × 100
-        Assert.Equal((360L, 9), Rewards.Compute(500, 0, 3, true, cfg, 20, 50));    // depois × 1,2 e EXP × 1,5
+        var cfg = new RewardConfig { MaxPangPerHole = 100 };
+        Assert.Equal((300L, 3), Rewards.Compute(500, 0, 3, true, cfg));            // teto 3 × 100; EXP 1 jogador × 3 buracos
+        Assert.Equal((360L, 4), Rewards.Compute(500, 0, 3, true, cfg, 20, 50));    // depois × 1,2 e EXP × 1,5 (truncado)
         Assert.Equal((0L, 0), Rewards.Compute(500, 0, 3, false, cfg, 20, 50));
     }
 

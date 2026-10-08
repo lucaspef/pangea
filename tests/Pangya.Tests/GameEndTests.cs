@@ -57,16 +57,18 @@ public class GameEndFlowTests(DbFixture fx)
         await using var env = await GameEnv.StartAsync();
         var (c, id, h) = await EnterAsync(env, 5, 0);
         await using var _c = c;
-        int exp = h.BeginGameEnd(300, 0, 3, true, (2, -1));
-        Assert.Equal(6, exp);                                              // 2 por buraco
+        int exp = h.BeginGameEnd(300, 0, 3, true, (2, -1), players: 2, position: 1, coursePlayed: 2);
+        int expected = (int)(MathF.Floor(2 * 3 * env.Data.CourseStars(2)) * 0.9);  // fórmula do GB: 2º de 2 jogadores
+        Assert.Equal(expected, exp);
+        Assert.True(exp > 0);
         Assert.Equal(0, (await env.Players.LoadAsync(id))!.Exp);           // ainda não gravou
         await c.SendAsync(FinalStats(1));
         var st = await c.ExpectAsync(0x43);
         var s = st.Struct<sPangYaUserStatistics>();
-        Assert.Equal((6u, (byte)5, 1u), (s.dwExp, s.Level, s.dwHoleIn));   // EXP novo e a estatística do 0x06
+        Assert.Equal(((uint)exp, (byte)5, 1u), (s.dwExp, s.Level, s.dwHoleIn));   // EXP novo e a estatística do 0x06
         await c.ExpectAsync(0xC6);
         var saved = (await env.Players.LoadAsync(id))!;
-        Assert.Equal((6, 1L), (saved.Exp, saved.Stats.HoleIn));
+        Assert.Equal((exp, 1L), (saved.Exp, saved.Stats.HoleIn));
     }
 
     [Fact]
@@ -76,7 +78,7 @@ public class GameEndFlowTests(DbFixture fx)
         await using var env = await GameEnv.StartAsync();
         var (c, id, h) = await EnterAsync(env, 0, 25);                    // faltam 5 para o nível 1
         await using var _c = c;
-        h.BeginGameEnd(100, 0, 3, true);
+        Assert.True(h.BeginGameEnd(100, 0, 3, true, players: 2) >= 6);   // 2 × 3 × estrelas: passa dos 5 que faltam
         await c.SendAsync(FinalStats(0));
         var seen = new List<ushort>();
         while (true)

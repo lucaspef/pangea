@@ -18,20 +18,26 @@ public sealed partial class GameHandler
     const ushort SLevelUp = 0x10D, SItemsWon = 0xF8, SMyItemsWon = 0xCC, SMassResult = 0x77, CGiftList = 0x93;
     static readonly TimeSpan EndWait = TimeSpan.FromSeconds(20);
 
-    sealed record PendingEnd(uint Pang, uint Bonus, int Holes, bool Finished, (int Course, int Score)? Course, int PangRate, int ExpRate);
+    sealed record PendingEnd(uint Pang, uint Bonus, int Holes, bool Finished, (int Course, int Score)? Course, int PangRate, int ExpRate,
+        Rewards.ExpInput ExpIn);
     PendingEnd? pendingEnd;
 
-    /// <summary>Fase 1: deixa a recompensa pendente e devolve o EXP a mostrar (0 para quem saiu).</summary>
-    public int BeginGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished, (int Course, int Score)? course = null)
+    /// <summary>
+    /// Fase 1: deixa a recompensa pendente e devolve o EXP a mostrar (0 para quem saiu ou está no nível máximo).
+    /// players/position/positionPenalty/coursePlayed alimentam a fórmula de EXP do GB (Rewards.Exp).
+    /// </summary>
+    public int BeginGameEnd(uint reportedPang, uint reportedBonus, int holes, bool finished, (int Course, int Score)? course = null,
+        int players = 1, int position = 0, bool positionPenalty = true, int coursePlayed = 0)
     {
         var p = player!;
         var now = DateTime.UtcNow;
         int pangRate = CardService.ActiveRate(p, ctx.Data.Cards, CardInfo.AbilityPangRate, now);
         int expRate = CardService.ActiveRate(p, ctx.Data.Cards, CardInfo.AbilityExpRate, now);
-        var end = new PendingEnd(reportedPang, reportedBonus, holes, finished, course, pangRate, expRate);
+        var expIn = new Rewards.ExpInput(players, ctx.Data.CourseStars(coursePlayed), position, positionPenalty, p.Level);
+        var end = new PendingEnd(reportedPang, reportedBonus, holes, finished, course, pangRate, expRate, expIn);
         if (Interlocked.Exchange(ref pendingEnd, end) is { } stale) _ = FinishAsync(stale);     // partida anterior ainda aberta
         _ = Task.Delay(EndWait).ContinueWith(_ => FinishGameEnd(end), TaskScheduler.Default);
-        var (_, exp) = Rewards.Compute(reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards, pangRate, expRate);
+        var (_, exp) = Rewards.Compute(reportedPang, reportedBonus, holes, finished, ctx.World.Config.Rewards, pangRate, expRate, expIn);
         return exp;
     }
 
@@ -52,7 +58,7 @@ public sealed partial class GameHandler
             lastGameStats = null;
             int levelBefore = p.Level;
             var r = await Rewards.ApplyAsync(ctx.Players.Store, p, e.Pang, e.Bonus, e.Holes, e.Finished, ctx.World.Config.Rewards,
-                e.Course, e.PangRate, e.ExpRate, stats);
+                e.Course, e.PangRate, e.ExpRate, stats, e.ExpIn);
             if (r.Pang != 0 || r.Exp != 0)
                 Log.Info($"{conn} recompensa: +{r.Pang} pang, +{r.Exp} EXP{(r.LevelsUp > 0 ? $", subiu {r.LevelsUp} nível(is) -> {p.Level}" : "")}");
             if (r.LevelsUp > 0) await LevelUpGiftsAsync(levelBefore, p.Level);

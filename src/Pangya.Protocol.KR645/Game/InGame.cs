@@ -67,7 +67,8 @@ public sealed class InGameOutput(Room room, bool botPasses, BotGolfer golfer) : 
         foreach (var r in end.Results)
             if (room.Find(r.Guid)?.Session is GameHandler h)
                 exp[r.Guid] = h.BeginGameEnd(r.Pang, r.BonusPang, Game.HoleCount, Game.Find(r.Guid) is { Left: false },
-                    end.Kind == GameEndKind.Stroke ? (room.CoursePlayed, r.Score) : null);   // match/skins/team: placar não é vs par
+                    end.Kind == GameEndKind.Stroke ? (room.CoursePlayed, r.Score) : null,   // match/skins/team: placar não é vs par
+                    players: end.Results.Count, position: Math.Max(r.Rank - 1, 0), positionPenalty: true, coursePlayed: room.CoursePlayed);
 
         var won = new List<(uint, IReadOnlyList<int>)>(end.Results.Count);     // 0xF8 antes do placar: itens ganhos
         foreach (var r in end.Results) won.Add((r.Guid, room.Field?.WonBy(r.Guid) ?? []));
