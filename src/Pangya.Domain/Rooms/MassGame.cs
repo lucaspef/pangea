@@ -28,6 +28,12 @@ public sealed class MassPlayer(RoomPlayer rp)
     public float BestDrive { get; set; }
     public float BestChipIn { get; set; }
     public float BestLongPutt { get; set; }
+    // GuildMatch: lado (0 vermelho, 1 azul), adversário do par, grupo ("N 조"), buracos fechados e pontos
+    public int Side { get; set; } = -1;
+    public MassPlayer? Opponent { get; set; }
+    public byte Group { get; set; }
+    public bool[] HoleDone { get; } = new bool[18];
+    public int GuildPoints { get; set; }
     public long LastProgress { get; set; } = Stopwatch.GetTimestamp();
     // approach
     public int ShotTimeMs { get; set; } = -1;
@@ -54,8 +60,14 @@ public static class Medal
     public const int MinPlayers = 18;
 }
 
-/// <summary>Troféu da sala (Match.iff; 0 = modo sem troféu), premiados e medalhas.</summary>
-public sealed record TourneyResult(int MatchTid, List<TourneyAward> Awards, List<TourneyMedal> Medals)
+/// <summary>
+/// Fim do GuildMatch: vencedor (0 vermelho, 1 azul, 2 empate), pontos e "pang de guilda" de cada lado e o de cada
+/// jogador (GB GuildRoomManager/DuplaManager: vencedor (pares + saídas) × 50, os outros saídas × 50 + 50).
+/// </summary>
+public sealed record GuildOutcome(int Winner, int[] Points, long[] Pang, Dictionary<MassPlayer, int> PangWin);
+
+/// <summary>Troféu da sala (Match.iff; 0 = modo sem troféu), premiados, medalhas e o resultado do GuildMatch.</summary>
+public sealed record TourneyResult(int MatchTid, List<TourneyAward> Awards, List<TourneyMedal> Medals, GuildOutcome? Guild = null)
 {
     public static readonly TourneyResult Empty = new(0, [], []);
 
@@ -91,6 +103,8 @@ public interface IMassOutput
     /// (closing), porque é ele que abre a tela de resultado do torneio, e ela lê o 0x77 nesse momento.
     /// </summary>
     void GameOver(List<MassPlayer> players, TourneyResult result);
+    /// <summary>GuildMatch: placar depois de um buraco decidido no par de p (0xC0 a todos da sala).</summary>
+    void GuildScore(MassPlayer p, short red, short blue);
 }
 
 /// <summary>
@@ -179,10 +193,98 @@ public sealed class TourneyGame : MassGame
 
     public TourneyGame(Room room, IMassOutput output, object sync, TimeSpan botDelay) : base(room, output, sync, botDelay)
     {
+        if (room.Settings.Mode == GameMode.GuildMatch) MakePairs();
         if (room.Settings.Mode != GameMode.Tournament) return;
         var levels = new List<int>(Players.Count);
         foreach (var p in Players) levels.Add(p.RoomPlayer.Player.Level);
         MatchTid = Trophy.RoomTid(levels);                               // fixo na partida: quem sai não muda o troféu
+    }
+
+    /// <summary>GuildMatch: pares (grupo, vermelho, azul), na ordem dos slots (SPEC-guildmatch.md §2.1).</summary>
+    public List<(byte Group, MassPlayer Red, MassPlayer Blue)> Pairs { get; } = [];
+
+    void MakePairs()
+    {
+        var reds = new List<MassPlayer>();
+        var blues = new List<MassPlayer>();
+        foreach (var p in Players)
+        {
+            if (p.IsBot) continue;
+            p.Side = p.RoomPlayer.Team == 0 ? 0 : 1;
+            (p.Side == 0 ? reds : blues).Add(p);
+        }
+        reds.Sort((a, b) => a.RoomPlayer.Slot.CompareTo(b.RoomPlayer.Slot));
+        blues.Sort((a, b) => a.RoomPlayer.Slot.CompareTo(b.RoomPlayer.Slot));
+        for (int i = 0; i < reds.Count && i < blues.Count; i++)
+        {
+            byte group = (byte)(i + 1);
+            (reds[i].Opponent, blues[i].Opponent, reds[i].Group, blues[i].Group) = (blues[i], reds[i], group, group);
+            Pairs.Add((group, reds[i], blues[i]));
+        }
+    }
+
+    public short SidePoints(int side)
+    {
+        int sum = 0;
+        foreach (var p in Players) if (p.Side == side) sum += p.GuildPoints;
+        return (short)Math.Min(sum, short.MaxValue);
+    }
+
+    /// <summary>
+    /// p fechou o buraco idx: se o adversário já fechou, menos tacadas = 2 (empate 1/1); adversário fora do jogo = 2 para p.
+    /// Sem decisão ainda (o adversário não chegou), nada.
+    /// </summary>
+    void ScoreGuildHole(MassPlayer p, int idx)
+    {
+        p.HoleDone[idx] = true;
+        if (p.Opponent is not { } o) return;
+        if (o.Left) p.GuildPoints += 2;
+        else if (o.HoleDone[idx])
+        {
+            int c = p.Strokes[idx].CompareTo(o.Strokes[idx]);
+            if (c < 0) p.GuildPoints += 2;
+            else if (c > 0) o.GuildPoints += 2;
+            else { p.GuildPoints++; o.GuildPoints++; }
+        }
+        else return;
+        Output.GuildScore(p, SidePoints(0), SidePoints(1));
+    }
+
+    /// <summary>Saiu no meio: cada buraco que o adversário já fechou e ele não vale 2 para o adversário.</summary>
+    void GuildLeft(MassPlayer p)
+    {
+        if (p.Opponent is not { Left: false } o) return;
+        bool changed = false;
+        for (int i = 0; i < HoleCount && i < o.HoleIndex; i++)
+            if (o.HoleDone[i] && !p.HoleDone[i]) { o.GuildPoints += 2; p.HoleDone[i] = true; changed = true; }
+        if (changed) Output.GuildScore(o, SidePoints(0), SidePoints(1));
+    }
+
+    GuildOutcome GuildResult()
+    {
+        bool[] active = new bool[2];
+        long[] gamePang = new long[2];
+        int left = 0;
+        foreach (var p in Players)
+        {
+            if (p.Side < 0) continue;
+            if (p.Left) left++; else active[p.Side] = true;
+            gamePang[p.Side] += p.Pang;
+        }
+        int red = SidePoints(0), blue = SidePoints(1);
+        int winner = active[0] && !active[1] ? 0 : active[1] && !active[0] ? 1
+            : red != blue ? (red > blue ? 0 : 1)
+            : gamePang[0] != gamePang[1] ? (gamePang[0] > gamePang[1] ? 0 : 1) : 2;
+        var pangWin = new Dictionary<MassPlayer, int>();
+        long[] sidePang = new long[2];
+        foreach (var p in Players)
+        {
+            if (p.Side < 0) continue;
+            int v = p.Side == winner ? (Pairs.Count + left) * 50 : left * 50 + 50;
+            pangWin[p] = v;
+            sidePang[p.Side] += v;
+        }
+        return new GuildOutcome(winner, [red, blue], sidePang, pangWin);
     }
 
     /// <summary>Troféu da sala (Match.iff), 0 fora do torneio individual.</summary>
@@ -197,6 +299,7 @@ public sealed class TourneyGame : MassGame
     /// </summary>
     protected override TourneyResult Results()
     {
+        if (Pairs.Count > 0) return new TourneyResult(0, [], [], GuildResult());
         if (MatchTid == 0) return TourneyResult.Empty;
         var ranked = new List<MassPlayer>();
         foreach (var p in Players)
@@ -312,6 +415,7 @@ public sealed class TourneyGame : MassGame
         p.Score += st - ParOf(hole);
         p.LastProgress = Stopwatch.GetTimestamp();
         Output.RivalHole(p, hole);
+        if (Pairs.Count > 0) ScoreGuildHole(p, p.HoleIndex);              // 0x6B primeiro, depois o 0xC0
         p.HoleIndex++;
         bool last = false;
         if (p.HoleIndex >= HoleCount)
@@ -344,6 +448,7 @@ public sealed class TourneyGame : MassGame
         p.Left = true;
         if (Over) return;
         Output.RivalState(p, 3);
+        if (Pairs.Count > 0) GuildLeft(p);
         if (!HasHumans()) { Cancel(); return; }
         CheckEnd();
     }

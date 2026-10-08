@@ -284,6 +284,25 @@ public sealed partial class GameHandler
         h.Connection.Send(new PacketWriter(SGuildState, 0x120).U32(1).Struct(GuildUserInfo(g, cls)));
     }
 
+    /// <summary>
+    /// Fim de um GuildMatch (chamado sob o lock da sala, uma vez): grava em segundo plano a parte de cada membro e o
+    /// resultado das duas guildas (SPEC-guildmatch.md §3.4).
+    /// </summary>
+    internal void RecordGuildMatch(Domain.Rooms.Room r, Domain.Rooms.MassGame game, Domain.Rooms.GuildOutcome g)
+    {
+        if (ctx.Guilds == null || r.GuildSides[0] is not { } red || r.GuildSides[1] is not { } blue) return;
+        var members = new List<(long, int, int, int)>();
+        foreach (var p in game.Players)
+            if (p.Side is 0 or 1 && !p.IsBot)
+                members.Add((p.RoomPlayer.Player.AccountId, p.Side == 0 ? red.Id : blue.Id, p.GuildPoints, g.PangWin.GetValueOrDefault(p)));
+        var rec = new GuildMatchRecord(red.Id, blue.Id, g.Points, g.Pang, g.Winner, members);
+        _ = Task.Run(async () =>
+        {
+            try { await ctx.Guilds.Store.RecordMatchAsync(rec); Log.Info($"GuildMatch {red.Name} {g.Points[0]} x {g.Points[1]} {blue.Name}: vencedor {g.Winner}"); }
+            catch (Exception e) { Log.Error("falha ao gravar o GuildMatch", e); }
+        });
+    }
+
     /// <summary>0x3B/0x3C GUILD_INFO (emblema/nome mudou) para os membros online da guilda.</summary>
     async Task BroadcastGuildAsync(Guild g, ushort id)
     {

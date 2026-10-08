@@ -10,7 +10,8 @@ namespace Pangya.Protocol.KR645.Game;
 public sealed class MassOutput(Room room) : IMassOutput
 {
     const ushort SWind = 0x59, SHoleStart = 0x51, STeeReady = 0x8E, SNextHole = 0x63, SNoMission = 0x147,
-        SRivalPos = 0x6C, SRivalHole = 0x6B, SRivalState = 0x6A, SApproachHole = 0x148, SApproachTotals = 0x146, SApproachEnd = 0x149;
+        SRivalPos = 0x6C, SRivalHole = 0x6B, SRivalState = 0x6A, SApproachHole = 0x148, SApproachTotals = 0x146, SApproachEnd = 0x149,
+        SGuildPairs = 0xBD, SGuildScore = 0xC0;
 
     MassGame Game => (MassGame)room.Game!;
 
@@ -73,8 +74,24 @@ public sealed class MassOutput(Room room) : IMassOutput
         All(new PacketWriter(SApproachEnd));                            // diálogos de fim -> volta para a sala
     }
 
+    /// <summary>0xBD: u8 n, n × sGuildMatchup {u8 grupo, u32 guid vermelho, u32 guid azul} (antes do 0x50).</summary>
+    public static PacketWriter GuildPairs(List<(byte Group, MassPlayer Red, MassPlayer Blue)> pairs)
+    {
+        var w = new PacketWriter(SGuildPairs, 4 + pairs.Count * 9).U8((byte)pairs.Count);
+        foreach (var (g, red, blue) in pairs) w.U8(g).U32(red.Guid).U32(blue.Guid);
+        return w;
+    }
+
+    /// <summary>0xC0: u32 guid, i16 placar vermelho, i16 placar azul, u8 pontos do guid, u8 pontos do adversário.</summary>
+    public void GuildScore(MassPlayer p, short red, short blue) =>
+        All(new PacketWriter(SGuildScore).U32(p.Guid).I16(red).I16(blue).U8((byte)Math.Min(p.GuildPoints, 255))
+            .U8((byte)Math.Min(p.Opponent?.GuildPoints ?? 0, 255)));
+
     public void GameOver(List<MassPlayer> players, TourneyResult result)
     {
+        if (result.Guild is { } guild)                                  // grava pontos/pang das guildas (uma vez por partida)
+            foreach (var p in players)
+                if (p.RoomPlayer.Session is GameHandler h0) { h0.RecordGuildMatch(room, Game, guild); break; }
         foreach (var p in players)                                      // recompensa de quem terminou (humanos)
             if (p.RoomPlayer.Session is GameHandler h)
             {
@@ -82,8 +99,10 @@ public sealed class MassOutput(Room room) : IMassOutput
                 int exp = h.BeginGameEnd(p.Pang, p.Bonus, Game.HoleCount, p.Finished, Game is ApproachGame ? null : (room.CoursePlayed, p.Score),
                     players: Game.Players.Count, positionPenalty: false, coursePlayed: room.CoursePlayed,   // torneio: sem desconto por posição
                     trophy: result.MatchTid != 0 ? (result.MatchTid, trophy) : null, awardItems: result.ItemsOf(p));
+                (int Winner, uint PangWin, uint Points, uint PangRed, uint PangBlue)? g = result.Guild is { } go
+                    ? (go.Winner, (uint)go.PangWin.GetValueOrDefault(p), (uint)p.GuildPoints, (uint)go.Pang[0], (uint)go.Pang[1]) : null;
                 h.SendMassResult(exp, room.Field?.WonBy(p.Guid) ?? [], room.Settings.Mode == GameMode.GuildMatch,
-                    result.MatchTid, trophy, result.Awards, result.Medals);
+                    result.MatchTid, trophy, result.Awards, result.Medals, g);
             }
     }
 }

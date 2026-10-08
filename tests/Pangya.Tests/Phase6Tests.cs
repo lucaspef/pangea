@@ -130,6 +130,12 @@ sealed class MassRecorder : IMassOutput
     public void ApproachEnd(List<ApproachEntry> totals) { Totals = totals; Events.Add("aend"); }
     public TourneyResult? Result { get; private set; }
     public void GameOver(List<MassPlayer> players, TourneyResult result) { Result = result; Events.Add("over"); }
+    public List<(uint Guid, short Red, short Blue, int Mine, int Theirs)> Scores { get; } = [];
+    public void GuildScore(MassPlayer p, short red, short blue)
+    {
+        Scores.Add((p.Guid, red, blue, p.GuildPoints, p.Opponent?.GuildPoints ?? 0));
+        Events.Add($"gscore {p.Guid}");
+    }
 }
 
 public class MassModeTests

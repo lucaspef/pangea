@@ -167,6 +167,27 @@ public sealed class GuildRepository(Db db) : IGuildStore
         return r == null ? null : ToTicket(r);
     }
 
+    public async Task RecordMatchAsync(GuildMatchRecord m)
+    {
+        await using var c = await db.OpenAsync();
+        await using var tx = await c.BeginTransactionAsync();
+        foreach (var (account, guild, points, pang) in m.Members)
+            await c.ExecuteAsync("update guild_members set point = point + @points, pang = pang + @pang where account_id = @account and guild_id = @guild",
+                new { account, guild, points, pang }, tx);
+        int[] ids = [m.RedId, m.BlueId];
+        for (int side = 0; side < 2; side++)
+        {
+            string result = m.Winner == 2 ? "draws = draws + 1" : m.Winner == side ? "wins = wins + 1" : "losses = losses + 1";
+            await c.ExecuteAsync($"update guilds set point = point + @point, pang = pang + @pang, {result} where id = @id",
+                new { id = ids[side], point = m.Points[side], pang = (int)Math.Min(m.Pang[side], int.MaxValue) }, tx);
+        }
+        await c.ExecuteAsync("""
+            insert into guild_matches(guild_red, guild_blue, point_red, point_blue, pang_red, pang_blue, winner)
+            values (@RedId, @BlueId, @pr, @pb, @gr, @gb, @w)
+            """, new { m.RedId, m.BlueId, pr = m.Points[0], pb = m.Points[1], gr = (int)m.Pang[0], gb = (int)m.Pang[1], w = (short)m.Winner }, tx);
+        await tx.CommitAsync();
+    }
+
     static async Task ApplyInAsync(System.Data.Common.DbConnection c, System.Data.Common.DbTransaction tx, GuildChange ch)
     {
         foreach (var id in ch.Removes)

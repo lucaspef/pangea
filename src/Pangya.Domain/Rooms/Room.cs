@@ -13,6 +13,9 @@ public enum GameMode : byte
 
 public enum RoomState { Waiting, Playing }
 
+/// <summary>Guilda de um lado do GuildMatch (vai no sGuildRoomInfo do sRoomInfo).</summary>
+public sealed record GuildSide(int Id, string Name, string Mark);
+
 /// <summary>Configuração de uma sala (o que o dono escolhe).</summary>
 public sealed class RoomSettings
 {
@@ -39,6 +42,14 @@ public sealed class RoomSettings
         MaxPlayers = Math.Clamp(MaxPlayers, (byte)1, MassGame.IsMass(Mode) || Mode == GameMode.AvatarChat ? (byte)30 : (byte)4);   // torneio/approach/lounge: até 30
         ShotTimeMs = Math.Min(ShotTimeMs, 600_000);
         GameTimeMs = Math.Min(GameTimeMs, 7_200_000);
+        if (Mode == GameMode.GuildMatch)                                    // SPEC-guildmatch.md §1.1: o cliente trava assim
+        {
+            Course = 0x7F;
+            Holes = Holes <= 9 ? (byte)9 : (byte)18;
+            MaxPlayers = MaxPlayers <= 10 ? (byte)10 : MaxPlayers <= 20 ? (byte)20 : (byte)30;
+            ShotTimeMs = 0;
+            if (GameTimeMs == 0) GameTimeMs = Holes == 9 ? 1_200_000u : 1_800_000u;
+        }
     }
 }
 
@@ -76,6 +87,16 @@ public sealed class Room
     public int Index { get; init; }
     public RoomSettings Settings { get; } = new();
     public RoomState State { get; set; }
+    /// <summary>GuildMatch: guilda do lado vermelho (0, de quem criou) e azul (1); null = lado vazio.</summary>
+    public GuildSide?[] GuildSides { get; } = new GuildSide?[2];
+
+    /// <summary>Lado (0/1) da guilda na sala; -1 = nenhum.</summary>
+    public int SideOf(int guildId)
+    {
+        for (int i = 0; i < 2; i++) if (GuildSides[i]?.Id == guildId) return i;
+        return -1;
+    }
+
     /// <summary>Clima posto por GM (/weather: 0 bom, 1 nublado, 2 chuva, 3 neve); null = o do cliente.</summary>
     public byte? Weather { get; set; }
     /// <summary>Chave de 16 bytes da sala (sRoomInfo.RoomKey): os resultados de tacada vêm cifrados com ela.</summary>

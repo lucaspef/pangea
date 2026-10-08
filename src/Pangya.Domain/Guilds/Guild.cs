@@ -70,6 +70,10 @@ public sealed class GuildChange
     public int? EmblemApplied { get; set; }
 }
 
+/// <summary>Resultado de um GuildMatch para gravar: as duas guildas (vermelha, azul), vencedor e a parte de cada membro.</summary>
+public sealed record GuildMatchRecord(int RedId, int BlueId, int[] Points, long[] Pang, int Winner,
+    List<(long Account, int Guild, int Points, int Pang)> Members);
+
 /// <summary>Upload de emblema pendente (0x112 -> POST HTTP -> 0x113).</summary>
 public readonly record struct EmblemTicket(int Id, int GuildId, long AccountId, string Mark, bool Uploaded);
 
@@ -94,4 +98,6 @@ public interface IGuildStore
     Task MarkEmblemUploadedAsync(int id);
     /// <summary>Último upload já enviado e ainda não aplicado desta conta.</summary>
     Task<EmblemTicket?> UploadedEmblemAsync(long accountId);
+    /// <summary>Grava um GuildMatch numa transação: membros, guildas (pontos, pang, V/D/E) e o histórico.</summary>
+    Task RecordMatchAsync(GuildMatchRecord m);
 }

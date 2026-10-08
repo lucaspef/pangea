@@ -1,8 +1,10 @@
 using Pangya.Domain.Game;
+using Pangya.Domain.Players;
 
 namespace Pangya.Domain.Rooms;
 
-public enum JoinResult : byte { Ok = 0, FullOrPlaying = 1, NotFound = 2, WrongPassword = 3 }
+/// <summary>Códigos do 0x47 que o cliente conhece (msg 0x3B): 2 cheia, 3 não existe, 4 senha, 8 jogando, 13 precisa de guilda.</summary>
+public enum JoinResult : byte { Ok = 0, Full = 2, NotFound = 3, WrongPassword = 4, Playing = 8, GuildRequired = 13 }
 
 /// <summary>
 /// Salas de um game server e quem está na tela de lista de salas. Todas as operações de sala e partida
@@ -52,17 +54,36 @@ public sealed class RoomManager
         to.GameTimeMs = from.GameTimeMs; to.MaxPlayers = from.MaxPlayers; to.Sleep = from.Sleep;
     }
 
-    public static JoinResult CanJoin(Room? room, string password) =>
-        room == null ? JoinResult.NotFound
-        : room.Settings.Password.Length > 0 && password != room.Settings.Password ? JoinResult.WrongPassword
-        : room.State != RoomState.Waiting || room.Players.Count >= room.Settings.MaxPlayers ? JoinResult.FullOrPlaying
-        : JoinResult.Ok;
+    /// <summary>
+    /// Pode entrar? No GuildMatch: só membro (cargo 1..3) de uma das duas guildas da sala, ou de uma nova se houver lado
+    /// vazio (SPEC-guildmatch.md §1.3).
+    /// </summary>
+    public static JoinResult CanJoin(Room? room, string password, Player? player = null)
+    {
+        if (room == null) return JoinResult.NotFound;
+        if (room.Settings.Password.Length > 0 && password != room.Settings.Password) return JoinResult.WrongPassword;
+        if (room.State != RoomState.Waiting) return JoinResult.Playing;
+        if (room.Players.Count >= room.Settings.MaxPlayers) return JoinResult.Full;
+        if (room.Settings.Mode == GameMode.GuildMatch && player != null)
+        {
+            if (player.Guild is not { } g || !Guilds.GuildClass.IsMember(g.Class)) return JoinResult.GuildRequired;
+            if (room.SideOf(g.Id) < 0 && room.GuildSides[0] != null && room.GuildSides[1] != null) return JoinResult.Full;
+        }
+        return JoinResult.Ok;
+    }
 
-    /// <summary>Adiciona o jogador (time alternado; o primeiro humano é o dono).</summary>
+    /// <summary>Adiciona o jogador (time alternado; o primeiro humano é o dono). GuildMatch: time = lado da guilda.</summary>
     public static RoomPlayer Join(Room room, RoomPlayer p)
     {
         p.Master = room.HumanCount == 0 && !p.IsBot;
         p.Team = (byte)(room.Players.Count % 2);
+        if (room.Settings.Mode == GameMode.GuildMatch && p.Player.Guild is { } g)
+        {
+            int side = room.SideOf(g.Id);
+            if (side < 0) side = room.GuildSides[0] == null ? 0 : 1;
+            room.GuildSides[side] ??= new GuildSide(g.Id, g.Name, g.Mark);
+            p.Team = (byte)side;
+        }
         room.Add(p);
         return p;
     }
@@ -72,6 +93,13 @@ public sealed class RoomManager
     {
         room.Remove(p);
         room.Game?.PlayerLeft(p);
+        if (room.Settings.Mode == GameMode.GuildMatch && room.State == RoomState.Waiting)   // lado que esvaziou fica livre
+            for (int side = 0; side < 2; side++)
+            {
+                bool any = false;
+                foreach (var m in room.Players) any |= m.Team == side;
+                if (!any) room.GuildSides[side] = null;
+            }
         if (room.HumanCount == 0)
         {
             room.Game?.Cancel();

@@ -193,7 +193,7 @@ public class RoomManagerTests
         var ra = RoomManager.Join(room, new RoomPlayer { Guid = 1, Player = a.Player, Session = a });
         var rb = RoomManager.Join(room, new RoomPlayer { Guid = 2, Player = b.Player, Session = b });
         Assert.True(ra.Master && !rb.Master);
-        Assert.Equal(JoinResult.FullOrPlaying, RoomManager.CanJoin(room, "pw"));
+        Assert.Equal(JoinResult.Full, RoomManager.CanJoin(room, "pw"));
         Assert.Equal(2, rb.Slot);
         var (newMaster, closed) = mgr.Leave(room, ra);
         Assert.False(closed);

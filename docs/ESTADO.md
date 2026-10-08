@@ -34,6 +34,7 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
   0x77 do torneio, presentes de subida de nível, recompensa gravada depois do 0x06.
 - ✅ Recordes por curso no perfil; estatísticas (chip-in, HIO, albatross, putts...).
 - ✅ Expulsar, detalhe da sala, chat de equipe, ícone sobre a cabeça, desistir no solo.
+- ✅ Códigos de erro ao entrar na sala iguais aos do cliente (2 cheia, 3 não existe, 4 senha, 8 jogando, 13 guilda).
 - ✅ Troféus do torneio: troféu da sala pela média de nível (Match.iff 0x2C0x0000), ouro/prata/bronze por posição
   (18 buracos com 10+ jogadores, 9 buracos com 15+), contagem no perfil (0x43/0x151/salas), item do prêmio por carta.
   Bots não contam como jogadores, a não ser com `Game.Rewards.TrophiesCountBots: true` (para testar sozinho).
@@ -90,7 +91,12 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
   apresentação, mensagem, trocar nome; guilda no perfil e nas salas.
 - ✅ Emblema: 0x112 → upload HTTP no Pangya.Web (`/Guild/upload.asp`) → 0x113; download em `/_Files/GuildMark/`.
   Precisa do cliente CS6.
-- ⬜ GuildMatch (modo 6), pontos e troféus de guilda.
+- ✅ GuildMatch (modo 6, SPEC-guildmatch.md): só membros (cargo 1..3) das duas guildas, lado = guilda (sGuildRoomInfo,
+  0x45 aos membros quando muda), mapa aleatório e 9/18 buracos, sem bot/expulsão/troca de time, início com lados
+  iguais; pares por slot (0xBD antes do 0x50), 2 pontos por buraco ganho/1 no empate/2 se o adversário saiu (0xC0),
+  vencedor por pontos e depois pang; 0x77 com os 4 campos de guilda; grava pontos/pang da guilda e dos membros,
+  vitórias/derrotas/empates e o histórico (`guild_matches`).
+- ⬜ Limite de tempo da partida (20-40 min) e troféus de guilda (só por GM/evento no 645).
 
 ## Próximos
 - ⬜ Mercado/barraca offline (desligado no KR), eventos (quase todos desligados no KR), UCC.

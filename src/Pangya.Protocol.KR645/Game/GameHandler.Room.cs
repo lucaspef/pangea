@@ -81,6 +81,11 @@ public sealed partial class GameHandler
         var s = new RoomSettings { ShotTimeMs = p.U32(), GameTimeMs = p.U32(), MaxPlayers = p.U8(), Mode = (GameMode)p.U8(), Holes = p.U8(), Course = p.U8(), HoleType = p.U8() };
         s.Title = p.Str(64);
         s.Password = p.Str(32);
+        if (s.Mode == GameMode.GuildMatch && (Player.Guild is not { } g || !Domain.Guilds.GuildClass.IsMember(g.Class)))
+        {
+            conn.Send(RoomPackets.EnterRoomFailed(JoinResult.GuildRequired));   // "길드에 가입해야 합니다."
+            return;
+        }
         lock (Rooms.Sync)
         {
             if (room != null) LeaveRoom(notifySelf: false);
@@ -96,7 +101,7 @@ public sealed partial class GameHandler
         {
             if (room != null) return;
             var r = Rooms.Get(index);
-            var res = RoomManager.CanJoin(r, password);
+            var res = RoomManager.CanJoin(r, password, Player);
             if (res != JoinResult.Ok) { conn.Send(RoomPackets.EnterRoomFailed(res)); return; }
             EnterRoom(r!);
         }
@@ -110,6 +115,8 @@ public sealed partial class GameHandler
         slotsResent = false;
         Rooms.Lobby.Remove(this);
         LobbyUser(LobbyUserUpdate);                                         // a lista do lobby mostra a sala
+        // GuildMatch: quem já está só aprende a guilda nova pelo 0x45 da própria sala (antes do slot, para achar o lado)
+        if (r.Settings.Mode == GameMode.GuildMatch) InGameOutput.Broadcast(r, RoomPackets.RoomList(3, r), except: this);
         InGameOutput.Broadcast(r, RoomPackets.SlotAdd(r, rp), except: this);
         conn.Send(RoomPackets.EnterRoom(r));
         conn.Send(RoomPackets.Settings(r));
@@ -138,6 +145,7 @@ public sealed partial class GameHandler
             }
             else
             {
+                if (r.Settings.Mode == GameMode.GuildMatch) InGameOutput.Broadcast(r, RoomPackets.RoomList(3, r));   // lado pode ter esvaziado
                 InGameOutput.Broadcast(r, RoomPackets.SlotRemove(r, rp.Guid));
                 if (newMaster != null) InGameOutput.Broadcast(r, new PacketWriter(RoomPackets.SNewMaster).U32(newMaster.Guid).U16(RoomPackets.SlotKey(r)));
                 Lobby(RoomPackets.RoomList(3, r));
@@ -166,7 +174,12 @@ public sealed partial class GameHandler
                 {
                     case 0: s.Title = p.Str(64); break;
                     case 1: s.Password = p.Str(32); break;
-                    case 2: s.Mode = (GameMode)p.U8(); break;
+                    case 2:                                                  // GuildMatch só ao criar (lados e regras próprias)
+                    {
+                        var m = (GameMode)p.U8();
+                        if (m != GameMode.GuildMatch && s.Mode != GameMode.GuildMatch) s.Mode = m;
+                        break;
+                    }
                     case 3: s.Course = Rooms.ValidCourse(p.U8()); break;
                     case 4: s.Holes = p.U8(); break;
                     case 5: s.HoleType = p.U8(); break;
@@ -197,10 +210,20 @@ public sealed partial class GameHandler
     {
         lock (Rooms.Sync)
         {
-            if (room?.Find(this) is not { } me) return;
+            if (room?.Find(this) is not { } me || room.Settings.Mode == GameMode.GuildMatch) return;   // GuildMatch: time = guilda
             me.Team = (byte)(team & 3);
             InGameOutput.Broadcast(room, new PacketWriter(RoomPackets.STeam).U32(me.Guid).U8(me.Team));
         }
+    }
+
+    /// <summary>GuildMatch: duas guildas, os dois lados com a mesma quantidade (≥ 1). null = pode começar.</summary>
+    static byte? GuildStartError(Room r)
+    {
+        if (r.GuildSides[0] == null || r.GuildSides[1] == null) return 1;
+        int red = 0, blue = 0;
+        foreach (var p in r.Players)
+            if (!p.IsBot) { if (p.Team == 0) red++; else blue++; }
+        return red == 0 || blue == 0 ? (byte)1 : red != blue ? (byte)2 : null;
     }
 
     void Start()
@@ -210,6 +233,11 @@ public sealed partial class GameHandler
             var r = room;
             if (r == null || r.State != RoomState.Waiting) return;
             if (r.Find(this) is not { Master: true } || IsLounge(r)) { conn.Send(new PacketWriter(RoomPackets.SStartFailed).U8(1)); return; }
+            if (r.Settings.Mode == GameMode.GuildMatch && GuildStartError(r) is { } err)
+            {
+                conn.Send(new PacketWriter(RoomPackets.SStartFailed).U8(err));     // 1 falta gente/guilda, 2 times desiguais
+                return;
+            }
             RoomManager.PrepareStart(r, Random.Shared, Rooms.Courses);
             var cfg = ctx.World.Config;
             var botDelay = TimeSpan.FromSeconds(cfg.BotDelaySeconds);
@@ -226,6 +254,8 @@ public sealed partial class GameHandler
                 : StrokeGame.For(r, new InGameOutput(r, cfg.BotPasses, golfer), Rooms.Sync,
                     botDelay, TimeSpan.FromSeconds(cfg.TeeFallbackSeconds));
             InGameOutput.Broadcast(r, RoomPackets.GamePlayers(r, ctx.Data.Cards));
+            if (r.Game is TourneyGame { Pairs.Count: > 0 } tg)          // GuildMatch: pares antes do 0x50 (só o lobby trata)
+                InGameOutput.Broadcast(r, MassOutput.GuildPairs(tg.Pairs));
             InGameOutput.Broadcast(r, RoomPackets.GameInit(r));         // o cliente troca para a tela da partida
             foreach (var rp in r.Players)                               // amigos do mensageiro: "jogando"
                 if (rp.Session is GameHandler gh) gh.MessengerPlaying(true);
@@ -288,6 +318,7 @@ public sealed partial class GameHandler
     void AddBot(Domain.Players.Player bot)
     {
         var r = room;
+        if (r?.Settings.Mode == GameMode.GuildMatch) return;                 // bot não tem guilda
         if (r == null || r.State != RoomState.Waiting || r.Bot != null) return;
         if (r.Players.Count >= Math.Min((int)r.Settings.MaxPlayers, 4))
         {

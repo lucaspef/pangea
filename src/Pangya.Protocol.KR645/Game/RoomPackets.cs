@@ -31,6 +31,13 @@ public static class RoomPackets
         };
         Cp949.Write(i.title, s.Title);
         Cp949.Write(i.password, s.Password);
+        for (int side = 0; side < 2; side++)                                  // GuildMatch: guilda de cada lado
+            if (r.GuildSides[side] is { } g)
+            {
+                i.GuildInfo.nGuildID[side] = (uint)g.Id;
+                Cp949.Write(i.GuildInfo.szName[side], g.Name);
+                Cp949.Write(i.GuildInfo.szEmblemName[side], g.Mark);
+            }
         r.Key.CopyTo(i.RoomKey.m_byKey);
         return i;
     }

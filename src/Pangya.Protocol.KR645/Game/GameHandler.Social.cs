@@ -119,6 +119,7 @@ public sealed partial class GameHandler
         {
             var r = room;
             if (r == null || r.State != RoomState.Waiting || r.Find(this) is not { Master: true } || uid == Player.AccountId) return;
+            if (r.Settings.Mode == GameMode.GuildMatch) return;                // o cliente também não deixa expulsar
             var rp = r.Find(uid);
             if (rp == null) return;
             if (rp.IsBot) { RemoveBot(); return; }

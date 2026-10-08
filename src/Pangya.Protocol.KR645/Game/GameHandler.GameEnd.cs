@@ -154,13 +154,19 @@ public sealed partial class GameHandler
     /// Nunca nos outros modos: no campo o 0x77 manda o cliente de volta à sala.
     /// </summary>
     public void SendMassResult(int exp, IReadOnlyList<int> items, bool guild, int matchTid = 0, int myTrophy = 0,
-        IReadOnlyList<Domain.Rooms.TourneyAward>? awards = null, IReadOnlyList<Domain.Rooms.TourneyMedal>? medals = null)
+        IReadOnlyList<Domain.Rooms.TourneyAward>? awards = null, IReadOnlyList<Domain.Rooms.TourneyMedal>? medals = null,
+        (int Winner, uint PangWin, uint Points, uint PangRed, uint PangBlue)? guildResult = null)
     {
         var cc = new PacketWriter(SMyItemsWon).U8(0).U16((ushort)items.Count);
         foreach (var tid in items) cc.U32((uint)tid);
         conn.Send(cc);
-        var w = new PacketWriter(SMassResult, 0x80).U32((uint)Math.Max(exp, 0)).U32((uint)matchTid).U8((byte)myTrophy).U8(2);
-        if (guild) w.Zeros(16);
+        var w = new PacketWriter(SMassResult, 0x80).U32((uint)Math.Max(exp, 0)).U32((uint)matchTid).U8((byte)myTrophy)
+            .U8((byte)(guildResult?.Winner ?? 2));                           // equipe vencedora (2 = nenhuma/empate)
+        if (guild)                                                           // tipo 6: meu pang de guilda, meus pontos, pang de cada lado
+        {
+            var gr = guildResult ?? default;
+            w.U32(gr.PangWin).U32(gr.Points).U32(gr.PangRed).U32(gr.PangBlue);
+        }
         var slots = new (uint Guid, uint Tid)[12];
         for (int i = 0; i < slots.Length; i++) slots[i] = (0xFFFFFFFF, 0);
         if (awards != null)
