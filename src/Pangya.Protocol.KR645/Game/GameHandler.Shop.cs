@@ -12,7 +12,8 @@ public sealed partial class GameHandler
     const ushort CBuy = 0x1D, CGift = 0x1F, CEquip = 0x20, CCookieQuery = 0x3D, CShopOpen = 0x5C;
     // ids S->C
     const ushort SBought = 0xA8, SBuyResult = 0x66, SGiftResult = 0x68, SEquipResult = 0x69;
-    const byte EquipOk = 4, EquipFail = 0;
+    /// <summary>0x69 u8: 4 ok; 5 "장착을 실패했습니다" (0 seria "잘못된 아이템 코드입니다", 1 erro de banco).</summary>
+    const byte EquipOk = 4, EquipFail = 5;
 
     async ValueTask<bool> HandleShopAsync(PacketReader p)
     {
@@ -116,17 +117,20 @@ public sealed partial class GameHandler
         var w = new PacketWriter(SEquipResult).U8(EquipOk).U8(type);
         var changes = new PlayerChanges();
         bool ok = true;
+        string why = "";
         switch (type)
         {
             case 0:
                 var info = p.Struct<sCharacterInfo>();
                 var ch = pl.Find((int)info.guid);
-                ok = ch != null && ch.Group == ItemGroup.Character && ch.Location == ItemLocation.Inventory && ApplyOutfit(ch, info);
+                ok = ch != null && ch.Group == ItemGroup.Character && ch.Location == ItemLocation.Inventory && ApplyOutfit(ch, info, out why);
+                if (ch == null) why = $"personagem {info.guid} não é dele";
                 if (ok) { changes.Updated.Add(ch!); w.Struct(PlayerStructs.Character(ch!)); }
                 break;
             case 1:
                 var cad = (int)p.U32();
                 ok = cad == 0 || Owns(cad, ItemGroup.Caddie);
+                if (!ok) why = $"caddie {cad} não é dele";
                 if (ok) e.CaddieId = cad;
                 break;
             case 2:
@@ -146,6 +150,7 @@ public sealed partial class GameHandler
             case 3:
                 int ball = (int)p.U32(), club = (int)p.U32();
                 ok = (ball == Item.BasicBall || pl.FindType(ball) is { Group: ItemGroup.Ball }) && Owns(club, ItemGroup.ClubSet);
+                if (!ok) why = $"bola 0x{ball:X8} / club set {club}";
                 if (ok) { e.BallTypeId = ball; e.ClubSetId = club; }
                 break;
             case 4:
@@ -161,11 +166,13 @@ public sealed partial class GameHandler
             case 5:
                 var charId = (int)p.U32();
                 ok = Owns(charId, ItemGroup.Character);
+                if (!ok) why = $"personagem {charId} não é dele";
                 if (ok) { e.CharacterId = charId; w.U32((uint)charId); }
                 break;
             case 8:
                 var mascot = (int)p.U32();
                 ok = mascot == 0 || Owns(mascot, ItemGroup.Mascot);
+                if (!ok) why = $"mascote {mascot} não é dele";
                 if (ok) { e.MascotId = mascot; w.Struct(PlayerStructs.Mascot(pl.Find(mascot))); }
                 break;
             default:                                                    // 7 = iniciar item de período: sem resposta de sucesso
@@ -176,6 +183,7 @@ public sealed partial class GameHandler
         if (!ok)
         {
             w.Dispose();
+            Log.Info($"{conn} troca de equipamento tipo {type} recusada{(why.Length > 0 ? ": " + why : "")}");
             conn.Send(new PacketWriter(SEquipResult).U8(EquipFail));
             return;
         }
@@ -190,8 +198,9 @@ public sealed partial class GameHandler
     /// Roupas novas do personagem: cada parte tem de ser a padrão daquele personagem ou uma parte que o jogador possui
     /// (o id na ItemIdList tem de ser dele e do mesmo typeid). Cabelo e camisa não mudam por aqui.
     /// </summary>
-    bool ApplyOutfit(Item ch, in sCharacterInfo info)
+    bool ApplyOutfit(Item ch, in sCharacterInfo info, out string why)
     {
+        why = "";
         var defaults = ctx.Data.DefaultParts(ch.TypeId);
         var parts = new int[24];
         var partIds = new int[24];
@@ -201,17 +210,29 @@ public sealed partial class GameHandler
             if (tid == 0) continue;
             if (id != 0)
             {
-                if (Player.Find(id) is not { } part || part.TypeId != tid || part.Location != ItemLocation.Inventory) return false;
+                if (Player.Find(id) is not { } part || part.TypeId != tid || part.Location != ItemLocation.Inventory)
+                {
+                    why = $"parte {i}: 0x{tid:X8} id {id} não é dele";
+                    return false;
+                }
                 partIds[i] = id;
             }
-            else if (tid != defaults[i] && Player.FindType(tid) == null) return false;
+            else if (tid != defaults[i] && Player.FindType(tid) == null)
+            {
+                why = $"parte {i}: 0x{tid:X8} sem id, não é a padrão (0x{defaults[i]:X8}) nem dele";
+                return false;
+            }
             parts[i] = tid;
         }
         var aux = new int[5];
         for (int i = 0; i < 5; i++)
         {
             int tid = (int)info.tidAuxParts[i];
-            if (tid != 0 && Player.FindType(tid) == null) return false;
+            if (tid != 0 && Player.FindType(tid) == null)
+            {
+                why = $"anel {i}: 0x{tid:X8} não é dele";
+                return false;
+            }
             aux[i] = tid;
         }
         ch.Set("parts", parts);

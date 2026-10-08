@@ -103,6 +103,8 @@ public sealed class AdminPanel(ServerServices s, GameWorld? world)
             Log.Warn($"WEB admin: login recusado {login} ip={ip} ({status}{(acc != null && status == AuthStatus.Ok ? ", não é GM" : "")})");
             return LoginPage("Login recusado.");
         }
+        var now = DateTime.UtcNow;                                             // limpa as sessões vencidas
+        foreach (var (k, v) in sessions) if (v.Expires < now) sessions.TryRemove(k, out _);
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
         var name = acc.Nickname ?? acc.Login;
         sessions[token] = new Session(acc.Id, name, Convert.ToHexString(RandomNumberGenerator.GetBytes(16)), DateTime.UtcNow + SessionTtl);
