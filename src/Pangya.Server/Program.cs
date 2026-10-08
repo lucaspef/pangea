@@ -8,6 +8,7 @@
 //   Pangya.Server [--config ...] player-set <login> [pang=N] [cookie=N] [level=N] [identity=N]   ajusta um jogador (desconectado)
 //   Pangya.Server [--config ...] item-give <login> <typeid> [qtd] [dias]   entrega um item sem cobrar (desconectado)
 //   Pangya.Server [--config ...] give-all <login>   tudo o que está ativo no IFF, menos roupas (teste; desconectado)
+//   Pangya.Server [--config ...] give-parts <login>   todas as roupas dos personagens dele + anéis (teste; desconectado)
 using Pangya.Core.Hosting;
 using Pangya.Core.Logging;
 using Pangya.Data;
@@ -31,7 +32,7 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
     if (applied.Count > 0) Log.Info("migrações aplicadas: " + string.Join(", ", applied));
 
     var command = rest.Count > 0 ? rest[0] : "";
-    if (command is "server-add" or "server-remove" or "account-create" or "account-password" or "player-set" or "item-give" or "give-all")
+    if (command is "server-add" or "server-remove" or "account-create" or "account-password" or "player-set" or "item-give" or "give-all" or "give-parts")
     {
         // auditoria: a linha de comando inteira (a senha do account-create não é gravada)
         var args2 = rest.Count > 2 ? rest.GetRange(2, rest.Count - 2) : [];
@@ -156,6 +157,39 @@ return await ServerHost.RunAsync("pangya", configPath, async (cfg, ct) =>
             await s.Players.SaveEquipAsync(acc.Id, p.Equip);
         }
         Log.Info($"{rest[1]}: total de objetos = {p.Items.Count}");
+        return;
+    }
+
+    if (command == "give-parts" && rest.Count == 2)
+    {
+        // administração/teste: todas as peças de roupa ativas no IFF dos personagens que o jogador tem (menos as padrão,
+        // que o cliente veste sem item) e todos os anéis; sem cobrar, sem mexer no que está vestido
+        var acc = await s.Accounts.FindByLoginAsync(rest[1]) ?? throw new InvalidOperationException($"login {rest[1]} não existe");
+        var data = Pangya.Protocol.KR645.Kr645GameData.Load(cfg.Data.IffPath);
+        var players = new Pangya.Domain.Players.PlayerService(s.Players, data, cfg.NewPlayer);
+        var p = await players.LoadAsync(acc.Id) ?? throw new InvalidOperationException($"{rest[1]} ainda não criou o personagem");
+        var chars = new HashSet<int>();
+        foreach (var it in p.Items.Values)
+            if (it.Group == Pangya.Domain.Players.ItemGroup.Character) chars.Add(it.TypeId);
+        var shop = new Pangya.Domain.Shop.ShopService(s.Players, data);
+        var tids = new List<uint>();
+        foreach (var x in data.Iff.Parts)
+        {
+            int tid = (int)x.c.TypeId;
+            if (x.c.Final == 0) continue;
+            foreach (var ch in chars)
+                if (((tid >> 18) & 0xFF) == (ch & 0xFF) && !data.IsDefaultPart(ch, tid)) { tids.Add(x.c.TypeId); break; }
+        }
+        foreach (var x in data.Iff.AuxParts) if (x.c.Final != 0) tids.Add(x.c.TypeId);
+        int ok = 0, owned = 0, failed = 0;
+        foreach (var tid in tids)
+        {
+            var (code, _) = await shop.GiveAsync(p, (int)tid, 1);
+            if (code == Pangya.Domain.Shop.ShopCode.Ok) ok++;
+            else if (code == Pangya.Domain.Shop.ShopCode.AlreadyOwned) owned++;
+            else failed++;
+        }
+        Log.Info($"{rest[1]}: {chars.Count} personagens; peças e anéis: {ok} entregues, {owned} já tinha, {failed} recusados (de {tids.Count})");
         return;
     }
 
