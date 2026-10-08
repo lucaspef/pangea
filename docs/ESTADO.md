@@ -3,7 +3,8 @@
 Mapa rápido do que funciona, do que falta e de como testar. Detalhes de protocolo em `docs/protocolo/SPEC-*.md`;
 plano e regras em `docs/PLANO.md`. Pacotes que o cliente manda e o servidor ainda não trata: `python3 tools/coverage.py`.
 
-**Cliente de teste:** `E:\dev\pangya-test\KR642\ABRIR_TESTE_CS5.bat` (CS4 = reserva). Portas do C#: web 30080,
+**Cliente de teste:** `E:\dev\pangya-test\KR642\ABRIR_TESTE_CS6.bat` (CS5 + URLs do emblema de guilda no C#;
+CS5 = confirmado no cliente, CS4 = reserva). Portas do C#: web 30080,
 login 30101, game 30201. Dados do jogo: `tools/sync-iff.py` copia o `pangya.iff` do último pak de correção do cliente.
 
 Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta. "Testado no cliente" só onde o usuário confirmou.
@@ -38,16 +39,28 @@ Legenda: ✅ feito e testado (testes automáticos) · 🟡 parcial · ⬜ falta.
 
 ## Lounge (sala de avatar)
 - ✅ Avatares aparecem, andam, fazem emote/pose e se veem (0x46 com 0xFFFF, 0x63→0xC2, posição para quem entra depois).
-- ✅ Loja pessoal: abrir, título, publicar até 6 itens, visitar, comprar (item e pang das duas contas numa transação).
-- ⬜ Troca direta entre jogadores (0xDB), itens SP (gigante, cabeça grande...), clima.
+- ✅ Loja pessoal: abrir, título (com o nick), publicar até 6 itens, visitar, comprar (item e pang das duas contas
+  numa transação); venda em pacote recusada com 0x1D7 (SPEC-lounge-loja.md).
+- ⬜ Itens SP (gigante, cabeça grande...), clima, travar itens à venda contra outras operações.
+- ⬜ Troca direta (0xDB): desligada no cliente KR (conteúdo 0x77); só com patch do exe, se o usuário pedir.
 
 ## GM
 - ✅ Chat azul, `/notice`, `/kick`, `/disconnect`, `/identity` (só na própria tela).
 - ⬜ `/visible`, vento/clima, `/giveitem`, observar.
 
-## Em pesquisa / próximos
-- 🔎 Correio e caixa de presentes (SPEC-correio-presentes.md).
-- 🔎 Guilda (SPEC-guilda.md).
+## Correio (SPEC-correio-presentes.md)
+- ✅ Listar, ler, pegar anexos, apagar, enviar (com item/pang), aviso de carta nova (0x15E), presente da loja.
+- ✅ Presentes de subida de nível chegam como carta do sistema (uma por nível).
+- ⬜ Prêmio de caixa aleatória pelo correio (0xF1).
+
+## Guilda (SPEC-guilda.md)
+- ✅ Criar, listar/buscar, pedidos (entrar/desistir/aprovar/recusar), cargos, expulsar, sair, encerrar, notícia,
+  apresentação, mensagem, trocar nome; guilda no perfil e nas salas.
+- ✅ Emblema: 0x112 → upload HTTP no Pangya.Web (`/Guild/upload.asp`) → 0x113; download em `/_Files/GuildMark/`.
+  Precisa do cliente CS6.
+- ⬜ GuildMatch (modo 6), pontos e troféus de guilda.
+
+## Próximos
 - ⬜ Mercado/barraca offline (desligado no KR), eventos (quase todos desligados no KR), UCC.
 
 ## Comandos de administração (`dotnet src/Pangya.Server/bin/Release/net10.0/Pangya.Server.dll --config config/pangya.json ...`)
