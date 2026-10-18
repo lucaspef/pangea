@@ -67,6 +67,25 @@ Pausa = `timeScale = 0` (a simulação congela, a renderização continua).
 | rendering | `SkyDome.ts`, `DataParticles.ts`, `TrafficRenderer.ts`, `Environment.ts` | Atmosfera |
 | ui | `UIManager.ts`, `Hud.ts`, `SettingsPanel.ts`, `Screens.ts` | Menus, HUD e configurações |
 
+## Módulos do Marco 2
+
+| Pasta | Arquivo | Responsabilidade |
+|---|---|---|
+| physics | `CharacterMotor.ts` | Cilindro cinemático: paredes, degraus, chão, teto, anéis |
+| physics | `CollisionWorld.raycast` | Raio × AABB/anel (colisão da câmera) |
+| player | `PlayerState.ts` | Estados de locomoção, `MoveIntent` e `AnimationInput` (contrato lógica ↔ visual) |
+| player | `PlayerController.ts` | Aceleração, andar/correr/sprint, pulo (coyote + buffer), esquiva, energia |
+| player | `CharacterModel.ts` | Personagem provisório com hierarquia de esqueleto humanoide |
+| player | `ProceduralAnimator.ts` | Poses por estado com mistura e ciclo de passada por distância |
+| player | `PlayerView.ts` | `CharacterView`: modelo + animador + sombra de contato + ondas de choque |
+| player | `Player.ts` | Sistema: lógica em passo fixo + interpolação visual |
+| camera | `ThirdPersonCamera.ts` | Câmera de ombro com colisão e suavização |
+| world | `Props.ts` | Blocos posicionados em `world.json → props` |
+| rendering | `PropRenderer.ts`, `RimLight.ts` | Visual dos props; contorno fresnel para personagens |
+
+O ciclo ganhou `earlyUpdate` (entrada lida antes dos passos fixos, como o
+Input System da Unity) e `alpha` em `update`/`lateUpdate` para interpolação.
+
 ## Desempenho
 
 * A cidade inteira usa **4 InstancedMesh** (corpos retangulares, octogonais,
@@ -90,6 +109,12 @@ Pausa = `timeScale = 0` (a simulação congela, a renderização continua).
 | `CityGenerator` + `Rng` | Port 1:1 em C# (mesma seed → mesma cidade); `CityBuilder` instancia prefabs |
 | `CollisionWorld` (AABB/anel) | `BoxCollider` estáticos + `MeshCollider` para o anel da arena |
 | `FreeFlyController` | Componente de câmera de depuração / espectador |
+| `CharacterMotor` | `CharacterController` (stepOffset = stepHeight, Move por FixedUpdate) |
+| `PlayerController` + `player.json` | `PlayerMotor` MonoBehaviour + `PlayerConfig` ScriptableObject |
+| `AnimationInput` + `ProceduralAnimator` | Parâmetros de um Animator Controller (Speed, State, VerticalSpeed, DodgeProgress) com Blend Tree de locomoção |
+| `CharacterModel` | Prefab do personagem (modelo humanoide rigado; Avatar Humanoid) |
+| `ThirdPersonCamera` | Cinemachine 3rd Person Follow + Deoccluder |
+| `RimLight` | Fresnel no Shader Graph do material do personagem |
 | `CinematicController` + `CameraRig` | Cinemachine (Dolly Track + Brain com blend) |
 | `RenderContext` (bloom, ACES) | URP + Volume (Bloom, Tonemapping ACES) |
 | `GridFloor` (Reflector) | Planar Reflection Probe/SSR + Shader Graph para as marcações |
@@ -101,11 +126,10 @@ Pausa = `timeScale = 0` (a simulação congela, a renderização continua).
 
 ## Próximos marcos (pendentes)
 
-* **Marco 2** — `player/` (controlador cinemático em cápsula sobre o
-  `CollisionWorld`, gravidade, salto, esquiva), câmera em terceira pessoa,
-  modelo provisório e máquina de estados de animação.
-* **Marco 3** — `combat/` (disco: corpo a corpo, arremesso com trajetória,
-  retorno, bloqueio), `ai/` (inimigos), vida/dano, desintegração.
+* ~~**Marco 2**~~ — concluído (personagem, controlador, animação, câmera).
+* **Marco 3** — `combat/` (disco: corpo a corpo, mira, arremesso com
+  trajetória, retorno, bloqueio), `ai/` (inimigos), vida/dano,
+  desintegração; animações de ataque/bloqueio no `ProceduralAnimator`.
 * **Marco 4** — `vehicles/` (motos de luz, rastros com colisão, câmera de
   pilotagem, IA de adversários) dentro do Setor C.
 * **Marco 5** — gameplay das arenas, HUD de combate/velocímetro, áudio.

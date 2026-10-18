@@ -1,37 +1,44 @@
 import { MathUtils, PerspectiveCamera, Vector3 } from 'three';
-import type { CameraConfig } from '../config/types';
+import type { CameraConfig, ThirdPersonCameraConfig } from '../config/types';
 import type { CameraMode } from '../core/GameEvents';
 import type { GameSystem } from '../core/GameSystem';
 import type { CollisionWorld } from '../physics/CollisionWorld';
 import { angleDelta, clonePose, type CameraPose } from './CameraPose';
 import { CinematicController } from './CinematicController';
 import { FreeFlyController, type FlyIntent } from './FreeFlyController';
+import { ThirdPersonCamera } from './ThirdPersonCamera';
 
 /**
- * Dono da câmera de renderização. Seleciona o controlador ativo, faz a
- * transição suave entre modos e aplica a pose final à PerspectiveCamera.
- * Equivalente Unity: Cinemachine Brain com duas Virtual Cameras e blend.
+ * Dono da câmera de renderização. Seleciona o controlador ativo (terceira
+ * pessoa, drone ou cinematográfico), faz a transição suave entre modos e
+ * aplica a pose final à PerspectiveCamera.
+ * Equivalente Unity: Cinemachine Brain com Virtual Cameras e blend.
  */
 export class CameraRig implements GameSystem {
   readonly name = 'camera';
   readonly camera: PerspectiveCamera;
   readonly free: FreeFlyController;
   readonly cinematic: CinematicController;
+  readonly thirdPerson: ThirdPersonCamera;
 
   private modeValue: CameraMode = 'cinematic';
   private blendFrom: CameraPose | null = null;
   private blendElapsed = 0;
   private readonly current: CameraPose = { position: new Vector3(), yaw: 0, pitch: 0 };
   private baseFov: number;
-  /** Fornece a intenção de voo a cada quadro (entrada já traduzida). */
-  intentProvider: () => FlyIntent | null = () => null;
+  private freeIntent: FlyIntent | null = null;
+  /** Alvo seguido pela câmera em terceira pessoa (pés do personagem, posição visual). */
+  private followTarget: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 };
+  private followSprinting = false;
 
-  constructor(private readonly cfg: CameraConfig, collision: CollisionWorld) {
+  constructor(private readonly cfg: CameraConfig, collision: CollisionWorld, private readonly tpCfg: ThirdPersonCameraConfig) {
     this.camera = new PerspectiveCamera(cfg.fov, 1, cfg.near, cfg.far);
     this.camera.rotation.order = 'YXZ';
     this.baseFov = cfg.fov;
     this.free = new FreeFlyController(cfg.free, collision);
     this.cinematic = new CinematicController(cfg.cinematic);
+    this.thirdPerson = new ThirdPersonCamera(tpCfg, collision);
+    this.thirdPerson.baseSensitivity = cfg.free.lookSensitivity;
     this.cinematic.update(0);
     this.copyPose(this.cinematic.pose, this.current);
     this.apply();
@@ -59,6 +66,24 @@ export class CameraRig implements GameSystem {
     };
   }
 
+  /** Intenção de voo do quadro atual (modo drone). */
+  setFreeIntent(intent: FlyIntent | null): void {
+    this.freeIntent = intent;
+  }
+
+  /** Alvo e estado do personagem seguido em terceira pessoa. */
+  setFollowTarget(target: { x: number; y: number; z: number }, sprinting: boolean): void {
+    this.followTarget = target;
+    this.followSprinting = sprinting;
+  }
+
+  /** Câmera de ombro atrás do personagem, olhando na direção `yaw`. */
+  enterThirdPerson(yaw: number): void {
+    this.startBlend();
+    this.thirdPerson.reset(yaw);
+    this.modeValue = 'thirdPerson';
+  }
+
   /** Troca para o modo livre na pose dada (ou na atual), com transição. */
   enterFree(pose?: CameraPose): void {
     this.startBlend();
@@ -81,15 +106,18 @@ export class CameraRig implements GameSystem {
 
   update(dt: number): void {
     if (this.modeValue === 'free') {
-      const intent = this.intentProvider();
-      if (intent) this.free.update(dt, intent);
-    } else {
+      if (this.freeIntent) this.free.update(dt, this.freeIntent);
+    } else if (this.modeValue === 'cinematic') {
       this.cinematic.update(dt);
     }
   }
 
   lateUpdate(dt: number): void {
-    const target = this.modeValue === 'free' ? this.free.pose : this.cinematic.pose;
+    // A terceira pessoa roda aqui: o personagem já foi posicionado neste quadro.
+    if (this.modeValue === 'thirdPerson') this.thirdPerson.update(dt, this.followTarget, this.followSprinting);
+    const target = this.modeValue === 'free' ? this.free.pose
+      : this.modeValue === 'thirdPerson' ? this.thirdPerson.pose
+      : this.cinematic.pose;
     if (this.blendFrom) {
       this.blendElapsed += dt;
       const t = MathUtils.smoothstep(this.blendElapsed / this.cfg.modeBlendSeconds, 0, 1);
@@ -103,10 +131,13 @@ export class CameraRig implements GameSystem {
 
     // Leve abertura de FOV com a velocidade (sensação de impulso).
     const fc = this.cfg.free;
-    const boostT = this.modeValue === 'free'
-      ? MathUtils.clamp((this.free.speed - fc.speed) / (fc.speed * (fc.boostMultiplier - 1)), 0, 1)
-      : 0;
-    const fov = this.baseFov + fc.boostFovKick * boostT;
+    let kick = 0;
+    if (this.modeValue === 'free') {
+      kick = fc.boostFovKick * MathUtils.clamp((this.free.speed - fc.speed) / (fc.speed * (fc.boostMultiplier - 1)), 0, 1);
+    } else if (this.modeValue === 'thirdPerson' && this.followSprinting) {
+      kick = this.tpCfg.sprintFovKick;
+    }
+    const fov = this.baseFov + kick;
     if (Math.abs(this.camera.fov - fov) > 0.01) {
       this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 6);
       this.camera.updateProjectionMatrix();

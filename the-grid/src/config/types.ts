@@ -52,12 +52,28 @@ export interface TrafficConfig {
   lengthMax: number;
 }
 
+/** Bloco sólido posicionado à mão (praça de entrada, percursos, coberturas). */
+export interface PropConfig {
+  id: string;
+  x: number;
+  z: number;
+  /** Dimensões em X (w), Z (d) e altura (h). */
+  w: number;
+  d: number;
+  h: number;
+  /** Altura da base (padrão 0: apoiado no piso). */
+  y?: number;
+  accent?: 'cyan' | 'orange' | 'white';
+  beacon?: boolean;
+}
+
 export interface WorldConfig {
   seed: number;
   city: CityConfig;
   sectors: { combatArena: CombatArenaConfig; vehicleArena: VehicleArenaConfig };
   traffic: TrafficConfig;
   worldHalfExtent: number;
+  props: PropConfig[];
 }
 
 export type QualityLevel = 'low' | 'medium' | 'high';
@@ -116,6 +132,11 @@ export interface CameraConfig {
 }
 
 export type InputAction =
+  | 'jump'
+  | 'dodge'
+  | 'sprint'
+  | 'toggleWalk'
+  | 'toggleDrone'
   | 'moveForward'
   | 'moveBack'
   | 'moveLeft'
@@ -129,4 +150,56 @@ export type InputAction =
 
 export interface InputConfig {
   actions: Record<InputAction, string[]>;
+}
+
+export interface CapsuleConfig {
+  radius: number;
+  height: number;
+  /** Degrau máximo que o personagem sobe sem pular. */
+  stepHeight: number;
+}
+
+export interface PlayerMovementConfig {
+  walkSpeed: number;
+  runSpeed: number;
+  sprintSpeed: number;
+  acceleration: number;
+  deceleration: number;
+  /** Fração da aceleração disponível no ar (0..1). */
+  airControl: number;
+  /** Velocidade de giro do corpo em direção ao movimento (rad/s, suavização exponencial). */
+  turnSpeed: number;
+  gravity: number;
+  jumpHeight: number;
+  /** Tempo após sair de uma borda em que o pulo ainda é aceito. */
+  coyoteTime: number;
+  /** Tempo em que um pulo apertado antes de tocar o chão fica guardado. */
+  jumpBuffer: number;
+  maxFallSpeed: number;
+  /** Velocidade de queda a partir da qual a aterrissagem é "pesada". */
+  hardLandingSpeed: number;
+}
+
+export interface PlayerConfig {
+  capsule: CapsuleConfig;
+  movement: PlayerMovementConfig;
+  dodge: { distance: number; duration: number; cooldown: number; energyCost: number };
+  energy: { max: number; sprintDrainPerSec: number; regenPerSec: number; regenDelay: number; minToSprint: number };
+  spawn: { position: Vec3Tuple; yawDeg: number };
+  camera: ThirdPersonCameraConfig;
+}
+
+export interface ThirdPersonCameraConfig {
+  distance: number;
+  sprintDistanceAdd: number;
+  minDistance: number;
+  pivotHeight: number;
+  shoulderOffset: number;
+  pitchMinDeg: number;
+  pitchMaxDeg: number;
+  followSmoothing: number;
+  zoomInSmoothing: number;
+  zoomOutSmoothing: number;
+  collisionPadding: number;
+  sprintFovKick: number;
 }

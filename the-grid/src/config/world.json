@@ -16,9 +16,74 @@
     "platformCount": 12
   },
   "sectors": {
-    "combatArena": { "center": [0, -560], "innerRadius": 120, "outerRadius": 150, "wallHeight": 34, "gateWidthDeg": 26 },
-    "vehicleArena": { "center": [600, 0], "halfSize": [190, 190], "wallHeight": 28, "wallThickness": 6, "gateWidth": 40 }
+    "combatArena": {
+      "center": [
+        0,
+        -560
+      ],
+      "innerRadius": 120,
+      "outerRadius": 150,
+      "wallHeight": 34,
+      "gateWidthDeg": 26
+    },
+    "vehicleArena": {
+      "center": [
+        600,
+        0
+      ],
+      "halfSize": [
+        190,
+        190
+      ],
+      "wallHeight": 28,
+      "wallThickness": 6,
+      "gateWidth": 40
+    }
   },
-  "traffic": { "count": 240, "speedMin": 28, "speedMax": 75, "lengthMin": 4, "lengthMax": 12 },
-  "worldHalfExtent": 1100
+  "traffic": {
+    "count": 240,
+    "speedMin": 28,
+    "speedMax": 75,
+    "lengthMin": 4,
+    "lengthMax": 12
+  },
+  "worldHalfExtent": 1100,
+  "props": [
+    {"id": "entrada-base", "x": 0, "z": 446, "w": 32, "d": 32, "h": 0.4},
+    {"id": "entrada-topo", "x": 0, "z": 446, "w": 22, "d": 22, "h": 0.8, "accent": "white"},
+    {"id": "degrau-1", "x": 20, "z": 446, "w": 4, "d": 8, "h": 0.4},
+    {"id": "degrau-2", "x": 24, "z": 446, "w": 4, "d": 8, "h": 0.8},
+    {"id": "degrau-3", "x": 28, "z": 446, "w": 4, "d": 8, "h": 1.2},
+    {"id": "degrau-4", "x": 32, "z": 446, "w": 4, "d": 8, "h": 1.6},
+    {"id": "degrau-5", "x": 36, "z": 446, "w": 4, "d": 8, "h": 2.0},
+    {"id": "degrau-6", "x": 40, "z": 446, "w": 4, "d": 8, "h": 2.4},
+    {"id": "degrau-7", "x": 44, "z": 446, "w": 4, "d": 8, "h": 2.8},
+    {"id": "plataforma-a", "x": 52, "z": 446, "w": 12, "d": 12, "h": 2.8},
+    {"id": "salto-b", "x": 63.5, "z": 446, "w": 5, "d": 6, "h": 2.8, "accent": "orange"},
+    {"id": "salto-c", "x": 70.5, "z": 446, "w": 5, "d": 6, "h": 4.0, "accent": "orange"},
+    {"id": "salto-d", "x": 77.5, "z": 446, "w": 5, "d": 6, "h": 5.2, "accent": "orange"},
+    {"id": "mirante", "x": 88, "z": 446, "w": 10, "d": 10, "h": 5.2, "beacon": true},
+    {"id": "cobertura-1", "x": -24, "z": 446, "w": 2, "d": 10, "h": 1.2},
+    {"id": "cobertura-2", "x": -32, "z": 438, "w": 8, "d": 2, "h": 1.2},
+    {"id": "pilar-1", "x": -40, "z": 452, "w": 2, "d": 2, "h": 3.5},
+    {"id": "pilar-2", "x": -40, "z": 440, "w": 2, "d": 2, "h": 3.5},
+    {"id": "pilar-3", "x": -48, "z": 446, "w": 2, "d": 2, "h": 3.5},
+    {"id": "arco-pilar-n", "x": -58, "z": 440, "w": 2, "d": 2, "h": 3.4, "accent": "orange"},
+    {"id": "arco-pilar-s", "x": -58, "z": 452, "w": 2, "d": 2, "h": 3.4, "accent": "orange"},
+    {"id": "arco-viga", "x": -58, "z": 446, "w": 2, "d": 14, "h": 1.0, "y": 2.4, "accent": "orange"},
+    {"id": "muro", "x": -70, "z": 446, "w": 2, "d": 20, "h": 6, "beacon": true},
+    {"id": "arena-estrado", "x": 0, "z": -560, "w": 36, "d": 36, "h": 0.4},
+    {"id": "arena-estrado-topo", "x": 0, "z": -560, "w": 24, "d": 24, "h": 0.8, "accent": "white"},
+    {"id": "arena-cobertura-1", "x": 60, "z": -560, "w": 4, "d": 4, "h": 1.4},
+    {"id": "arena-cobertura-2", "x": -60, "z": -560, "w": 4, "d": 4, "h": 1.4},
+    {"id": "arena-cobertura-3", "x": 0, "z": -500, "w": 4, "d": 4, "h": 1.4},
+    {"id": "arena-cobertura-4", "x": 0, "z": -620, "w": 4, "d": 4, "h": 1.4},
+    {"id": "arena-barreira-1", "x": 42.4, "z": -517.6, "w": 6, "d": 2, "h": 1.4, "accent": "orange"},
+    {"id": "arena-barreira-2", "x": -42.4, "z": -517.6, "w": 6, "d": 2, "h": 1.4, "accent": "orange"},
+    {"id": "arena-barreira-3", "x": 42.4, "z": -602.4, "w": 6, "d": 2, "h": 1.4, "accent": "orange"},
+    {"id": "arena-barreira-4", "x": -42.4, "z": -602.4, "w": 6, "d": 2, "h": 1.4, "accent": "orange"},
+    {"id": "arena-pilar-1", "x": 88, "z": -560, "w": 3, "d": 3, "h": 4, "beacon": true},
+    {"id": "arena-pilar-2", "x": -88, "z": -560, "w": 3, "d": 3, "h": 4, "beacon": true},
+    {"id": "arena-pilar-3", "x": 0, "z": -648, "w": 3, "d": 3, "h": 4, "beacon": true}
+  ]
 }

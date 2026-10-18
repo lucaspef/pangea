@@ -11,7 +11,7 @@ export interface MutableVec3 { x: number; y: number; z: number }
  */
 export class CollisionWorld {
   private readonly cells = new Map<string, Aabb[]>();
-  private readonly rings: RingWall[] = [];
+  private readonly rings_: RingWall[] = [];
   private count = 0;
 
   constructor(private readonly cellSize = 64) {}
@@ -20,10 +20,15 @@ export class CollisionWorld {
     return this.count;
   }
 
+  /** Paredes anelares registradas (poucas; testadas sem hash espacial). */
+  get rings(): readonly RingWall[] {
+    return this.rings_;
+  }
+
   add(collider: Collider): void {
     this.count++;
     if (collider.kind === 'ring') {
-      this.rings.push(collider);
+      this.rings_.push(collider);
       return;
     }
     const [x0, z0, x1, z1] = this.cellRange(collider.minX, collider.minZ, collider.maxX, collider.maxZ);
@@ -59,7 +64,7 @@ export class CollisionWorld {
     for (const b of this.queryAabbs(p.x - radius, p.z - radius, p.x + radius, p.z + radius)) {
       if (sphereAabbPenetration(p, radius, b) !== null) return true;
     }
-    return this.rings.some((r) => sphereRingPush(p, radius, r) !== null);
+    return this.rings_.some((r) => sphereRingPush(p, radius, r) !== null);
   }
 
   /**
@@ -77,7 +82,7 @@ export class CollisionWorld {
           any = true;
         }
       }
-      for (const r of this.rings) {
+      for (const r of this.rings_) {
         const push = sphereRingPush(p, radius, r);
         if (push) {
           p.x += push.x; p.z += push.z;
@@ -88,6 +93,29 @@ export class CollisionWorld {
       corrected = true;
     }
     return corrected;
+  }
+
+  /**
+   * Distância até a primeira superfície ao longo de um raio (dir normalizada),
+   * ou `maxDist` se nada for atingido. Usado pela câmera em terceira pessoa.
+   */
+  raycast(origin: MutableVec3, dir: MutableVec3, maxDist: number): number {
+    const ex = origin.x + dir.x * maxDist, ez = origin.z + dir.z * maxDist;
+    let best = maxDist;
+    for (const b of this.queryAabbs(Math.min(origin.x, ex), Math.min(origin.z, ez), Math.max(origin.x, ex), Math.max(origin.z, ez))) {
+      const t = rayAabb(origin, dir, b);
+      if (t !== null && t < best) best = t;
+    }
+    // Anéis: amostragem ao longo do raio (o raio da câmera é curto).
+    for (const r of this.rings_) {
+      const step = 0.2;
+      const probe = { x: 0, y: 0, z: 0 };
+      for (let t = 0; t < best; t += step) {
+        probe.x = origin.x + dir.x * t; probe.y = origin.y + dir.y * t; probe.z = origin.z + dir.z * t;
+        if (sphereRingPush(probe, 0.01, r)) { best = Math.min(best, t); break; }
+      }
+    }
+    return best;
   }
 
   private cellRange(minX: number, minZ: number, maxX: number, maxZ: number): [number, number, number, number] {
@@ -144,4 +172,24 @@ export function sphereRingPush(p: MutableVec3, r: number, ring: RingWall): { x: 
   const target = dist < mid ? ring.innerRadius - r : ring.outerRadius + r;
   const amount = target - dist;
   return { x: nx * amount, z: nz * amount };
+}
+
+/** Interseção raio × AABB pelo método das placas; retorna t ≥ 0 ou null. */
+export function rayAabb(o: MutableVec3, d: MutableVec3, b: Aabb): number | null {
+  let tmin = 0, tmax = Infinity;
+  for (const axis of ['x', 'y', 'z'] as const) {
+    const min = axis === 'x' ? b.minX : axis === 'y' ? b.minY : b.minZ;
+    const max = axis === 'x' ? b.maxX : axis === 'y' ? b.maxY : b.maxZ;
+    if (Math.abs(d[axis]) < 1e-9) {
+      if (o[axis] < min || o[axis] > max) return null;
+      continue;
+    }
+    let t1 = (min - o[axis]) / d[axis];
+    let t2 = (max - o[axis]) / d[axis];
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    tmin = Math.max(tmin, t1);
+    tmax = Math.min(tmax, t2);
+    if (tmin > tmax) return null;
+  }
+  return tmin;
 }

@@ -13,6 +13,8 @@ export class InputManager {
   private lookY = 0;
   private dragging = false;
   private enabled = true;
+  /** Até quando ignorar o mouse (ms): o navegador emite um salto falso ao capturar o cursor. */
+  private ignoreLookUntil = 0;
 
   constructor(private readonly target: HTMLElement, config: InputConfig) {
     for (const [action, codes] of Object.entries(config.actions) as [InputAction, string[]][]) {
@@ -28,6 +30,7 @@ export class InputManager {
     document.addEventListener('mousemove', this.onMouseMove);
     target.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('mouseup', this.onMouseUp);
+    document.addEventListener('pointerlockchange', this.onPointerLockChange);
   }
 
   /** Desabilitado = ignora movimento/olhar (ex.: com menus abertos). */
@@ -94,7 +97,13 @@ export class InputManager {
     document.removeEventListener('mousemove', this.onMouseMove);
     this.target.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('mouseup', this.onMouseUp);
+    document.removeEventListener('pointerlockchange', this.onPointerLockChange);
   }
+
+  private readonly onPointerLockChange = (): void => {
+    this.ignoreLookUntil = performance.now() + 80;
+    this.lookX = this.lookY = 0;
+  };
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if (!this.codeToActions.has(e.code)) return;
@@ -122,7 +131,9 @@ export class InputManager {
   };
 
   private readonly onMouseMove = (e: MouseEvent): void => {
-    if (!this.enabled) return;
+    if (!this.enabled || performance.now() < this.ignoreLookUntil) return;
+    // Picos impossíveis para um único evento (alguns navegadores os emitem ao travar o cursor).
+    if (Math.abs(e.movementX) > window.innerWidth / 3 || Math.abs(e.movementY) > window.innerHeight / 3) return;
     if (this.pointerLocked || this.dragging) {
       this.lookX += e.movementX;
       this.lookY += e.movementY;

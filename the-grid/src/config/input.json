@@ -7,6 +7,11 @@
     "moveUp": ["Space", "KeyE"],
     "moveDown": ["KeyQ"],
     "boost": ["ShiftLeft", "ShiftRight"],
+    "jump": ["Space"],
+    "dodge": ["KeyQ"],
+    "sprint": ["ShiftLeft", "ShiftRight"],
+    "toggleWalk": ["KeyX"],
+    "toggleDrone": ["KeyV"],
     "toggleCinematic": ["KeyC"],
     "toggleHud": ["KeyH"],
     "pause": ["Escape", "KeyP"]

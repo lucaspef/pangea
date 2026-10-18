@@ -2,7 +2,7 @@ import type { PlayerSettings } from './Settings';
 import type { SectorId } from '../world/SectorMap';
 
 export type GameState = 'loading' | 'menu' | 'playing' | 'paused';
-export type CameraMode = 'free' | 'cinematic';
+export type CameraMode = 'thirdPerson' | 'free' | 'cinematic';
 
 /** Catálogo de eventos globais do jogo. */
 export interface GameEvents {

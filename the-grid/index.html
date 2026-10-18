@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>THE GRID</title>
-    <meta name="description" content="THE GRID — protótipo 3D de ficção científica digital (Marco 1: Cidade Digital)." />
+    <meta name="description" content="THE GRID — protótipo 3D de ficção científica digital (Marco 2: personagem em terceira pessoa)." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -14,13 +14,13 @@
       <div id="viewport"></div>
 
       <!-- HUD -->
-      <div id="hud" class="hud hidden" aria-hidden="true">
+      <div id="hud" class="hud hidden" data-mode="thirdPerson" aria-hidden="true">
         <div class="hud-sector panel">
           <span class="hud-label" id="hud-sector-code">SETOR A</span>
           <span class="hud-value" id="hud-sector-name">Cidade Digital</span>
         </div>
         <div class="hud-top-right">
-          <span class="tag" id="hud-mode">DRONE</span>
+          <span class="tag" id="hud-mode">TERCEIRA PESSOA</span>
           <span class="tag dim" id="hud-fps">-- FPS</span>
         </div>
         <div class="hud-telemetry panel">
@@ -28,11 +28,29 @@
           <div><span class="hud-label">ALT</span><span class="hud-value mono" id="hud-alt">0</span><span class="unit">m</span></div>
           <div><span class="hud-label">POS</span><span class="hud-value mono small" id="hud-pos">0 · 0</span></div>
         </div>
+        <div class="hud-vitals" id="hud-vitals">
+          <div class="vital">
+            <span class="hud-label">ENERGIA</span>
+            <div class="meter"><div class="meter-fill" id="hud-energy"></div></div>
+          </div>
+          <span class="hud-state" id="hud-state">PARADO</span>
+        </div>
         <div class="hud-hints panel" id="hud-hints">
-          <div><kbd>W A S D</kbd> mover</div>
-          <div><kbd>Espaço</kbd>/<kbd>E</kbd> subir · <kbd>Q</kbd> descer</div>
-          <div><kbd>Shift</kbd> impulso · <kbd>C</kbd> modo cinematográfico</div>
-          <div><kbd>Esc</kbd>/<kbd>P</kbd> pausa · <kbd>H</kbd> ocultar dicas</div>
+          <div class="hint-group" data-mode="thirdPerson">
+            <div><kbd>W A S D</kbd> mover · <kbd>Mouse</kbd> câmera</div>
+            <div><kbd>Shift</kbd> sprint · <kbd>X</kbd> andar/correr</div>
+            <div><kbd>Espaço</kbd> pular · <kbd>Q</kbd> esquivar</div>
+            <div><kbd>V</kbd> drone · <kbd>C</kbd> cinematográfico · <kbd>Esc</kbd> pausa</div>
+          </div>
+          <div class="hint-group" data-mode="free">
+            <div><kbd>W A S D</kbd> mover · <kbd>Mouse</kbd> olhar</div>
+            <div><kbd>Espaço</kbd>/<kbd>E</kbd> subir · <kbd>Q</kbd> descer · <kbd>Shift</kbd> impulso</div>
+            <div><kbd>V</kbd> voltar ao personagem · <kbd>C</kbd> cinematográfico</div>
+            <div><kbd>Esc</kbd>/<kbd>P</kbd> pausa · <kbd>H</kbd> ocultar dicas</div>
+          </div>
+          <div class="hint-group" data-mode="cinematic">
+            <div><kbd>C</kbd> voltar ao controle · <kbd>Esc</kbd> pausa</div>
+          </div>
         </div>
         <div class="reticle"></div>
         <div class="sector-banner" id="sector-banner">
@@ -68,7 +86,7 @@
             <button class="btn" data-action="open-settings">Configurações</button>
             <button class="btn" data-action="open-controls">Controles</button>
           </nav>
-          <div class="footnote">Fase 1 · Marco 1 — Cidade Digital</div>
+          <div class="footnote">Fase 1 · Marco 2 — Programa controlável</div>
         </div>
       </section>
 
@@ -133,12 +151,17 @@
         <div class="menu-card wide">
           <h2>Controles</h2>
           <table class="controls">
-            <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / setas</td><td>Mover a câmera</td></tr>
-            <tr><td>Mouse</td><td>Olhar (clique na tela para capturar o cursor; ou arraste)</td></tr>
-            <tr><td><kbd>Espaço</kbd> / <kbd>E</kbd></td><td>Subir</td></tr>
-            <tr><td><kbd>Q</kbd></td><td>Descer</td></tr>
-            <tr><td><kbd>Shift</kbd></td><td>Impulso de velocidade</td></tr>
+            <tr class="group"><td colspan="2">Personagem</td></tr>
+            <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / setas</td><td>Mover (relativo à câmera)</td></tr>
+            <tr><td>Mouse</td><td>Girar a câmera (clique na tela para capturar o cursor; ou arraste)</td></tr>
+            <tr><td><kbd>Shift</kbd></td><td>Sprint (gasta energia)</td></tr>
+            <tr><td><kbd>X</kbd></td><td>Alternar andar / correr</td></tr>
+            <tr><td><kbd>Espaço</kbd></td><td>Pular</td></tr>
+            <tr><td><kbd>Q</kbd></td><td>Esquiva com rolamento (gasta energia)</td></tr>
+            <tr class="group"><td colspan="2">Câmeras</td></tr>
+            <tr><td><kbd>V</kbd></td><td>Alternar drone livre (Espaço/E sobe, Q desce, Shift impulso)</td></tr>
             <tr><td><kbd>C</kbd></td><td>Alternar voo cinematográfico</td></tr>
+            <tr class="group"><td colspan="2">Geral</td></tr>
             <tr><td><kbd>H</kbd></td><td>Mostrar/ocultar dicas</td></tr>
             <tr><td><kbd>Esc</kbd> / <kbd>P</kbd></td><td>Pausar</td></tr>
           </table>

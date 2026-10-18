@@ -56,12 +56,13 @@ export class GameLoop {
     if (rawDt > 0) this.fps += (1 / rawDt - this.fps) * 0.05;
 
     const dt = rawDt * this.timeScale;
-    const { steps } = this.clock.advance(dt);
+    for (const s of this.systems) s.earlyUpdate?.(dt);
+    const { steps, alpha } = this.clock.advance(dt);
     for (let i = 0; i < steps; i++) {
       for (const s of this.systems) s.fixedUpdate?.(this.clock.fixedDt);
     }
-    for (const s of this.systems) s.update?.(dt);
-    for (const s of this.systems) s.lateUpdate?.(dt);
+    for (const s of this.systems) s.update?.(dt, alpha);
+    for (const s of this.systems) s.lateUpdate?.(dt, alpha);
     // A renderização recebe o dt real: efeitos de UI animam mesmo em pausa.
     this.render(rawDt);
   };

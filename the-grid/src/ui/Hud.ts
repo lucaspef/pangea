@@ -1,3 +1,4 @@
+import type { LocomotionState } from '../player/PlayerState';
 import { SECTOR_LABELS, type SectorId } from '../world/SectorMap';
 import type { CameraMode } from '../core/GameEvents';
 import { el } from './Screens';
@@ -8,7 +9,17 @@ export interface HudTelemetry {
   x: number;
   z: number;
   fps: number;
+  /** Energia do jogador normalizada (0..1). */
+  energy: number;
+  locomotion: LocomotionState;
+  walkMode: boolean;
 }
+
+const LOCOMOTION_LABELS: Record<LocomotionState, string> = {
+  idle: 'PARADO', walk: 'ANDANDO', run: 'CORRENDO', sprint: 'SPRINT',
+  jump: 'SALTO', fall: 'QUEDA', land: 'ATERRISSAGEM', dodge: 'ESQUIVA',
+};
+const MODE_LABELS: Record<CameraMode, string> = { thirdPerson: 'TERCEIRA PESSOA', free: 'DRONE', cinematic: 'CINEMÁTICO' };
 
 /** HUD do Marco 1: setor atual, modo de câmera, telemetria e dicas. */
 export class Hud {
@@ -24,6 +35,8 @@ export class Hud {
   private readonly banner = el('sector-banner');
   private readonly bannerCode = el('banner-code');
   private readonly bannerName = el('banner-name');
+  private readonly energy = el('hud-energy');
+  private readonly locomotion = el('hud-state');
   private bannerTimer = 0;
   private sinceRefresh = 0;
 
@@ -40,7 +53,8 @@ export class Hud {
   }
 
   setMode(mode: CameraMode): void {
-    this.mode.textContent = mode === 'free' ? 'DRONE' : 'CINEMÁTICO';
+    this.mode.textContent = MODE_LABELS[mode];
+    this.root.dataset.mode = mode;
   }
 
   setSector(sector: SectorId, announce: boolean): void {
@@ -58,6 +72,9 @@ export class Hud {
 
   /** Atualiza números no máximo 10x por segundo (evita custo de layout). */
   update(dt: number, t: HudTelemetry): void {
+    // A barra de energia anima a cada quadro (só transform: sem custo de layout).
+    this.energy.style.transform = `scaleX(${Math.max(0, Math.min(1, t.energy)).toFixed(3)})`;
+    this.energy.classList.toggle('low', t.energy < 0.25);
     this.sinceRefresh += dt;
     if (this.sinceRefresh < 0.1) return;
     this.sinceRefresh = 0;
@@ -65,5 +82,6 @@ export class Hud {
     this.alt.textContent = t.altitude.toFixed(0);
     this.pos.textContent = `${t.x.toFixed(0)} · ${t.z.toFixed(0)}`;
     this.fps.textContent = `${Math.round(t.fps)} FPS`;
+    this.locomotion.textContent = LOCOMOTION_LABELS[t.locomotion] + (t.walkMode && t.locomotion !== 'idle' ? ' · MODO ANDAR' : '');
   }
 }

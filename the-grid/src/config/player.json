@@ -1,0 +1,35 @@
+{
+  "capsule": { "radius": 0.42, "height": 1.85, "stepHeight": 0.45 },
+  "movement": {
+    "walkSpeed": 2.4,
+    "runSpeed": 6.2,
+    "sprintSpeed": 9.6,
+    "acceleration": 14,
+    "deceleration": 18,
+    "airControl": 0.35,
+    "turnSpeed": 12,
+    "gravity": 26,
+    "jumpHeight": 1.45,
+    "coyoteTime": 0.12,
+    "jumpBuffer": 0.14,
+    "maxFallSpeed": 45,
+    "hardLandingSpeed": 11
+  },
+  "dodge": { "distance": 5.5, "duration": 0.42, "cooldown": 0.25, "energyCost": 22 },
+  "energy": { "max": 100, "sprintDrainPerSec": 10, "regenPerSec": 24, "regenDelay": 0.8, "minToSprint": 8 },
+  "spawn": { "position": [0, 0.8, 446], "yawDeg": 0 },
+  "camera": {
+    "distance": 4.6,
+    "sprintDistanceAdd": 0.8,
+    "minDistance": 0.9,
+    "pivotHeight": 1.6,
+    "shoulderOffset": 0.55,
+    "pitchMinDeg": -55,
+    "pitchMaxDeg": 65,
+    "followSmoothing": 16,
+    "zoomInSmoothing": 30,
+    "zoomOutSmoothing": 5,
+    "collisionPadding": 0.28,
+    "sprintFovKick": 7
+  }
+}

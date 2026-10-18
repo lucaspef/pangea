@@ -7,6 +7,7 @@ import { DataParticles } from './DataParticles';
 import { createFacadeMaterial } from './FacadeMaterial';
 import { GridFloor } from './GridFloor';
 import type { Palette } from './Palette';
+import { PropRenderer } from './PropRenderer';
 import { SkyDome } from './SkyDome';
 import { TrafficRenderer } from './TrafficRenderer';
 
@@ -20,6 +21,7 @@ export class WorldView {
   private readonly arenas: ArenaRenderer;
   private readonly sky: SkyDome;
   private readonly traffic: TrafficRenderer;
+  private readonly props: PropRenderer;
   private floor: GridFloor | null = null;
   private particles: DataParticles | null = null;
   private readonly fog: FogExp2;
@@ -48,7 +50,8 @@ export class WorldView {
     this.city = new CityRenderer(world.city, palette, facade);
     this.arenas = new ArenaRenderer(world.config, world.arenas, palette, facade, facadeDouble);
     this.traffic = new TrafficRenderer(world.traffic, palette);
-    scene.add(this.sky.group, this.city.group, this.arenas.group, this.traffic.mesh);
+    this.props = new PropRenderer(world.props, palette, facade);
+    scene.add(this.sky.group, this.city.group, this.arenas.group, this.traffic.mesh, this.props.group);
   }
 
   get stats(): { bodies: number; strips: number; reflection: boolean; particles: number } {
@@ -110,6 +113,7 @@ export class WorldView {
     this.arenas.dispose();
     this.sky.dispose();
     this.traffic.dispose();
+    this.props.dispose();
     this.floor?.dispose();
     this.particles?.dispose();
     for (const m of this.materials) m.dispose();

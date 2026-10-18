@@ -7,7 +7,28 @@ ou assets protegidos de nenhuma franquia.
 **Fase 1:** protótipo jogável no navegador (TypeScript + Three.js + Vite).
 **Fase 2:** reimplementação em Unity/C# (veja `docs/ARCHITECTURE.md`).
 
-## Estado atual: Marco 1 — Cidade Digital
+## Estado atual: Marco 2 — Personagem em terceira pessoa
+
+* Personagem humanoide procedural (armadura preta com contorno, circuitos
+  luminosos, visor e disco de energia nas costas) com esqueleto hierárquico
+  pronto para ser trocado por um modelo glTF rigado.
+* Animação procedural com mistura contínua: parado, andar, correr, sprint,
+  salto, queda, aterrissagem (leve e pesada) e esquiva com rolamento. A
+  passada avança pela distância percorrida, sem "patinar".
+* Controlador cinemático com gravidade, subida e descida automática de
+  degraus (até 0,45 m), teto, deslizamento em paredes, colisão com o anel
+  da arena, coyote time e buffer de pulo.
+* Barra de energia: o sprint drena e a esquiva custa energia, que regenera
+  depois de um intervalo.
+* Câmera de ombro em terceira pessoa com colisão (aproxima ao encostar em
+  paredes), FOV dinâmico no sprint e suavização vertical em pulos e degraus.
+* Três modos de câmera: terceira pessoa (padrão), drone (V) e
+  cinematográfico (C), com transições suaves.
+* Praça de entrada com percurso de treino (escada, saltos progressivos,
+  mirante, coberturas, pilares, arco baixo e muro) e coberturas dentro da
+  Arena de Combate, todos definidos em `world.json → props`.
+
+### Marco 1 — Cidade Digital
 
 * Cidade procedural determinística (seed em `src/config/world.json`): ~250
   torres em 5 formatos (bloco, escalonada, octogonal, agulha, lâmina), torres
@@ -50,15 +71,17 @@ npm run preview    # serve o build
 
 ## Controles
 
-| Tecla | Ação |
-|---|---|
-| W A S D / setas | mover |
-| Mouse | olhar (clique na tela para capturar o cursor, ou arraste) |
-| Espaço / E · Q | subir · descer |
-| Shift | impulso |
-| C | alternar voo cinematográfico |
-| H | ocultar dicas |
-| Esc / P | pausar |
+| Tecla | Personagem (terceira pessoa) | Drone (V) |
+|---|---|---|
+| W A S D / setas | mover (relativo à câmera) | mover |
+| Mouse | girar a câmera (clique para capturar o cursor, ou arraste) | olhar |
+| Shift | sprint (gasta energia) | impulso |
+| Espaço | pular | subir (também E) |
+| Q | esquiva com rolamento | descer |
+| X | alternar andar/correr | — |
+| V | entrar no drone | voltar ao personagem |
+| C | voo cinematográfico | voo cinematográfico |
+| H / Esc, P | ocultar dicas / pausar | idem |
 
 ## Diagnóstico
 
@@ -66,7 +89,8 @@ No console do navegador:
 
 ```js
 __THE_GRID__.snapshot()                    // estado, setor, câmera, draw calls…
-__THE_GRID__.teleport(0, 70, -330, 0, -14)  // x, y, z, yaw°, pitch° (vista da arena)
+__THE_GRID__.teleport(0, 70, -330, 0, -14)  // drone: x, y, z, yaw°, pitch° (vista da arena)
+__THE_GRID__.teleportPlayer(0, 0.8, -560)   // personagem: x, y, z, yaw° (estrado da arena)
 __THE_GRID__.scene                          // cena Three.js (inspeção)
 ```
 
@@ -78,8 +102,9 @@ src/
   config/     JSON de gameplay/render + tipos + validação
   input/      ações abstratas de entrada
   world/      geração da cidade, arenas, setores, tráfego (sem Three.js)
-  physics/    colisores estáticos e resolução de colisão
-  camera/     câmera drone, cinematográfica e rig com blend
+  physics/    colisores estáticos, raycast e motor de personagem
+  player/     personagem: regras de movimento, modelo, animação, visual
+  camera/     terceira pessoa, drone, cinematográfica e rig com blend
   rendering/  renderer, pós-processamento, piso, materiais, céu, partículas
   ui/         menus, HUD, configurações
 tests/        testes unitários da lógica
