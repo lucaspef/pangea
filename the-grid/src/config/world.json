@@ -1,0 +1,24 @@
+{
+  "seed": 1982,
+  "city": {
+    "blocksX": 10,
+    "blocksZ": 10,
+    "blockSize": 48,
+    "avenueWidth": 18,
+    "lotMargin": 3,
+    "heightMin": 18,
+    "heightMax": 210,
+    "centerFalloff": 0.75,
+    "plazaChance": 0.07,
+    "monumentHeight": 270,
+    "bridgeCount": 28,
+    "bridgeMinY": 32,
+    "platformCount": 12
+  },
+  "sectors": {
+    "combatArena": { "center": [0, -560], "innerRadius": 120, "outerRadius": 150, "wallHeight": 34, "gateWidthDeg": 26 },
+    "vehicleArena": { "center": [600, 0], "halfSize": [190, 190], "wallHeight": 28, "wallThickness": 6, "gateWidth": 40 }
+  },
+  "traffic": { "count": 240, "speedMin": 28, "speedMax": 75, "lengthMin": 4, "lengthMax": 12 },
+  "worldHalfExtent": 1100
+}

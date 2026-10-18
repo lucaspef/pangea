@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>THE GRID</title>
+    <meta name="description" content="THE GRID — protótipo 3D de ficção científica digital (Marco 1: Cidade Digital)." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="viewport"></div>
+
+      <!-- HUD -->
+      <div id="hud" class="hud hidden" aria-hidden="true">
+        <div class="hud-sector panel">
+          <span class="hud-label" id="hud-sector-code">SETOR A</span>
+          <span class="hud-value" id="hud-sector-name">Cidade Digital</span>
+        </div>
+        <div class="hud-top-right">
+          <span class="tag" id="hud-mode">DRONE</span>
+          <span class="tag dim" id="hud-fps">-- FPS</span>
+        </div>
+        <div class="hud-telemetry panel">
+          <div><span class="hud-label">VEL</span><span class="hud-value mono" id="hud-speed">0</span><span class="unit">m/s</span></div>
+          <div><span class="hud-label">ALT</span><span class="hud-value mono" id="hud-alt">0</span><span class="unit">m</span></div>
+          <div><span class="hud-label">POS</span><span class="hud-value mono small" id="hud-pos">0 · 0</span></div>
+        </div>
+        <div class="hud-hints panel" id="hud-hints">
+          <div><kbd>W A S D</kbd> mover</div>
+          <div><kbd>Espaço</kbd>/<kbd>E</kbd> subir · <kbd>Q</kbd> descer</div>
+          <div><kbd>Shift</kbd> impulso · <kbd>C</kbd> modo cinematográfico</div>
+          <div><kbd>Esc</kbd>/<kbd>P</kbd> pausa · <kbd>H</kbd> ocultar dicas</div>
+        </div>
+        <div class="reticle"></div>
+        <div class="sector-banner" id="sector-banner">
+          <span class="code" id="banner-code"></span>
+          <span class="name" id="banner-name"></span>
+        </div>
+      </div>
+
+      <!-- Carregamento -->
+      <section id="screen-loading" class="screen visible">
+        <div class="loading">
+          <div class="logo small">THE GRID</div>
+          <div class="bar"><div class="bar-fill" id="loading-fill"></div></div>
+          <div class="loading-text" id="loading-text">Inicializando…</div>
+        </div>
+      </section>
+
+      <!-- Erro fatal (ex.: WebGL indisponível) -->
+      <section id="screen-error" class="screen">
+        <div class="menu-card">
+          <h2>Falha ao iniciar</h2>
+          <p id="error-text"></p>
+        </div>
+      </section>
+
+      <!-- Menu principal -->
+      <section id="screen-menu" class="screen">
+        <div class="menu-main">
+          <div class="logo">THE GRID</div>
+          <div class="subtitle">uma civilização digital aguarda</div>
+          <nav class="menu-buttons">
+            <button class="btn primary" data-action="start">Entrar no Grid</button>
+            <button class="btn" data-action="open-settings">Configurações</button>
+            <button class="btn" data-action="open-controls">Controles</button>
+          </nav>
+          <div class="footnote">Fase 1 · Marco 1 — Cidade Digital</div>
+        </div>
+      </section>
+
+      <!-- Pausa -->
+      <section id="screen-pause" class="screen">
+        <div class="menu-card">
+          <h2>Pausado</h2>
+          <nav class="menu-buttons">
+            <button class="btn primary" data-action="resume">Continuar</button>
+            <button class="btn" data-action="toggle-cinematic">Alternar modo cinematográfico</button>
+            <button class="btn" data-action="open-settings">Configurações</button>
+            <button class="btn" data-action="open-controls">Controles</button>
+            <button class="btn danger" data-action="main-menu">Menu principal</button>
+          </nav>
+        </div>
+      </section>
+
+      <!-- Configurações -->
+      <section id="screen-settings" class="screen">
+        <div class="menu-card wide">
+          <h2>Configurações</h2>
+          <form class="settings" id="settings-form" onsubmit="return false">
+            <label class="row">
+              <span>Qualidade gráfica</span>
+              <select name="quality">
+                <option value="low">Baixa — sem reflexo no piso</option>
+                <option value="medium">Média</option>
+                <option value="high">Alta — reflexo nítido + MSAA</option>
+              </select>
+            </label>
+            <label class="row">
+              <span>Brilho (bloom)</span>
+              <input type="checkbox" name="bloom" />
+            </label>
+            <label class="row">
+              <span>Sensibilidade do mouse <output name="mouseSensitivityOut"></output></span>
+              <input type="range" name="mouseSensitivity" min="0.2" max="3" step="0.1" />
+            </label>
+            <label class="row">
+              <span>Inverter eixo Y</span>
+              <input type="checkbox" name="invertY" />
+            </label>
+            <label class="row">
+              <span>Campo de visão <output name="fovOut"></output></span>
+              <input type="range" name="fov" min="50" max="90" step="1" />
+            </label>
+            <label class="row">
+              <span>Mostrar FPS</span>
+              <input type="checkbox" name="showFps" />
+            </label>
+          </form>
+          <div class="settings-info" id="settings-info"></div>
+          <nav class="menu-buttons inline">
+            <button class="btn" data-action="reset-settings">Restaurar padrão</button>
+            <button class="btn primary" data-action="back">Voltar</button>
+          </nav>
+        </div>
+      </section>
+
+      <!-- Controles -->
+      <section id="screen-controls" class="screen">
+        <div class="menu-card wide">
+          <h2>Controles</h2>
+          <table class="controls">
+            <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / setas</td><td>Mover a câmera</td></tr>
+            <tr><td>Mouse</td><td>Olhar (clique na tela para capturar o cursor; ou arraste)</td></tr>
+            <tr><td><kbd>Espaço</kbd> / <kbd>E</kbd></td><td>Subir</td></tr>
+            <tr><td><kbd>Q</kbd></td><td>Descer</td></tr>
+            <tr><td><kbd>Shift</kbd></td><td>Impulso de velocidade</td></tr>
+            <tr><td><kbd>C</kbd></td><td>Alternar voo cinematográfico</td></tr>
+            <tr><td><kbd>H</kbd></td><td>Mostrar/ocultar dicas</td></tr>
+            <tr><td><kbd>Esc</kbd> / <kbd>P</kbd></td><td>Pausar</td></tr>
+          </table>
+          <nav class="menu-buttons inline">
+            <button class="btn primary" data-action="back">Voltar</button>
+          </nav>
+        </div>
+      </section>
+
+      <div id="fade" class="fade"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

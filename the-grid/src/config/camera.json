@@ -1,0 +1,29 @@
+{
+  "fov": 62,
+  "near": 0.5,
+  "far": 6000,
+  "modeBlendSeconds": 1.4,
+  "spawn": { "position": [0, 9, 230], "yawDeg": 0, "pitchDeg": 4 },
+  "free": {
+    "speed": 42,
+    "boostMultiplier": 3.5,
+    "acceleration": 6,
+    "lookSensitivity": 0.0022,
+    "lookSmoothing": 22,
+    "collisionRadius": 2.5,
+    "minHeight": 1.8,
+    "maxHeight": 650,
+    "boostFovKick": 8
+  },
+  "cinematic": {
+    "loopSeconds": 110,
+    "lookAhead": 0.012,
+    "rotationSmoothing": 2.2,
+    "waypoints": [
+      [-430, 16, 0], [-200, 13, 0], [0, 17, 0], [200, 40, 0], [330, 120, 0],
+      [480, 200, 0], [620, 260, -250], [300, 300, -600], [0, 170, -780],
+      [0, 80, -470], [0, 24, -280], [0, 14, -120], [0, 14, 120], [0, 60, 300],
+      [0, 230, 480], [-300, 280, 580], [-620, 140, 300]
+    ]
+  }
+}

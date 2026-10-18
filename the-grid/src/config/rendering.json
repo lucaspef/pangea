@@ -1,0 +1,18 @@
+{
+  "toneMappingExposure": 0.95,
+  "fog": { "color": "#03070d", "density": 0.00165 },
+  "bloom": { "strength": 0.72, "radius": 0.1, "threshold": 0.95, "mipWeights": [1.0, 0.65, 0.3, 0.12, 0.05] },
+  "palette": {
+    "cyan": "#38e8ff",
+    "blue": "#1f7bff",
+    "orange": "#ff8a1f",
+    "white": "#dff8ff",
+    "body": "#06090d",
+    "floor": "#010306"
+  },
+  "presets": {
+    "low":    { "label": "Baixa", "pixelRatioCap": 1.0,  "reflection": false, "reflectionScale": 0,    "particles": 1200, "msaa": 0 },
+    "medium": { "label": "Média", "pixelRatioCap": 1.5,  "reflection": true,  "reflectionScale": 0.35, "particles": 3000, "msaa": 0 },
+    "high":   { "label": "Alta",  "pixelRatioCap": 2.0,  "reflection": true,  "reflectionScale": 0.6,  "particles": 6000, "msaa": 4 }
+  }
+}

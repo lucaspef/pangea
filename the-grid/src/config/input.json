@@ -1,0 +1,14 @@
+{
+  "actions": {
+    "moveForward": ["KeyW", "ArrowUp"],
+    "moveBack": ["KeyS", "ArrowDown"],
+    "moveLeft": ["KeyA", "ArrowLeft"],
+    "moveRight": ["KeyD", "ArrowRight"],
+    "moveUp": ["Space", "KeyE"],
+    "moveDown": ["KeyQ"],
+    "boost": ["ShiftLeft", "ShiftRight"],
+    "toggleCinematic": ["KeyC"],
+    "toggleHud": ["KeyH"],
+    "pause": ["Escape", "KeyP"]
+  }
+}
